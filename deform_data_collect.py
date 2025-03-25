@@ -9,6 +9,7 @@ def main():
     comm, rank = initialize_rank()
     # s25x25 = GrapheneSheet("data_files/data.25_25_rel", 25, 25)
     # s50x50 = GrapheneSheet("data_files/data.50_50_rel", 50, 50)
+    # test
 
     sheet1 = GrapheneSheet("data_files/data.60_60_rel1", 60, 60)
     sheet2 = GrapheneSheet("data_files/data.60_60_rel2", 60, 60)
