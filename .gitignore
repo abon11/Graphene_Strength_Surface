@@ -1,0 +1,7 @@
+*.csv
+data.*
+dump.*
+__pycache__/
+venv/
+*.png
+log.*

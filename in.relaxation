@@ -1,0 +1,47 @@
+# Inputs a graphene sheet and runs relaxation to get it up to temperature and stable
+
+## ---------------INITIALIZATION-------------------------------
+
+units          metal
+dimension      3
+boundary       p p p
+atom_style     atomic  # change this to bond if you want bonds
+newton         on
+
+## ---------------ATOM DEFINITION------------------------------
+
+read_data      data_files/data.60_60_stiff  # Load initial data file
+# read_data       ${datafile}
+
+
+## ---------------FORCE FIELD DEFINITION-----------------------
+
+pair_style     airebo 3.5
+pair_coeff     * * CH.airebo C  # AIREBO potential for carbon atoms
+
+## ---------------SETTINGS-------------------------------------
+
+timestep       0.0005  # ps
+thermo         500  # Output thermodynamic properties every 500 steps
+
+## ---------------RELAXATION STEPS-----------------------------
+
+# Step 1: Energy Minimization
+min_style      cg
+minimize       1e-10 1e-10 10000 10000
+
+# Step 2: Set Initial Velocities
+velocity       all create 273.0 7 mom yes rot yes dist gaussian
+
+# Step 3: Short NVT Equilibration to Stabilize Temperature
+fix            1 all nvt temp 273.0 273.0 0.1
+run            20000
+unfix          1
+
+# Step 4: NPT Equilibration to Stabilize Both Temperature and Pressure
+fix            2 all npt temp 273.0 273.0 0.1 x 0.0 0.0 0.1 y 0.0 0.0 0.1
+# no pressure fix in z direction because there shouldn't be significant pressure in out of plane direction
+run            80000
+
+# Step 5: Save the Relaxed Configuration
+write_data     data_files/data.60_60_rel7

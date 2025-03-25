@@ -1,0 +1,71 @@
+# LAMMPS Input Script for Uniaxial Tensile Test with AIREBO Potential
+
+# Initialize simulation
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+newton on  # what does this do
+
+# Read initial structure
+read_data ${datafile}
+
+# Define interatomic potential (AIREBO)
+pair_style airebo 3.5
+pair_coeff * * CH.airebo C
+
+# Define groups
+group all type 1
+
+# Set up neighbor list
+neighbor 2.0 bin  # 2.0 is the skin distance (adds 2.0 angstroms to the cutoff distance of pairwise potentials, cuz atoms may come into interaction range between rebuilds)
+# bin is just the algorithm for the neighbor list building
+neigh_modify delay 0 every 1 check yes  # rebuilds list after every run command (delay 0). every 1 checks whether atoms have moved beyond skin distance every timestep.
+# check yes ensures the neighbor list is only rebuilt when necessary
+
+# if sim is slow, increase skin distance or adjust delay to rebuild less often - note that this may impact accuracy
+
+# Initialize velocities and thermostat
+# velocity all create 273.0 12345 mom yes dist gaussian
+
+# timestep       0.0005  # ps
+timestep       ${timestep}  # timestep comes from python
+thermo         1000
+
+fix 1 all nvt temp 273.0 273.0 0.1
+
+# Apply deformation
+# fix 2 all deform 1 x erate ${x_erate} remap x  # erate rate comes from python
+
+
+# computes
+compute        stress all stress/atom NULL   # Per-atom stress tensor
+compute        reduce_stress_xx all reduce sum c_stress[1]
+compute        reduce_stress_yy all reduce sum c_stress[2]
+compute        reduce_stress_zz all reduce sum c_stress[3]
+compute        reduce_stress_xy all reduce sum c_stress[4]
+compute        reduce_stress_xz all reduce sum c_stress[5]
+compute        reduce_stress_yz all reduce sum c_stress[6]
+
+# variable vol equal 5417.75  # vol for 25x25
+
+variable stress_xx equal c_reduce_stress_xx/v_vol*v_conv_fact
+variable stress_yy equal c_reduce_stress_yy/v_vol*v_conv_fact
+variable stress_zz equal c_reduce_stress_zz/v_vol*v_conv_fact
+variable stress_xy equal c_reduce_stress_xy/v_vol*v_conv_fact
+variable stress_xz equal c_reduce_stress_xz/v_vol*v_conv_fact
+variable stress_yz equal c_reduce_stress_yz/v_vol*v_conv_fact
+
+variable p_x equal pxx
+variable p_y equal pyy
+variable p_z equal pzz
+
+# Output settings
+
+thermo_style custom step temp press lx v_stress_xx v_stress_yy v_stress_zz v_stress_xy v_stress_xz v_stress_yz v_p_x v_p_y v_p_z 
+
+# Dump file for visualization
+dump 1 all custom 100 ${dump_output} id type x y z
+
+# Run simulation
+# run 100000

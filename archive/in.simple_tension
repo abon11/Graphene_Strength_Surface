@@ -1,0 +1,69 @@
+# LAMMPS Input Script for Uniaxial Tension of Graphene
+
+## ---------------INITIALIZATION-------------------------------
+
+units          metal
+dimension      3
+boundary       p p p
+atom_style     atomic
+newton         on
+
+## ---------------ATOM DEFINITION------------------------------
+
+# read_data      data.50_50_looseZ
+read_data      data_files/relaxed_graphene.data  # load relaxed graphene sheet
+
+## ---------------FORCE FIELD DEFINITION-----------------------
+
+pair_style     airebo 3.5
+pair_coeff     * * CH.airebo C  # AIREBO potential for carbon atoms
+
+## ---------------SETTINGS-------------------------------------
+
+timestep       0.0005  # ps
+thermo         100  # output thermodynamic properties every 100 steps
+
+## ---------------COMPUTES-------------------------------------
+compute        stress all stress/atom NULL   # Per-atom stress tensor
+compute        reduce_stress_xx all reduce sum c_stress[1]
+compute        reduce_stress_yy all reduce sum c_stress[2]
+compute        reduce_stress_zz all reduce sum c_stress[3]
+compute        reduce_stress_xy all reduce sum c_stress[4]
+compute        reduce_stress_xz all reduce sum c_stress[5]
+compute        reduce_stress_yz all reduce sum c_stress[6]
+
+
+variable stress_xx equal c_reduce_stress_xx/vol
+variable stress_yy equal c_reduce_stress_yy/vol
+variable stress_zz equal c_reduce_stress_zz/vol
+variable stress_xy equal c_reduce_stress_xy/vol
+variable stress_xz equal c_reduce_stress_xz/vol
+variable stress_yz equal c_reduce_stress_yz/vol
+
+# average stress = pressure when using sim box size
+
+## ---------------APPLY INITIAL CONDITIONS---------------------
+# region		void1 sphere 25 15 0 8  # sphere region named void1: x=10, y=4, z=0 of center, r=3
+# delete_atoms	region void1  # delete the atoms present in void1
+
+fix 1 all npt temp 273.0 273.0 0.1 x 0.0 -1000.0 2.5 y 0.0 0.0 2.5 z 0.0 0.0 2.5
+# increment pressure then wait then incrememnt (for polymers mostly, but good practice) - check it out
+# gather slides on exactly what we do with npt
+# graph pressure average as a function of timesteps
+
+thermo_style   custom step temp lx ly lz press pxx pyy pzz v_stress_xx v_stress_yy v_stress_zz
+thermo 100
+
+# variable csv_out string "output.csv"
+# thermo_modify flush yes
+# thermo_modify format line "%d, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f"
+
+# log ${csv_out}
+
+dump 6 all custom 200 dump.test id x y z vx vy vz fx fy fz
+run            20000  # 100000
+
+# thermo_style   custom step temp lx ly lz press pxx pyy pzz 
+
+
+

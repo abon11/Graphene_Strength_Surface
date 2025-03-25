@@ -1,0 +1,90 @@
+# LAMMPS Input Script for Uniaxial Tension of Graphene
+
+## ---------------INITIALIZATION-------------------------------
+
+units          metal
+dimension      3
+boundary       p p p
+atom_style     atomic
+newton         on
+
+## ---------------ATOM DEFINITION------------------------------
+
+# read_data      data_files/relaxed_graphene.data  # load relaxed graphene sheet
+# read_data       data_files/data.25_25_rel
+# read_data       data_files/data.stiff_sheet
+# read_data      ../fracture_of_grahene-main/grap-data.data 
+
+read_data       ${datafile}
+
+## ---------------FORCE FIELD DEFINITION-----------------------
+
+pair_style     airebo 3.5
+pair_coeff     * * CH.airebo C  # AIREBO potential for carbon atoms
+
+## ---------------SETTINGS-------------------------------------
+
+timestep       0.0005  # ps
+thermo         1000  # output thermodynamic properties every 100 steps
+# thermo         ${output_timesteps}
+
+## ---------------COMPUTES-------------------------------------
+
+compute        stress all stress/atom NULL   # Per-atom stress tensor
+
+compute        reduce_stress_xx all reduce sum c_stress[1]
+compute        reduce_stress_yy all reduce sum c_stress[2]
+compute        reduce_stress_zz all reduce sum c_stress[3]
+compute        reduce_stress_xy all reduce sum c_stress[4]
+compute        reduce_stress_xz all reduce sum c_stress[5]
+compute        reduce_stress_yz all reduce sum c_stress[6]
+
+# variable Volume equal 22766.4  # my sheet
+# variable Volume equal 78084.937284  # their sheet
+variable Volume equal ${Volume}  # volume of physical sheet, taken from python
+
+variable conv_fact equal ${conv_fact}  # Conversion from bar to gpa, taken from python
+
+# variable stress_xx equal c_reduce_stress_xx/vol
+# variable stress_yy equal c_reduce_stress_yy/vol
+# variable stress_zz equal c_reduce_stress_zz/vol
+# variable stress_xy equal c_reduce_stress_xy/vol
+# variable stress_xz equal c_reduce_stress_xz/vol
+# variable stress_yz equal c_reduce_stress_yz/vol
+
+variable stress_xx equal c_reduce_stress_xx/v_Volume*v_conv_fact
+variable stress_yy equal c_reduce_stress_yy/v_Volume*v_conv_fact
+variable stress_zz equal c_reduce_stress_zz/v_Volume*v_conv_fact
+variable stress_xy equal c_reduce_stress_xy/v_Volume*v_conv_fact
+variable stress_xz equal c_reduce_stress_xz/v_Volume*v_conv_fact
+variable stress_yz equal c_reduce_stress_yz/v_Volume*v_conv_fact
+
+variable p_x equal pxx
+variable p_y equal pyy
+variable p_z equal pzz
+variable l_z equal lz
+
+variable damp_x equal ${damp_x}
+variable damp_y equal ${damp_y}
+variable damp_z equal ${damp_z}
+
+
+## ---------------APPLY INITIAL CONDITIONS---------------------
+# region		void1 sphere 25 15 0 8  # sphere region named void1: x=10, y=4, z=0 of center, r=3
+# delete_atoms	region void1  # delete the atoms present in void1
+
+# fix 1 all npt temp 273.0 273.0 0.1 x 0.0 0.0 150.0 y 0.0 -14500.0 150.0 z 0.0 0.0 150.0  # their sheet (y)
+
+# fix 1 all npt temp 273.0 273.0 0.1 x 0.0 0.0 100.0 y 0.0 -75000.0 100.0 z 0.0 0.0 100.0  # this is perfect for my graphene sheet (y)
+# fix 1 all npt temp 273.0 273.0 0.1 x 0.0 -50000.0 100.0 y 0.0 0.0 100.0 z 0.0 0.0 100.0  # this is perfect for my graphene sheet (x)
+
+# fix 1 all npt temp 273.0 273.0 0.1 x 0.0 ${target_x} ${damp_x} y 0.0 ${target_y} ${damp_y} z 0.0 ${target_z} ${damp_z}
+fix 1 all npt temp 273.0 273.0 0.1 x 0.0 ${target_x} ${damp_x} y 0.0 ${target_y} ${damp_y} z 0.0 ${target_z} ${damp_z}
+
+
+thermo_style custom step temp press v_l_z v_stress_xx v_stress_yy v_stress_zz v_stress_xy v_stress_xz v_stress_yz v_p_x v_p_y v_p_z
+
+# dump 6 all custom 200 dump.python_tests_25 id x y z vx vy vz fx fy fz
+dump 6 all custom 200 ${dump_output} id x y z vx vy vz fx fy fz
+
+
