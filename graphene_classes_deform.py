@@ -53,7 +53,8 @@ class GrapheneSheet:
 class Simulation:
     # we basically want the whole simulation to run on initialization, then we can pull whatever we want from it for postprocessing
     def __init__(self, comm, rank, sheet, x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
-                 sim_length=100000, timestep=0.0005, thermo=1000, makeplots=False, fracture_window=10, storage_path='/data1/avb25/graphene_sim_data/deform_data'):
+                 sim_length=100000, timestep=0.0005, thermo=1000, add_defects=False, makeplots=False, fracture_window=10, 
+                 storage_path='/data1/avb25/graphene_sim_data/defected_data'):
         """
         Class to execute one simulation and store information about it.
         This essentially loads the specimen to failure.
@@ -66,6 +67,7 @@ class Simulation:
         - sim_length (int): Number of timesteps before simulation is killed (max timesteps) 
         - timestep (float): Size of one timestep in LAMMPS simulation (picoseconds)
         - thermo (int): Frequency of timesteps you output data (if thermo = 100, output every 100 timesteps)
+        - add_defects (bool): Whether or not we add a specific defect into the sheet (will expand upon this later)
         - makeplots (bool): User specifies whether or not they want plots of stress vs time generated and saved (default False)
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
         - storage_path (str): filepath to where we want to store the data
@@ -81,6 +83,7 @@ class Simulation:
         self.sim_length = sim_length
         self.timestep = timestep
         self.thermo = thermo
+        self.add_defects = add_defects
         self.makeplots = makeplots
         self.fracture_window = fracture_window
         self.storage_path = storage_path
@@ -113,6 +116,9 @@ class Simulation:
         self.lmp = lmp
         self.comm = comm
         self.rank = rank
+
+        if (add_defects):
+            self.introduce_defects()
 
         self.apply_fix_deform()
 
@@ -432,6 +438,16 @@ class Simulation:
         stress_tensor_ax.legend()
         stress_tensor_ax.grid()
         stress_tensor_fig.savefig(f'{self.simulation_directory}_tensor_vs_time.png')
+
+    # puts the defects into the sheet - currently just one defect hardcoded in
+    def introduce_defects(self):
+        # this just deletes a sphere of radius 3 at (60, 30, 0)
+        region_def = "region defects sphere 60 30 0 3"
+        deleting = "delete_atoms region defects"
+
+        self.lmp.command(region_def)
+        self.lmp.command(deleting)
+
 
 
 class Relaxation:
