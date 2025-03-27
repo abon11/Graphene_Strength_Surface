@@ -149,6 +149,7 @@ def writefile(filepath, dims, atoms, bonds, printBonds):
         f.write(f"{dims[3]:.16e} {dims[0]:.16e} xlo xhi\n")
         f.write(f"{dims[4]:.16e} {dims[1]:.16e} ylo yhi\n")
         f.write(f"{dims[5]:.16e} {dims[2]:.16e} zlo zhi\n\n")
+        f.write(f"0.0 0.0 0.0 xy xz yz\n")  # added for shear functionality
         
         # Masses section
         f.write("Masses\n\n")

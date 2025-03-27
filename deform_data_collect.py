@@ -12,18 +12,20 @@ def main():
 
     sheet1 = GrapheneSheet("data_files/data.60_60_rel1", 60, 60)
 
-    sheets = [sheet1]
+    # sheets = [sheet1]
 
-    # run x-dominant tests 
-    x_rates = []
-    # y_rates = [0, 1e-3, 9e-4, 8e-4, 7e-4, 6e-4, 5e-4, 4e-4, 3e-4, 2e-4, 1e-4]
-    y_rates = [0]
-    for i in range(len(y_rates)):
-        x_rates.append(-1e-3)  # negative because we are trying compression
+    # # run x-dominant tests 
+    # x_rates = []
+    # # y_rates = [0, 1e-3, 9e-4, 8e-4, 7e-4, 6e-4, 5e-4, 4e-4, 3e-4, 2e-4, 1e-4]
+    # y_rates = [0]
+    # for i in range(len(y_rates)):
+    #     x_rates.append(-1e-5)  # negative because we are trying compression (going much slower than 1e-3)
 
-    for sheet in sheets:
-        strengths = param_test(comm, rank, sheet, x_rates, y_rates)
-        print(f'{sheet.x_atoms}_strengths: {strengths}')
+    # for sheet in sheets:
+    #     strengths = param_test(comm, rank, sheet, x_rates, y_rates)
+    #     print(f'{sheet.x_atoms}_strengths: {strengths}')
+
+    test = Simulation(comm, rank, sheet1, x_erate=-1e-3, thermo=1000, sim_length=10000000)
 
     if rank == 0:
         print('DONE')
@@ -32,7 +34,7 @@ def main():
 def param_test(comm, rank, sheet, x_rates, y_rates):
     strengths = []
     for i in range(len(x_rates)):
-        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, sim_length=100000, makeplots=True)
+        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, sim_length=10000000)
         if test.strength[0] is None:
             strengths.append(test.strength[0])
         else:

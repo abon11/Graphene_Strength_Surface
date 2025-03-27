@@ -139,8 +139,7 @@ class Simulation:
             print(f'Material Strength ({sheet.x_atoms}x{sheet.y_atoms} sheet): {strength} GPa. ')
             self.append_csv()  # append all data from the simulation to the csv file. 
             self.save_detailed_data()
-            if sheet.makeStrengthSurface:
-                sheet.populate_surface(strength)
+
             if makeplots:
                 # right now we really only care about the principal stresses, so only output that
                 self.plot_principalStress()
