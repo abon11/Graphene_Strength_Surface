@@ -22,7 +22,7 @@ def main():
         x_rates.append(1e-3)  # negative because we are trying compression (going much slower than 1e-3)
 
     for sheet in sheets:
-        strengths = param_test(comm, rank, sheet, x_rates, y_rates)
+        strengths = param_test(comm, rank, sheet, y_rates, x_rates)  # FLIPPED THIS TO DO Y-DOMINANT
         print(f'{sheet.x_atoms}_strengths: {strengths}')
 
     if rank == 0:

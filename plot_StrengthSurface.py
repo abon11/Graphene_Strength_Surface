@@ -7,7 +7,9 @@ def main():
     fig, ax = plt.subplots()
     ax.set_xlabel(r'$\sigma_1$')
     ax.set_ylabel(r'$\sigma_2$')
-    ax.set_title(f'Molecular Strength Surface of Pristine Graphite (y-dominant)')
+    ax.set_title(f'Molecular Strength Surface of Defected Graphene (x-dominant)')
+
+    filepath = "/data1/avb25/graphene_sim_data"
 
     colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
 
@@ -44,24 +46,19 @@ def main():
 
     # ax.plot(str1, str2, color='green', label='Expected x-dominant')
     # ax.plot(str2, str1, color='green')
-    plot_group(ax, list(range(280, 291)), '60x60 - 1', colors[0])
-    plot_group(ax, list(range(291, 302)), '60x60 - 2', colors[1])
-    plot_group(ax, list(range(302, 313)), '60x60 - 3', colors[2])
-    plot_group(ax, list(range(313, 324)), '60x60 - 4', colors[3])
-    plot_group(ax, list(range(324, 335)), '60x60 - 5', colors[4])
-    plot_group(ax, list(range(335, 346)), '60x60 - 6', colors[5])
-    plot_group(ax, list(range(346, 357)), '60x60 - 7', colors[6])
-    # plot_group(ax, list(range(203, 280)), '60x60', colors[0])
+    plot_group(ax, list(range(203, 214)), '60x60 pristine', colors[0])
+
+    plot_group(ax, list(range(1, 12)), '60x60 hole', colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
     ax.set_xlim(-15, 130)
     ax.set_ylim(-15, 130)
     ax.plot([-50, 130], [0, 0], color='black')
     ax.plot([0, 0], [-50, 130], color='black')
     ax.legend()
-    fig.savefig("simulation_data/deform_data/Strength_Surface_60y.png")
+    fig.savefig(f"{filepath}/defected_data/Strength_Surface_defx.png")
 
 
-def plot_group(ax, data_list, label, color, full_csv='simulation_data/deform_data/all_simulations.csv'):
+def plot_group(ax, data_list, label, color, full_csv='/data1/avb25/graphene_sim_data/pristine_data/all_simulations.csv'):
     str1, str2 = get_sim_data(full_csv, data_list)
     ax.scatter(str1[0], str2[0], color=color, label=label)
 
