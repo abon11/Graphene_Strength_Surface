@@ -53,7 +53,7 @@ class GrapheneSheet:
 class Simulation:
     # we basically want the whole simulation to run on initialization, then we can pull whatever we want from it for postprocessing
     def __init__(self, comm, rank, sheet, x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
-                 sim_length=100000, timestep=0.0005, thermo=200, makeplots=False, fracture_window=10, storage_path='/data1/avb25/graphene_sim_data/deform_data'):
+                 sim_length=100000, timestep=0.0005, thermo=1000, makeplots=False, fracture_window=10, storage_path='/data1/avb25/graphene_sim_data/deform_data'):
         """
         Class to execute one simulation and store information about it.
         This essentially loads the specimen to failure.
