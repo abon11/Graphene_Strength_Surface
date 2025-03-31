@@ -16,13 +16,14 @@ def main():
 
     # run x-dominant tests 
     x_rates = []
-    y_rates = [0, 1e-3, 9e-4, 8e-4, 7e-4, 6e-4, 5e-4, 4e-4, 3e-4, 2e-4, 1e-4]
+    # y_rates = [0, 1e-3, 9e-4, 8e-4, 7e-4, 6e-4, 5e-4, 4e-4, 3e-4, 2e-4, 1e-4]
+    y_rates = [0]
 
     for i in range(len(y_rates)):
-        x_rates.append(1e-3)  # negative because we are trying compression (going much slower than 1e-3)
+        x_rates.append(1e-3)
 
     for sheet in sheets:
-        strengths = param_test(comm, rank, sheet, y_rates, x_rates)  # FLIPPED THIS TO DO Y-DOMINANT
+        strengths = param_test(comm, rank, sheet, x_rates, y_rates)
         print(f'{sheet.x_atoms}_strengths: {strengths}')
 
     if rank == 0:
@@ -32,7 +33,7 @@ def main():
 def param_test(comm, rank, sheet, x_rates, y_rates):
     strengths = []
     for i in range(len(x_rates)):
-        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, add_defects=True, sim_length=10000000)
+        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, defect_frac=0.02, sim_length=10000000)
         if test.strength[0] is None:
             strengths.append(test.strength[0])
         else:

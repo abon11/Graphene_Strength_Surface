@@ -48,12 +48,46 @@ class GrapheneSheet:
         self.Lz = Lz
 
         return vol
+    
+    def extract_atom_positions(self):
+        """
+        Extract atom positions from a LAMMPS data file.
+
+        Returns:
+        - positions: Nx4 NumPy array with columns [id, x, y, z]
+        """
+        positions = []
+        with open(self.datafile_name, 'r') as f:
+            lines = f.readlines()
+
+        # Find start of "Atoms" section
+        atom_start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("Atoms"):
+                atom_start = i + 2  # Skip "Atoms" line and its header
+                break
+
+        if atom_start is None:
+            raise ValueError("Could not find 'Atoms' section in file.")
+
+        # Read until next empty line (end of atom section)
+        for line in lines[atom_start:]:
+            if line.strip() == '' or line.startswith('Velocities'):
+                break
+            parts = line.strip().split()
+            atom_id = int(parts[0])
+            x = float(parts[2])
+            y = float(parts[3])
+            z = float(parts[4])
+            positions.append([atom_id, x, y, z])
+
+        return np.array(positions)
 
 
 class Simulation:
     # we basically want the whole simulation to run on initialization, then we can pull whatever we want from it for postprocessing
     def __init__(self, comm, rank, sheet, x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
-                 sim_length=100000, timestep=0.0005, thermo=1000, add_defects=False, makeplots=False, fracture_window=10, 
+                 sim_length=100000, timestep=0.0005, thermo=1000, defect_frac=0, makeplots=False, fracture_window=10, 
                  storage_path='/data1/avb25/graphene_sim_data/defected_data'):
         """
         Class to execute one simulation and store information about it.
@@ -67,7 +101,7 @@ class Simulation:
         - sim_length (int): Number of timesteps before simulation is killed (max timesteps) 
         - timestep (float): Size of one timestep in LAMMPS simulation (picoseconds)
         - thermo (int): Frequency of timesteps you output data (if thermo = 100, output every 100 timesteps)
-        - add_defects (bool): Whether or not we add a specific defect into the sheet (will expand upon this later)
+        - defect_frac (float): Percentage of total atoms removed for single vacancy defects
         - makeplots (bool): User specifies whether or not they want plots of stress vs time generated and saved (default False)
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
         - storage_path (str): filepath to where we want to store the data
@@ -83,7 +117,7 @@ class Simulation:
         self.sim_length = sim_length
         self.timestep = timestep
         self.thermo = thermo
-        self.add_defects = add_defects
+        self.defect_frac = defect_frac
         self.makeplots = makeplots
         self.fracture_window = fracture_window
         self.storage_path = storage_path
@@ -117,7 +151,7 @@ class Simulation:
         self.comm = comm
         self.rank = rank
 
-        if (add_defects):
+        if (defect_frac != 0):
             self.introduce_defects()
 
         self.apply_fix_deform()
@@ -442,12 +476,42 @@ class Simulation:
     # puts the defects into the sheet - currently just one defect hardcoded in
     def introduce_defects(self):
         # this just deletes a sphere of radius 3 at (60, 30, 0)
-        region_def = "region defects sphere 60 30 0 3"
-        deleting = "delete_atoms region defects"
+        # region_def = "region defects sphere 60 30 0 3"
+        # deleting = "delete_atoms region defects"
 
-        self.lmp.command(region_def)
-        self.lmp.command(deleting)
+        # self.lmp.command(region_def)
+        # self.lmp.command(deleting)
+        delete_ids = self.pick_SV_atoms(self.defect_frac)
+        for atom in delete_ids:
+            self.lmp.command(f"group to_delete id {atom}")
+            self.lmp.command("delete_atoms group to_delete")
 
+    # Pick atoms to delete for single vacancies: don't pick atoms near boundary
+    def pick_SV_atoms(self, delete_fraction, margin=5.0):
+        atom_positions = self.sheet.extract_atom_positions()
+
+        total_atoms = len(atom_positions)
+        n_delete = int(total_atoms * delete_fraction)
+
+        # Assume atom_positions is a Nx4 array: [id, x, y, z]
+        ids = atom_positions[:, 0]
+        xs, ys = atom_positions[:, 1], atom_positions[:, 2]
+
+        # Determine bounding box
+        xmin, xmax = xs.min(), xs.max()
+        ymin, ymax = ys.min(), ys.max()
+
+        # Mask for atoms *not* near boundary
+        mask = (xs > xmin + margin) & (xs < xmax - margin) & \
+            (ys > ymin + margin) & (ys < ymax - margin)
+
+        valid_ids = ids[mask]
+
+        # Randomly choose atoms to delete
+        np.random.seed(42)
+        delete_ids = np.random.choice(valid_ids, n_delete, replace=False)
+
+        return delete_ids.astype(int)
 
 
 class Relaxation:
