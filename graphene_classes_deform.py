@@ -87,7 +87,7 @@ class GrapheneSheet:
 class Simulation:
     # we basically want the whole simulation to run on initialization, then we can pull whatever we want from it for postprocessing
     def __init__(self, comm, rank, sheet, x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
-                 sim_length=100000, timestep=0.0005, thermo=1000, defect_frac=0, makeplots=False, fracture_window=10, 
+                 sim_length=100000, timestep=0.0005, thermo=1000, defect_type='SV', defect_frac=0, makeplots=False, fracture_window=10, 
                  storage_path='/data1/avb25/graphene_sim_data/defected_data'):
         """
         Class to execute one simulation and store information about it.
@@ -101,6 +101,7 @@ class Simulation:
         - sim_length (int): Number of timesteps before simulation is killed (max timesteps) 
         - timestep (float): Size of one timestep in LAMMPS simulation (picoseconds)
         - thermo (int): Frequency of timesteps you output data (if thermo = 100, output every 100 timesteps)
+        - defect_type (str): What type of defect is in the sheet? SV=Single Vacancy, DV=Double Vacancy.
         - defect_frac (float): Percentage of total atoms removed for single vacancy defects
         - makeplots (bool): User specifies whether or not they want plots of stress vs time generated and saved (default False)
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
@@ -117,6 +118,7 @@ class Simulation:
         self.sim_length = sim_length
         self.timestep = timestep
         self.thermo = thermo
+        self.defect_type = defect_type
         self.defect_frac = defect_frac
         self.makeplots = makeplots
         self.fracture_window = fracture_window
@@ -198,7 +200,7 @@ class Simulation:
             df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Fracture Time', 'Max Sim Length', 
-                                       'Output Timesteps', 'Fracture Window', 'Simulation Time'])
+                                       'Output Timesteps', 'Fracture Window', 'Defect Type', 'Defect Percentage', 'Simulation Time'])
             df.to_csv(self.big_csv, index=False)
 
     def get_simid(self):
@@ -218,7 +220,8 @@ class Simulation:
                                 'Strain Rate x': [self.x_erate], 'Strain Rate y': [self.y_erate], 'Strain Rate z': [self.z_erate],
                                 'Strain Rate xy': [self.xy_erate], 'Strain Rate xz': [self.xz_erate], 'Strain Rate yz': [self.yz_erate],
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length],
-                                'Output Timesteps': [self.thermo], 'Fracture Window': [self.fracture_window], 'Simulation Time': [self.sim_duration]})
+                                'Output Timesteps': [self.thermo], 'Fracture Window': [self.fracture_window], 'Defect Type': [self.defect_type], 
+                                'Defect Percentage': [self.defect_frac], 'Simulation Time': [self.sim_duration]})
         new_row.to_csv(self.big_csv, mode="a", header=False, index=False)
 
     def save_detailed_data(self):
@@ -481,10 +484,13 @@ class Simulation:
 
         # self.lmp.command(region_def)
         # self.lmp.command(deleting)
-        delete_ids = self.pick_SV_atoms(self.defect_frac)
-        for atom in delete_ids:
-            self.lmp.command(f"group to_delete id {atom}")
-            self.lmp.command("delete_atoms group to_delete")
+        if self.defect_type == 'SV':
+            delete_ids = self.pick_SV_atoms(self.defect_frac)
+            for atom in delete_ids:
+                self.lmp.command(f"group to_delete id {atom}")
+                self.lmp.command("delete_atoms group to_delete")
+        
+        # must add functionality for DV
 
     # Pick atoms to delete for single vacancies: don't pick atoms near boundary
     def pick_SV_atoms(self, delete_fraction, margin=5.0):

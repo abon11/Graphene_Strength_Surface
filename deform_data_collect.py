@@ -33,7 +33,7 @@ def main():
 def param_test(comm, rank, sheet, x_rates, y_rates):
     strengths = []
     for i in range(len(x_rates)):
-        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, defect_frac=0.02, sim_length=10000000)
+        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, defect_frac=0.005, sim_length=10000000)
         if test.strength[0] is None:
             strengths.append(test.strength[0])
         else:
