@@ -86,8 +86,11 @@ class GrapheneSheet:
 
 class Simulation:
     # we basically want the whole simulation to run on initialization, then we can pull whatever we want from it for postprocessing
-    def __init__(self, comm, rank, sheet, x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
-                 sim_length=100000, timestep=0.0005, thermo=1000, defect_type='SV', defect_frac=0, makeplots=False, fracture_window=10, 
+    def __init__(self, comm, rank, sheet,
+                 x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
+                 sim_length=100000, timestep=0.0005, thermo=1000, 
+                 defect_type='SV', defect_frac=0, defect_random_seed=42,
+                 makeplots=False, fracture_window=10, 
                  storage_path='/data1/avb25/graphene_sim_data/defected_data'):
         """
         Class to execute one simulation and store information about it.
@@ -103,6 +106,7 @@ class Simulation:
         - thermo (int): Frequency of timesteps you output data (if thermo = 100, output every 100 timesteps)
         - defect_type (str): What type of defect is in the sheet? SV=Single Vacancy, DV=Double Vacancy.
         - defect_frac (float): Percentage of total atoms removed for single vacancy defects
+        - defect_random_seed (int): Sets the random seed for the defect generation
         - makeplots (bool): User specifies whether or not they want plots of stress vs time generated and saved (default False)
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
         - storage_path (str): filepath to where we want to store the data
@@ -120,6 +124,7 @@ class Simulation:
         self.thermo = thermo
         self.defect_type = defect_type
         self.defect_frac = defect_frac
+        self.defect_random_seed = defect_random_seed
         self.makeplots = makeplots
         self.fracture_window = fracture_window
         self.storage_path = storage_path
@@ -503,7 +508,7 @@ class Simulation:
         ids = atom_positions[:, 0]
 
         # Randomly choose atoms to delete
-        np.random.seed(42)
+        np.random.seed(self.defect_random_seed)
         delete_ids = np.random.choice(ids, n_delete, replace=False)
 
         return delete_ids.astype(int)

@@ -22,18 +22,27 @@ def main():
     for i in range(len(y_rates)):
         x_rates.append(1e-3)
 
-    for sheet in sheets:
-        strengths = param_test(comm, rank, sheet, y_rates, x_rates)  # SWITCHEDDDDEDDDD
-        print(f'{sheet.x_atoms}_strengths: {strengths}')
+    seeds = [1, 2, 3, 4, 5, 6]
+    for random_seed in seeds:
+        # x-dominant
+        for sheet in sheets:
+            strengths = param_test(comm, rank, sheet, x_rates, y_rates, random_seed)
+            print(f'{sheet.x_atoms}_strengths: {strengths}')
+
+        # y-dominant
+        for sheet in sheets:
+            strengths = param_test(comm, rank, sheet, y_rates, x_rates, random_seed)  # SWITCHEDDDDD
+            print(f'{sheet.x_atoms}_strengths: {strengths}')
+
 
     if rank == 0:
         print('DONE')
 
 
-def param_test(comm, rank, sheet, x_rates, y_rates):
+def param_test(comm, rank, sheet, x_rates, y_rates, random_seed):
     strengths = []
     for i in range(len(x_rates)):
-        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, defect_frac=0.005, sim_length=10000000)
+        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, defect_frac=0.005, defect_random_seed=random_seed, sim_length=10000000)
         if test.strength[0] is None:
             strengths.append(test.strength[0])
         else:
