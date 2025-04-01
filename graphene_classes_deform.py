@@ -501,21 +501,10 @@ class Simulation:
 
         # Assume atom_positions is a Nx4 array: [id, x, y, z]
         ids = atom_positions[:, 0]
-        xs, ys = atom_positions[:, 1], atom_positions[:, 2]
-
-        # Determine bounding box
-        xmin, xmax = xs.min(), xs.max()
-        ymin, ymax = ys.min(), ys.max()
-
-        # Mask for atoms *not* near boundary
-        mask = (xs > xmin + margin) & (xs < xmax - margin) & \
-            (ys > ymin + margin) & (ys < ymax - margin)
-
-        valid_ids = ids[mask]
 
         # Randomly choose atoms to delete
         np.random.seed(42)
-        delete_ids = np.random.choice(valid_ids, n_delete, replace=False)
+        delete_ids = np.random.choice(ids, n_delete, replace=False)
 
         return delete_ids.astype(int)
 
