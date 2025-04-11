@@ -21,28 +21,49 @@ def main():
 
     for i in range(len(y_rates)):
         x_rates.append(1e-3)
+    
+    defect_rates = [0.005, 0.01, 0.02]
 
-    seeds = [1, 2, 3, 4, 5, 6]
-    for random_seed in seeds:
-        # x-dominant
-        for sheet in sheets:
-            strengths = param_test(comm, rank, sheet, x_rates, y_rates, random_seed)
-            print(f'{sheet.x_atoms}_strengths: {strengths}')
+    # seeds = [42, 1, 2, 3, 4, 5, 6]
+    seeds = [7, 8, 9]
+    for drate in defect_rates:
+        for random_seed in seeds:
+            # x-dominant
+            for sheet in sheets:
+                strengths = param_test(comm, rank, sheet, x_rates, y_rates, random_seed, drate)
+                print(f'{sheet.x_atoms}_strengths: {strengths}')
 
-        # y-dominant
-        for sheet in sheets:
-            strengths = param_test(comm, rank, sheet, y_rates, x_rates, random_seed)  # SWITCHEDDDDD
-            print(f'{sheet.x_atoms}_strengths: {strengths}')
+            # y-dominant
+            for sheet in sheets:
+                strengths = param_test(comm, rank, sheet, y_rates, x_rates, random_seed, drate)  # SWITCHEDDDDD
+                print(f'{sheet.x_atoms}_strengths: {strengths}')
 
+
+    sheet1 = GrapheneSheet("data_files/data.100_100_rel", 100, 100)
+
+    sheets = [sheet1]
+
+    
+    for drate in defect_rates:
+        for random_seed in seeds:
+            # x-dominant
+            for sheet in sheets:
+                strengths = param_test(comm, rank, sheet, x_rates, y_rates, random_seed, drate)
+                print(f'{sheet.x_atoms}_strengths: {strengths}')
+
+            # y-dominant
+            for sheet in sheets:
+                strengths = param_test(comm, rank, sheet, y_rates, x_rates, random_seed, drate)  # SWITCHEDDDDD
+                print(f'{sheet.x_atoms}_strengths: {strengths}')
 
     if rank == 0:
         print('DONE')
 
 
-def param_test(comm, rank, sheet, x_rates, y_rates, random_seed):
+def param_test(comm, rank, sheet, x_rates, y_rates, random_seed, defect_frac):
     strengths = []
     for i in range(len(x_rates)):
-        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, defect_frac=0.005, defect_random_seed=random_seed, sim_length=10000000)
+        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, defect_frac=defect_frac, defect_random_seed=random_seed, sim_length=10000000)
         if test.strength[0] is None:
             strengths.append(test.strength[0])
         else:

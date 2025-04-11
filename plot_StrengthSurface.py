@@ -4,33 +4,103 @@ import pandas as pd
 
 def main():
     # initialize the plots for this sheet's strength surface (if user wants)
-    fig, ax = plt.subplots()
+    figx, ax = plt.subplots()
     ax.set_xlabel(r'$\sigma_1$')
     ax.set_ylabel(r'$\sigma_2$')
-    ax.set_title(f'Molecular Strength Surface of 0.5% SV Graphene (y-dominant)')
+    ax.set_title(f'Molecular Strength Surface of SV-Defective Graphene (x-dominant)')
+
+    figy, ay = plt.subplots()
+    ay.set_xlabel(r'$\sigma_1$')
+    ay.set_ylabel(r'$\sigma_2$')
+    ay.set_title(f'Molecular Strength Surface of SV-Defective Graphene (y-dominant)')
 
     filepath = "/data1/avb25/graphene_sim_data"
 
     colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
 
-    # str1, str2 = get_sim_data('simulation_data/deform_data/all_simulations.csv', list(range(159, 170)))
-    # str1 = np.delete(np.append(str1, str1[0]), 0)
-    # str2 = np.delete(np.append(str2, str2[0]), 0)
+    s1 = np.array([
+        18.365, 18.412, 15.397, 14.006, 12.429, 0, 0, 0, 0,
+        -16.788, -23.467, -32.603, -43.362, -55.374, -58.481, -60.058,
+        -60.707, -62.377, -67.246, -67.71, -80.325, -82.319, -76.475,
+        -74.852, -72.719, 19.958, 25.527, 20.422, 26.92, 23.713,
+        24.093, 25.401, 26.498, 27.595, 25.443, 26.456, 23.924,
+        22.025, 17.806, 17.215, 16.076, 12.194, 14.388, 10.295,
+        8.4388, 5.9916, 0, 0, 0, 0
+    ])
 
-    # ax.plot(str1, str2, color='blue', label='Expected y-dominant')
-    # ax.plot(str2, str1, color='blue')
+    s2 = np.array([
+        19.958, 25.527, 20.422, 26.92, 23.713, 24.093, 25.401, 26.498, 27.595,
+        25.443, 26.456, 23.924, 22.025, 17.806, 17.215, 16.076, 12.194, 14.388,
+        10.295, 8.4388, 5.9916, 0, 0, 0, 0, 18.365, 18.412, 15.397, 14.006,
+        12.429, 0, 0, 0, 0, -16.788, -23.467, -32.603, -43.362, -55.374,
+        -58.481, -60.058, -60.707, -62.377, -67.246, -67.71, -80.325,
+        -82.319, -76.475, -74.852, -72.719
+    ])
 
-    # str1, str2 = get_sim_data('simulation_data/deform_data/all_simulations.csv', list(range(59, 70)))
-    # str1 = np.delete(np.append(str1, str1[0]), 0)
-    # str2 = np.delete(np.append(str2, str2[0]), 0)
+    ax.scatter(s1 / 1000, s2 / 1000, color='black', label='Sato Data')
+    ay.scatter(s1 / 1000, s2 / 1000, color='black', label='Sato Data')
 
-    # ax.plot(str1, str2, color='green', label='Expected x-dominant')
-    # ax.plot(str2, str1, color='green')
-    # plot_group(ax, list(range(203, 214)), '60x60 pristine', colors[0])  # x
-    plot_group(ax, list(range(280, 291)), '60x60 pristine', colors[0])  # y
+    plot_group(ax, list(range(203, 214)), colors[0], label='60x60 pristine')  # x
+    plot_group(ay, list(range(280, 291)), colors[0], label='60x60 pristine')  # y
 
-    # plot_group(ax, list(range(1, 12)), '60x60 hole', colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    plot_group(ax, list(range(36, 47)), '60x60 0.5% SV', colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # # plot the first two iterations outside for the legend
+    # plot_group(ax, makelist(25), colors[9], label='60x60 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # plot_group(ay, makelist(36), colors[9], label='60x60 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    # for i in range(47, 179, 22):
+    #     plot_group(ax, makelist(i), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    #     plot_group(ay, makelist(i+11), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+
+    # # 1%
+    # plot_group(ax, makelist(179), colors[9], label='60x60 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # plot_group(ay, makelist(190), colors[9], label='60x60 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    # for i in range(179, 333, 22):
+    #     plot_group(ax, makelist(i), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    #     plot_group(ay, makelist(i+11), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    
+    # 2%
+    plot_group(ax, makelist(333), colors[9], label='60x60 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    plot_group(ay, makelist(344), colors[9], label='60x60 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    for i in range(333, 487, 22):
+        plot_group(ax, makelist(i), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+        plot_group(ay, makelist(i+11), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+
+
+
+
+    plot_group(ax, list(range(70, 81)), colors[3], label='100x100 pristine')  # x
+    plot_group(ay, list(range(192, 203)), colors[3], label='100x100 pristine')  # y
+
+    # # plot the first two iterations outside for the legend
+    # plot_group(ax, makelist(487), colors[6], label='100x100 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # plot_group(ay, makelist(498), colors[6], label='100x100 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    # for i in range(487, 641, 22):
+    #     plot_group(ax, makelist(i), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    #     plot_group(ay, makelist(i+11), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+
+    # # 1%
+    # plot_group(ax, makelist(641), colors[6], label='100x100 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # plot_group(ay, makelist(652), colors[6], label='100x100 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    # for i in range(641, 795, 22):
+    #     plot_group(ax, makelist(i), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    #     plot_group(ay, makelist(i+11), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    
+    # 2%
+    plot_group(ax, makelist(795), colors[6], label='100x100 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    plot_group(ay, makelist(806), colors[6], label='100x100 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    for i in range(795, 949, 22):
+        plot_group(ax, makelist(i), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+        plot_group(ay, makelist(i+11), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
 
     ax.set_xlim(-15, 130)
@@ -38,16 +108,41 @@ def main():
     ax.plot([-50, 130], [0, 0], color='black')
     ax.plot([0, 0], [-50, 130], color='black')
     ax.legend()
-    fig.savefig(f"{filepath}/defected_data/Strength_Surface_5e-1y.png")
+
+    ay.set_xlim(-15, 130)
+    ay.set_ylim(-15, 130)
+    ay.plot([-50, 130], [0, 0], color='black')
+    ay.plot([0, 0], [-50, 130], color='black')
+    ay.legend()
 
 
-def plot_group(ax, data_list, label, color, full_csv='/data1/avb25/graphene_sim_data/pristine_data/all_simulations.csv'):
+    figx.savefig(f"{filepath}/defected_data/Strength_Surface_sizetestx2SATO.png")
+    figy.savefig(f"{filepath}/defected_data/Strength_Surface_sizetesty2SATO.png")
+
+
+# makes a list of 10 numbers
+def makelist(start):
+    ans = list(range(start, start+11))
+    return ans
+
+
+def plot_group(ax, data_list, color, marker=None, label=None, full_csv='/data1/avb25/graphene_sim_data/pristine_data/all_simulations.csv'):
     str1, str2 = get_sim_data(full_csv, data_list)
-    ax.scatter(str1[0], str2[0], color=color, label=label)
+    if marker is None:
+        if label is not None:
+            ax.scatter(str1[0], str2[0], color=color, label=label)
 
-    for i in range(len(str1)):
-        ax.scatter(str1[i], str2[i], color=color)
-        ax.scatter(str2[i], str1[i], color=color)
+        for i in range(len(str1)):
+            ax.scatter(str1[i], str2[i], color=color)
+            ax.scatter(str2[i], str1[i], color=color)
+    
+    else:
+        if label is not None:
+            ax.scatter(str1[0], str2[0], color=color, marker=marker, label=label)
+
+        for i in range(len(str1)):
+            ax.scatter(str1[i], str2[i], color=color, marker=marker)
+            ax.scatter(str2[i], str1[i], color=color, marker=marker)        
 
 
 def get_sim_data(csv_file, sim_ids, x_column="Strength_1", y_column="Strength_2"):

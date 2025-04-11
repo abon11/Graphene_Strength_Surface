@@ -5,21 +5,21 @@ import numpy as np
 
 
 def main():
-    folder = 'simulation_data/deform_data/'
+    folder = '/data1/avb25/graphene_sim_data/defected_data'
     # Specify columns to plot
     x_column = "Strain_1"
     y_column = "PrincipalStress_1"
     label_col = "Strain Rate x"
 
-    csv_files = generate_csv_list(1, 9)  # generate list of csvs to plot data you want
+    # csv_files = generate_csv_list(1, 9)  # generate list of csvs to plot data you want
     # csv_files.insert(0, "simulation_data/sim00001_fulldata.csv")
 
     all_sims = "simulation_data/deform_data/all_simulations.csv"
     # Call the plotting function
-    # plot_detailed_data(csv_files, x_column, y_column, all_sims, label_col, output_file=f"{folder}combined_StressStrain.png")
+    plot_detailed_data([f'{folder}/sim00400/dump.csv'], x_column, y_column, all_sims, label_col, output_file=f"{folder}combined_StressStrain.png")
 
     # Call the function to plot
-    plot_allsims_data(all_sims, list(range(1, 10)), 'Strain Rate x', 'Strength_1', output_file=f"{folder}strength_vs_StrainRate.png")
+    # plot_allsims_data(all_sims, list(range(1, 10)), 'Strain Rate x', 'Strength_1', output_file=f"{folder}strength_vs_StrainRate.png")
 
 
 def plot_detailed_data(csv_files, x_column, y_column, lookup_file, label_column, output_file=None):
