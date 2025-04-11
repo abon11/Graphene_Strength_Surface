@@ -361,6 +361,30 @@ class Simulation:
         strain_tensor[iters] = strain
         return iters, stress_tensor, step_vector, pressure_tensor, strain_tensor
     
+
+    def get_strength_info(self, stress_index, principal_stresses):
+        peaks, _ = find_peaks(principal_stresses[:, stress_index])
+        if len(peaks) == 0:
+            # No peaks found (idt this could ever happen but who knows lol)
+            strength = [None, None, None]
+            fracture_timestep = None
+        
+        # Now we are confident there is fracture, let's return the proper values
+        else:
+            fracture_index = peaks[np.argmax(principal_stresses[:, stress_index][peaks])]  # find the index of the highest peak
+
+            # see if this "fracture" is high enough to be considered (or is it just noise?)
+            # for fracture, the (peak - window) must be greater than the minimum point
+            if (np.max(principal_stresses[fracture_index]) - self.fracture_window < np.min(principal_stresses[:, 0][-10:])):
+                strength = [None, None, None]
+                fracture_timestep = None
+            else:
+                strength = principal_stresses[fracture_index]
+                fracture_timestep = fracture_index * self.thermo
+        
+        return strength, fracture_timestep, fracture_index
+
+
     # input vector of principal stresses so far, outputs strength and fracture timestep (of it occurred), otherwise None for both
     # idea here is to have the previous 5 thermos be our testcase, and the previous 10 before that be what we're testing against
     # if the average of the previous 5 is lower than the average of the 10 before that, fracture has occurred and we should find peaks
@@ -375,37 +399,31 @@ class Simulation:
             mean_last_10 = sum(principal_stresses[:, 0][-10:]) / 10
             mean_15_before = sum(principal_stresses[:, 0][-25:-10]) / 15
 
-            # if we are still increasing on average, no fracture yet
-            if mean_last_10 >= mean_15_before:
+            # get the same for principal stress 2 (in case weird behavior)
+            mean_last_10_2 = sum(principal_stresses[:, 1][-10:]) / 10
+            mean_15_before_2 = sum(principal_stresses[:, 1][-25:-10]) / 15
+
+            sig0_intact = mean_last_10 >= mean_15_before
+            sig1_intact = mean_last_10_2 >= mean_15_before_2
+
+            # if we are still increasing on average in both directions, no fracture yet
+            if sig0_intact and sig1_intact:
                 strength = [None, None, None]
                 fracture_timestep = None
             
             # we have detected a significant drop on average (fracture)
             else:
-                peaks, _ = find_peaks(principal_stresses[:, 0])
-                if len(peaks) == 0:
-                    # No peaks found (idt this could ever happen but who knows lol)
-                    strength = [None, None, None]
-                    fracture_timestep = None
+                if not sig0_intact:
+                    strength, fracture_timestep, fracture_index = self.get_strength_info(0, principal_stresses)
                 
-                # Now we are confident there is fracture, let's return the proper values
-                else:
-                    fracture_index = peaks[np.argmax(principal_stresses[:, 0][peaks])]  # find the index of the highest peak
+                elif not sig1_intact:
+                    strength, fracture_timestep, fracture_index = self.get_strength_info(1, principal_stresses)
 
-                    # see if this "fracture" is high enough to be considered (or is it just noise?)
-                    # for fracture, the (peak - window) must be greater than the minimum point
-                    if (np.max(principal_stresses[fracture_index]) - self.fracture_window < np.min(principal_stresses[:, 0][-10:])):
-                        strength = [None, None, None]
-                        fracture_timestep = None
-                    else:
-                        strength = principal_stresses[fracture_index]
-                        fracture_timestep = fracture_index * self.thermo
-
-                        if give_crit_strain:
-                            crit_strain = self.principalAxes_strain[fracture_index]
-                            return strength, crit_strain, fracture_timestep
-                        
-                        print("FRACTUREEEEEE")
+                if give_crit_strain:
+                    crit_strain = self.principalAxes_strain[fracture_index]
+                    return strength, crit_strain, fracture_timestep
+                
+                print("FRACTUREEEEEE")
 
         return strength, fracture_timestep
     

@@ -37,44 +37,44 @@ def main():
         -82.319, -76.475, -74.852, -72.719
     ])
 
-    ax.scatter(s1 / 1000, s2 / 1000, color='black', label='Sato Data')
-    ay.scatter(s1 / 1000, s2 / 1000, color='black', label='Sato Data')
+    # ax.scatter(s1 / 1000, s2 / 1000, color='black', label='Sato Data')
+    # ay.scatter(s1 / 1000, s2 / 1000, color='black', label='Sato Data')
 
     plot_group(ax, list(range(203, 214)), colors[0], label='60x60 pristine')  # x
     plot_group(ay, list(range(280, 291)), colors[0], label='60x60 pristine')  # y
 
-    # # plot the first two iterations outside for the legend
-    # plot_group(ax, makelist(25), colors[9], label='60x60 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    # plot_group(ay, makelist(36), colors[9], label='60x60 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # plot the first two iterations outside for the legend
+    plot_group(ax, makelist(25), colors[3], label='60x60 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    plot_group(ay, makelist(36), colors[3], label='60x60 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
-    # for i in range(47, 179, 22):
-    #     plot_group(ax, makelist(i), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    #     plot_group(ay, makelist(i+11), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    for i in range(47, 179, 22):
+        plot_group(ax, makelist(i), colors[3], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+        plot_group(ay, makelist(i+11), colors[3], full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
 
-    # # 1%
-    # plot_group(ax, makelist(179), colors[9], label='60x60 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    # plot_group(ay, makelist(190), colors[9], label='60x60 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # 1%
+    plot_group(ax, makelist(179), colors[2], label='60x60 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    plot_group(ay, makelist(190), colors[2], label='60x60 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
-    # for i in range(179, 333, 22):
-    #     plot_group(ax, makelist(i), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    #     plot_group(ay, makelist(i+11), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    for i in range(179, 333, 22):
+        plot_group(ax, makelist(i), colors[2], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+        plot_group(ay, makelist(i+11), colors[2], full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
     
     # 2%
-    plot_group(ax, makelist(333), colors[9], label='60x60 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    plot_group(ay, makelist(344), colors[9], label='60x60 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    plot_group(ax, makelist(333), colors[1], label='60x60 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    plot_group(ay, makelist(344), colors[1], label='60x60 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
     for i in range(333, 487, 22):
-        plot_group(ax, makelist(i), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-        plot_group(ay, makelist(i+11), colors[9], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+        plot_group(ax, makelist(i), colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+        plot_group(ay, makelist(i+11), colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
 
 
 
 
-    plot_group(ax, list(range(70, 81)), colors[3], label='100x100 pristine')  # x
-    plot_group(ay, list(range(192, 203)), colors[3], label='100x100 pristine')  # y
+    # plot_group(ax, list(range(70, 81)), colors[3], label='100x100 pristine')  # x
+    # plot_group(ay, list(range(192, 203)), colors[3], label='100x100 pristine')  # y
 
     # # plot the first two iterations outside for the legend
     # plot_group(ax, makelist(487), colors[6], label='100x100 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
@@ -94,13 +94,13 @@ def main():
     #     plot_group(ay, makelist(i+11), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
     
-    # 2%
-    plot_group(ax, makelist(795), colors[6], label='100x100 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    plot_group(ay, makelist(806), colors[6], label='100x100 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # # 2%
+    # plot_group(ax, makelist(795), colors[6], label='100x100 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # plot_group(ay, makelist(806), colors[6], label='100x100 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
-    for i in range(795, 949, 22):
-        plot_group(ax, makelist(i), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-        plot_group(ay, makelist(i+11), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # for i in range(795, 949, 22):
+    #     plot_group(ax, makelist(i), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    #     plot_group(ay, makelist(i+11), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
 
 
     ax.set_xlim(-15, 130)
@@ -116,8 +116,8 @@ def main():
     ay.legend()
 
 
-    figx.savefig(f"{filepath}/defected_data/Strength_Surface_sizetestx2SATO.png")
-    figy.savefig(f"{filepath}/defected_data/Strength_Surface_sizetesty2SATO.png")
+    figx.savefig(f"{filepath}/defected_data/Strength_Surface_DEFx.png")
+    figy.savefig(f"{filepath}/defected_data/Strength_Surface_DEFy.png")
 
 
 # makes a list of 10 numbers
