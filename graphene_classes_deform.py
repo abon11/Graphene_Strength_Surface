@@ -174,7 +174,12 @@ class Simulation:
         self.principal_stresses = principal_stresses  # array of all three principal stress values at each outputted thermo
         self.principalAxes_strain = principalAxes_strain  # array of strain values along all three principal directions at each outputted thermo
 
-        strength, crit_strain, fracture_time = self.find_fracture(principal_stresses, give_crit_strain=True)
+        try:
+            strength, crit_strain, fracture_time = self.find_fracture(principal_stresses, give_crit_strain=True)
+        except ValueError:
+            strength = [None, None, None]
+            crit_strain = [None, None, None]
+            fracture_time = None
 
         self.strength = strength  # vector of the three critical principal stresses at fracture (largest to smallest)
         self.crit_strain = crit_strain  # vector of the three critical strains in the principal sirections at fracture (largest to smallest)

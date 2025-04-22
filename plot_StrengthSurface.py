@@ -72,6 +72,18 @@ def main():
 
 
 
+    for i in range(949, 1015, 22):
+        plot_group(ax, makelist(i), colors[3], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+        plot_group(ay, makelist(i+11), colors[3], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    for i in range(1015, 1081, 22):
+        plot_group(ax, makelist(i), colors[2], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+        plot_group(ay, makelist(i+11), colors[2], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
+    for i in range(1081, 1147, 22):
+        plot_group(ax, makelist(i), colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+        plot_group(ay, makelist(i+11), colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+
 
     # plot_group(ax, list(range(70, 81)), colors[3], label='100x100 pristine')  # x
     # plot_group(ay, list(range(192, 203)), colors[3], label='100x100 pristine')  # y
@@ -116,8 +128,8 @@ def main():
     ay.legend()
 
 
-    figx.savefig(f"{filepath}/defected_data/Strength_Surface_DEFx.png")
-    figy.savefig(f"{filepath}/defected_data/Strength_Surface_DEFy.png")
+    figx.savefig(f"{filepath}/defected_data/Strength_Surface_DEFx60.png")
+    figy.savefig(f"{filepath}/defected_data/Strength_Surface_DEFy60.png")
 
 
 # makes a list of 10 numbers
@@ -128,21 +140,22 @@ def makelist(start):
 
 def plot_group(ax, data_list, color, marker=None, label=None, full_csv='/data1/avb25/graphene_sim_data/pristine_data/all_simulations.csv'):
     str1, str2 = get_sim_data(full_csv, data_list)
+    size = 8
     if marker is None:
         if label is not None:
-            ax.scatter(str1[0], str2[0], color=color, label=label)
+            ax.scatter(str1[0], str2[0], color=color, label=label, s=size)
 
         for i in range(len(str1)):
-            ax.scatter(str1[i], str2[i], color=color)
-            ax.scatter(str2[i], str1[i], color=color)
+            ax.scatter(str1[i], str2[i], color=color, s=size)
+            ax.scatter(str2[i], str1[i], color=color, s=size)
     
     else:
         if label is not None:
-            ax.scatter(str1[0], str2[0], color=color, marker=marker, label=label)
+            ax.scatter(str1[0], str2[0], color=color, marker=marker, label=label, s=size)
 
         for i in range(len(str1)):
-            ax.scatter(str1[i], str2[i], color=color, marker=marker)
-            ax.scatter(str2[i], str1[i], color=color, marker=marker)        
+            ax.scatter(str1[i], str2[i], color=color, marker=marker, s=size)
+            ax.scatter(str2[i], str1[i], color=color, marker=marker, s=size)        
 
 
 def get_sim_data(csv_file, sim_ids, x_column="Strength_1", y_column="Strength_2"):

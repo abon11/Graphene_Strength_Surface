@@ -1,15 +1,20 @@
-import time
-from datetime import timedelta
+from mpi4py import MPI
+from graphene_classes_deform import GrapheneSheet
+from graphene_classes_deform import Simulation
+import numpy as np
 
-i = 1
-start_time = time.perf_counter()
-print("start", start_time)
-count = 0
+# initialize core usage etc.
+def initialize_rank():
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    return comm, rank
 
-while i < 10:
-    if count % 10000000 == 0:
-        time1000 = time.perf_counter()
-        print("now", time1000)
-        print("elapsed", timedelta(seconds=time1000 - start_time))
 
-    count += 1
+comm, rank = initialize_rank()
+
+sheet = GrapheneSheet("data_files/data.60_60_rel1", 60, 60)
+
+test = Simulation(comm, rank, sheet, x_erate=1e-3, y_erate=1e-3, thermo=1000, sim_length=1000)
+
+
+print(test.strength)
