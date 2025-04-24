@@ -7,7 +7,7 @@ boundary p p p
 atom_style atomic
 
 # Read initial structure
-read_data ~/projects/
+read_data /data1/avb25/graphene_sim_data/data_files/data.60_60_rel1
 # Define interatomic potential (AIREBO)
 pair_style airebo 3.0
 pair_coeff * * CH.airebo C
@@ -20,8 +20,15 @@ neighbor 2.0 bin
 neigh_modify delay 0 every 1 check yes
 
 # Initialize velocities and thermostat
-velocity all create 273.0 12345 mom yes dist gaussian
+# velocity all create 273.0 12345 mom yes dist gaussian
 fix 1 all nvt temp 273.0 273.0 0.1
+
+# variable xc equal 0.5 * (xlo + xhi)
+# variable yc equal 0.5 * (ylo + yhi)
+
+# 30 degree rotation
+displace_atoms all rotate 61 36 0.0 30 0.0 0.0 1.0 units box
+
 
 # Apply deformation
 fix 2 all deform 1 x erate 0.001 remap x
@@ -49,13 +56,7 @@ thermo 100
 thermo_style custom step temp press lx ly lz v_stress_xx
 
 # Dump file for visualization
-dump 1 all custom 100 dumpfiles/deform_test id type x y z
+dump 1 all custom 200 dump.test id type x y z
 
 # Run simulation
 run 100000
-
-
-variable xc equal 0.5 * (xlo + xhi)
-variable yc equal 0.5 * (ylo + yhi)
-
-displace_atoms all rotate ${xc} ${yc} 0.0 ${theta} 0.0 0.0 1.0 units degrees
