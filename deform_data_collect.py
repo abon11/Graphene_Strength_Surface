@@ -10,7 +10,7 @@ def main():
     # s25x25 = GrapheneSheet("data_files/data.25_25_rel", 25, 25)
     # s50x50 = GrapheneSheet("data_files/data.50_50_rel", 50, 50)
 
-    sheet1 = GrapheneSheet("data_files/data.60_60_rel1", 60, 60)
+    sheet1 = GrapheneSheet("/data1/avb25/graphene_sim_data/data_files/data.60_60_rel1", 60, 60)
 
     sheets = [sheet1]
 
