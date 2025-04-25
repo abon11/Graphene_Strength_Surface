@@ -6,9 +6,9 @@ import pandas as pd
 from lammps import lammps
 from scipy.signal import find_peaks
 import os
-from scipy.spatial import Delaunay
-from datetime import timedelta
+from datetime import timedelta, datetime
 import time
+from filelock import FileLock
 
 
 class GrapheneSheet:
@@ -112,7 +112,8 @@ class Simulation:
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
         - storage_path (str): filepath to where we want to store the data
         """
-
+        self.comm = comm
+        self.rank = rank
         self.sheet = sheet
         self.x_erate = x_erate
         self.y_erate = y_erate
@@ -135,34 +136,14 @@ class Simulation:
 
         self.erate_timestep = self.calculate_erateTimestep()  # used to calculate strain rate at any given timestep (just multiply this by whatever timestep you're on)
 
-        self.big_csv = f'{storage_path}/all_simulations.csv'
-        self.initialize_maincsv()  # initialize csv file for data storage
-        self.simulation_id = self.get_simid()  # returns string of simulation id (ex: '00001')
-
         if detailed_data:
-            self.simulation_directory = self.create_storage_directory()  # create data storage directory (storage_path/sim{simid})
+            self.create_storage_directory()  # create data storage directory (storage_path/sim{datetime})
 
         lmp = lammps(comm=comm)  # initialize lammps
 
-        # import all variables to lammps
-        lmp.command(f"variable vol equal {sheet.volume}")
-        lmp.command(f"variable sheet_lx equal {sheet.Lx}")
-        lmp.command(f"variable sheet_ly equal {sheet.Ly}")
-        lmp.command(f"variable sheet_lz equal {sheet.Lz}")
-        lmp.command(f"variable timestep equal {self.timestep}")
-
-        lmp.command(f"variable conv_fact equal 0.0001")
-        lmp.command(f"variable datafile string {sheet.datafile_name}")
-
-        if detailed_data:
-            lmp.command(f"dump 1 all custom {thermo} {self.simulation_directory}/dump.sim{self.simulation_id} id type x y z")
-            # lmp.command(f"variable dump_output string {self.simulation_directory}/dump.sim{self.simulation_id}")
-
-        lmp.file("in.deform_py")
-
         self.lmp = lmp
-        self.comm = comm
-        self.rank = rank
+
+        self.setup_lammps()  # puts all needed variables in lammps and initializes file
 
         if (defect_frac != 0):
             self.introduce_defects()
@@ -194,10 +175,9 @@ class Simulation:
         self.sim_duration = timedelta(seconds=time.perf_counter() - self.starttime)
 
         if self.rank == 0:
+            self.finalize_dataset()  # gets simid and saves everything
+
             print(f'Material Strength ({sheet.x_atoms}x{sheet.y_atoms} sheet): {strength} GPa. ')
-            self.append_maincsv()  # append all data from the simulation to the csv file. 
-            if detailed_data:
-                self.save_detailed_data()
 
             if makeplots:
                 # right now we really only care about the principal stresses, so only output that
@@ -206,26 +186,48 @@ class Simulation:
                 # self.plot_stressTensor()
 
 
+    def finalize_dataset(self):
+        # APPLY THE LOCKING MECHANISM HERE
+        self.main_csv = f'{self.storage_path}/all_simulations.csv'
+        lockfile = f'{self.storage_path}/all_simulations.lock'
+
+        with FileLock(lockfile):
+            self.initialize_maincsv()  # initialize csv file for data storage
+
+            self.simulation_id = self.get_simid()  # returns string of simulation id (ex: '00001')
+
+            self.append_maincsv()  # append all data from the simulation to the csv file. 
+
+        if self.detailed_data:
+            self.save_detailed_data()
+
 
     # create the directory where we will be putting the detailed data for this simulation
+    # note that the names here are the timestamp - this will update to the simid upon successful simulation run - if failed, will stay as timestamp
     def create_storage_directory(self):
-        path = f'{self.storage_path}/sim{self.simulation_id}'
-        os.makedirs(path, exist_ok=True)
-        return path
+        if self.rank == 0:
+            timestamp_id = datetime.now().strftime("%Y%m%d%H%M%S%f")
+        else:
+            timestamp_id = None
+
+        timestamp_id = self.comm.bcast(timestamp_id, root=0)  # must do this to sync ranks up
+        self.timestamp_id = timestamp_id
+        self.simulation_directory = f'{self.storage_path}/sim{self.timestamp_id}'
+        os.makedirs(self.simulation_directory, exist_ok=True)
 
     # if the file doesn't exits, create one. if it does exist we'll just append to the old one so we don't overwrite data
     def initialize_maincsv(self):
-        if not os.path.exists(self.big_csv) or os.path.getsize(self.big_csv) == 0:
+        if not os.path.exists(self.main_csv) or os.path.getsize(self.main_csv) == 0:
             df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Fracture Time', 'Max Sim Length', 
                                        'Output Timesteps', 'Fracture Window', 'Defect Type', 'Defect Percentage', 'Simulation Time'])
-            df.to_csv(self.big_csv, index=False)
+            df.to_csv(self.main_csv, index=False)
 
     def get_simid(self):
-        if os.path.exists(self.big_csv) and os.path.getsize(self.big_csv) > 0:
+        if os.path.exists(self.main_csv) and os.path.getsize(self.main_csv) > 0:
             # Read the existing file and find the maximum simulation id
-            df = pd.read_csv(self.big_csv)
+            df = pd.read_csv(self.main_csv)
             if "Simulation ID" in df.columns and not df.empty:
                 return str(df["Simulation ID"].max() + 1).zfill(5)
         # Default to 1 if the file doesn't exist or is empty
@@ -241,7 +243,7 @@ class Simulation:
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length],
                                 'Output Timesteps': [self.thermo], 'Fracture Window': [self.fracture_window], 'Defect Type': [self.defect_type], 
                                 'Defect Percentage': [self.defect_frac], 'Simulation Time': [self.sim_duration]})
-        new_row.to_csv(self.big_csv, mode="a", header=False, index=False)
+        new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
 
     def save_detailed_data(self):
         df = pd.DataFrame({'Timestep': self.step_vector, 
@@ -254,8 +256,42 @@ class Simulation:
                            'Strain_xy': self.strain_tensor[:, 3], 'Strain_xz': self.strain_tensor[:, 4], 'Strain_yz': self.strain_tensor[:, 5],
                            'Pressure_x': self.pressure_tensor[:, 0], 'Pressure_y': self.pressure_tensor[:, 1], 'Pressure_z': self.pressure_tensor[:, 2]})
         
+        # this updates the old filenames to the now retrieved simulation id's
+
+        # rename the simulation directory and dumpfiles
+        old_directory = self.simulation_directory
+        new_directory = f'{self.storage_path}/sim{self.simulation_id}'
+        os.rename(old_directory, new_directory)
+        self.simulation_directory = new_directory  # update directory
+
+        # rename dump files inside directory (if necessary)
+        for fname in os.listdir(new_directory):
+            if self.timestamp_id in fname:
+                new_fname = fname.replace(self.timestamp_id, self.simulation_id)
+                os.rename(os.path.join(new_directory, fname), os.path.join(new_directory, new_fname))
+
+
         detailed_csv_file = f'{self.simulation_directory}/sim{self.simulation_id}.csv'
         df.to_csv(detailed_csv_file, index=False)
+
+    ########## END DATASTORAGE ##########
+
+    # import all variables to lammps
+    def setup_lammps(self):
+        self.lmp.command(f"variable vol equal {self.sheet.volume}")
+        self.lmp.command(f"variable sheet_lx equal {self.sheet.Lx}")
+        self.lmp.command(f"variable sheet_ly equal {self.sheet.Ly}")
+        self.lmp.command(f"variable sheet_lz equal {self.sheet.Lz}")
+        self.lmp.command(f"variable timestep equal {self.timestep}")
+
+        self.lmp.command(f"variable conv_fact equal 0.0001")
+        self.lmp.command(f"variable datafile string {self.sheet.datafile_name}")
+
+        if self.detailed_data:
+            # make it with the timestamp id becasue we don't have simid yet
+            self.lmp.command(f"dump 1 all custom {self.thermo} {self.simulation_directory}/dump.sim{self.timestamp_id} id type x y z")
+
+        self.lmp.file("in.deform_py")
 
     # This writes the fix deform command for lammps and sends it to lammps
     def apply_fix_deform(self):

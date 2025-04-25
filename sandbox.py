@@ -14,7 +14,4 @@ comm, rank = initialize_rank()
 
 sheet = GrapheneSheet("/data1/avb25/graphene_sim_data/data_files/data.60_60_rel1", 60, 60)
 
-test = Simulation(comm, rank, sheet, x_erate=1e-3, y_erate=1e-3, thermo=1000, sim_length=1000, detailed_data=True)
-
-
-print(test.strength)
+test = Simulation(comm, rank, sheet, x_erate=1e-3, y_erate=1e-3, thermo=1000, sim_length=10000, detailed_data=True)
