@@ -221,7 +221,7 @@ class Simulation:
             df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Fracture Time', 'Max Sim Length', 
-                                       'Output Timesteps', 'Fracture Window', 'Defect Type', 'Defect Percentage', 'Simulation Time'])
+                                       'Output Timesteps', 'Fracture Window', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 'Simulation Time'])
             df.to_csv(self.main_csv, index=False)
 
     def get_simid(self):
@@ -242,7 +242,7 @@ class Simulation:
                                 'Strain Rate xy': [self.xy_erate], 'Strain Rate xz': [self.xz_erate], 'Strain Rate yz': [self.yz_erate],
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length],
                                 'Output Timesteps': [self.thermo], 'Fracture Window': [self.fracture_window], 'Defect Type': [self.defect_type], 
-                                'Defect Percentage': [self.defect_frac], 'Simulation Time': [self.sim_duration]})
+                                'Defect Percentage': [self.defect_frac], 'Defect Random Seed': [self.defect_random_seed], 'Simulation Time': [self.sim_duration]})
         new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
 
     def save_detailed_data(self):
