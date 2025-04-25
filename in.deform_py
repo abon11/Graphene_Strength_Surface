@@ -65,7 +65,7 @@ variable p_z equal pzz
 thermo_style custom step temp press lx v_stress_xx v_stress_yy v_stress_zz v_stress_xy v_stress_xz v_stress_yz v_p_x v_p_y v_p_z 
 
 # Dump file for visualization
-dump 1 all custom 100 ${dump_output} id type x y z
+# dump 1 all custom 100 ${dump_output} id type x y z
 
 # Run simulation
 # run 100000

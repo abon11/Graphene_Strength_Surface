@@ -90,7 +90,7 @@ class Simulation:
                  x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
                  sim_length=100000, timestep=0.0005, thermo=1000, 
                  defect_type='SV', defect_frac=0, defect_random_seed=42,
-                 makeplots=False, fracture_window=10, 
+                 makeplots=False, detailed_data=False, fracture_window=10, 
                  storage_path='/data1/avb25/graphene_sim_data/defected_data'):
         """
         Class to execute one simulation and store information about it.
@@ -108,6 +108,7 @@ class Simulation:
         - defect_frac (float): Percentage of total atoms removed for single vacancy defects
         - defect_random_seed (int): Sets the random seed for the defect generation
         - makeplots (bool): User specifies whether or not they want plots of stress vs time generated and saved (default False)
+        - detailed_data (bool): User specifies whether or not they want to save the detailed timestep data (default False)
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
         - storage_path (str): filepath to where we want to store the data
         """
@@ -126,6 +127,7 @@ class Simulation:
         self.defect_frac = defect_frac
         self.defect_random_seed = defect_random_seed
         self.makeplots = makeplots
+        self.detailed_data = detailed_data
         self.fracture_window = fracture_window
         self.storage_path = storage_path
 
@@ -134,10 +136,11 @@ class Simulation:
         self.erate_timestep = self.calculate_erateTimestep()  # used to calculate strain rate at any given timestep (just multiply this by whatever timestep you're on)
 
         self.big_csv = f'{storage_path}/all_simulations.csv'
-        self.initialize_bigcsv()  # initialize csv file for data storage
+        self.initialize_maincsv()  # initialize csv file for data storage
         self.simulation_id = self.get_simid()  # returns string of simulation id (ex: '00001')
 
-        self.simulation_directory = self.create_storage_directory()  # create data storage directory (storage_path/sim{simid})
+        if detailed_data:
+            self.simulation_directory = self.create_storage_directory()  # create data storage directory (storage_path/sim{simid})
 
         lmp = lammps(comm=comm)  # initialize lammps
 
@@ -150,7 +153,10 @@ class Simulation:
 
         lmp.command(f"variable conv_fact equal 0.0001")
         lmp.command(f"variable datafile string {sheet.datafile_name}")
-        lmp.command(f"variable dump_output string {self.simulation_directory}/dump.sim{self.simulation_id}")
+
+        if detailed_data:
+            lmp.command(f"dump 1 all custom {thermo} {self.simulation_directory}/dump.sim{self.simulation_id} id type x y z")
+            # lmp.command(f"variable dump_output string {self.simulation_directory}/dump.sim{self.simulation_id}")
 
         lmp.file("in.deform_py")
 
@@ -189,14 +195,17 @@ class Simulation:
 
         if self.rank == 0:
             print(f'Material Strength ({sheet.x_atoms}x{sheet.y_atoms} sheet): {strength} GPa. ')
-            self.append_csv()  # append all data from the simulation to the csv file. 
-            self.save_detailed_data()
+            self.append_maincsv()  # append all data from the simulation to the csv file. 
+            if detailed_data:
+                self.save_detailed_data()
 
             if makeplots:
                 # right now we really only care about the principal stresses, so only output that
                 self.plot_principalStress()
                 # self.plot_pressure()
                 # self.plot_stressTensor()
+
+
 
     # create the directory where we will be putting the detailed data for this simulation
     def create_storage_directory(self):
@@ -205,7 +214,7 @@ class Simulation:
         return path
 
     # if the file doesn't exits, create one. if it does exist we'll just append to the old one so we don't overwrite data
-    def initialize_bigcsv(self):
+    def initialize_maincsv(self):
         if not os.path.exists(self.big_csv) or os.path.getsize(self.big_csv) == 0:
             df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
@@ -223,7 +232,7 @@ class Simulation:
         return str(1).zfill(5)
 
     # appends a new simulation to the csv file for storage
-    def append_csv(self):
+    def append_maincsv(self):
         new_row = pd.DataFrame({'Simulation ID':[self.simulation_id], 'Num Atoms x': [self.sheet.x_atoms], 'Num Atoms y': [self.sheet.y_atoms], 
                                 'Strength_1': [self.strength[0]], 'Strength_2': [self.strength[1]], 'Strength_3': [self.strength[2]],
                                 'CritStrain_1': [self.crit_strain[0]], 'CritStrain_2': [self.crit_strain[1]], 'CritStrain_3': [self.crit_strain[2]],
