@@ -60,10 +60,10 @@ def main():
         print('DONE')
 
 
-def param_test(comm, rank, sheet, x_rates, y_rates, random_seed, defect_frac):
+def param_test(comm, rank, sheet, x_rates, y_rates, random_seed, defect_perc):
     strengths = []
     for i in range(len(x_rates)):
-        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, defect_frac=defect_frac, defect_random_seed=random_seed, sim_length=10000000)
+        test = Simulation(comm, rank, sheet, x_erate=x_rates[i], y_erate=y_rates[i], thermo=1000, defect_perc=defect_perc, defect_random_seed=random_seed, sim_length=10000000)
         if test.strength[0] is None:
             strengths.append(test.strength[0])
         else:
