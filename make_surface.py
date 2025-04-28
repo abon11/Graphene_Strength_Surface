@@ -16,16 +16,16 @@ def main():
     parser.add_argument("--y_atoms", type=int, default=60)
 
     parser.add_argument("--defect_type", type=str, default="SV")
-    parser.add_argument("--defect_frac", type=float, default=0)
+    parser.add_argument("--defect_perc", type=float, default=0)
     parser.add_argument("--defect_random_seed", type=int, default=42)
-    parser.add_argument("--sim_length", type=int, default=100000)
+    parser.add_argument("--sim_length", type=int, default=10000000)
     parser.add_argument("--timestep", type=float, default=0.0005)
     parser.add_argument("--thermo", type=int, default=1000)
-    parser.add_argument("--makeplots", type=bool, default=False)
-    parser.add_argument("--detailed_data", type=bool, default=False)
+    parser.add_argument("--makeplots", type=str, default="false")  # these are strings, then we do str2bool to make them bools
+    parser.add_argument("--detailed_data", type=str, default="false")
     parser.add_argument("--fracture_window", type=int, default=10)
 
-    parser.add_argument("--both_directions", type=bool, default=True)
+    parser.add_argument("--both_directions", type=str, default="true")
     parser.add_argument("--storage_path", type=str, default='/data1/avb25/graphene_sim_data/defected_data')
 
     parser.add_argument("--nproc", type=int, required=True)  # user specified number of processors to use
@@ -34,7 +34,7 @@ def main():
 
     min_cores = 12
     if args.nproc < min_cores:
-        raise ValueError("Must use at least 8 cores")
+        raise ValueError(f"Must use at least {min_cores} cores")
 
     max_jobs = args.nproc // min_cores
 
@@ -56,7 +56,7 @@ def main():
         jobs.append(job_cmd)
 
         # flip x and y rates if necessary to get both sides
-        if args.both_directions:
+        if str2bool(args.both_directions):
             if x_rates[i] != y_rates[i]:
                 job_cmd = (
                     f"mpiexec -n {min_cores} python3 one_sim.py {cli_args} "
@@ -66,7 +66,6 @@ def main():
                 jobs.append(job_cmd)
 
     
-
     active = []
     while jobs or active:
         while len(active) < max_jobs and jobs:
@@ -82,6 +81,17 @@ def main():
         time.sleep(1)
 
     print("All surfaces generated successfully!")
+
+
+def str2bool(string):
+        if isinstance(string, bool):
+            return string
+        if string.lower() in ('yes', 'true', 't', '1', 'y'):
+            return True
+        elif string.lower() in ('no', 'false', 'f', '0', 'n'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 

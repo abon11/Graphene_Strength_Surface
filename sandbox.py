@@ -1,17 +1,12 @@
-from mpi4py import MPI
-from graphene_classes_deform import GrapheneSheet
-from graphene_classes_deform import Simulation
-import numpy as np
+import pandas as pd
 
-# initialize core usage etc.
-def initialize_rank():
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    return comm, rank
+df = pd.read_csv('/data1/avb25/graphene_sim_data/defected_data/all_simulations.csv')
 
+# Force 'Simulation ID' to be string and zero-padded
+df['Simulation ID'] = df['Simulation ID'].astype(str).str.zfill(5)
 
-comm, rank = initialize_rank()
+# Save it back
+df.to_csv('/data1/avb25/graphene_sim_data/defected_data/all_simulations.csv', index=False)
 
-sheet = GrapheneSheet("/data1/avb25/graphene_sim_data/data_files/data.60_60_rel1", 60, 60)
+print("Simulation IDs successfully reformatted to 5-digit strings!")
 
-test = Simulation(comm, rank, sheet, x_erate=1e-3, y_erate=1e-3, thermo=1000, sim_length=10000, detailed_data=True)

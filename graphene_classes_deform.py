@@ -89,7 +89,7 @@ class Simulation:
     def __init__(self, comm, rank, sheet,
                  x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
                  sim_length=100000, timestep=0.0005, thermo=1000, 
-                 defect_type='SV', defect_frac=0, defect_random_seed=42,
+                 defect_type='SV', defect_perc=0, defect_random_seed=42,
                  makeplots=False, detailed_data=False, fracture_window=10, 
                  storage_path='/data1/avb25/graphene_sim_data/defected_data'):
         """
@@ -125,7 +125,7 @@ class Simulation:
         self.timestep = timestep
         self.thermo = thermo
         self.defect_type = defect_type
-        self.defect_frac = defect_frac
+        self.defect_perc = defect_perc
         self.defect_random_seed = defect_random_seed
         self.makeplots = makeplots
         self.detailed_data = detailed_data
@@ -145,7 +145,7 @@ class Simulation:
 
         self.setup_lammps()  # puts all needed variables in lammps and initializes file
 
-        if (defect_frac != 0):
+        if (defect_perc != 0):
             self.introduce_defects()
 
         self.apply_fix_deform()
@@ -242,7 +242,7 @@ class Simulation:
                                 'Strain Rate xy': [self.xy_erate], 'Strain Rate xz': [self.xz_erate], 'Strain Rate yz': [self.yz_erate],
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length],
                                 'Output Timesteps': [self.thermo], 'Fracture Window': [self.fracture_window], 'Defect Type': [self.defect_type], 
-                                'Defect Percentage': [self.defect_frac], 'Defect Random Seed': [self.defect_random_seed], 'Simulation Time': [self.sim_duration]})
+                                'Defect Percentage': [self.defect_perc], 'Defect Random Seed': [self.defect_random_seed], 'Simulation Time': [self.sim_duration]})
         new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
 
     def save_detailed_data(self):
@@ -344,11 +344,8 @@ class Simulation:
         for step in range(0, self.sim_length, self.thermo):
             iters, stress_tensor, step_vector, pressure_tensor, strain_tensor = self.run_step(step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor)
 
-            column_sums = np.sum(np.abs(stress_tensor), axis=0)
-            dominant_direction = np.argmax(column_sums)
-
-            # checks when dominant direction stress drops to detect fracture - this is just an on the fly check because we don't have principal stresses calculated
-            strength, _ = self.find_fracture(stress_tensor[:(iters+1), dominant_direction].reshape(-1, 1))
+            # checks when stress drops to detect fracture - this is just an on the fly check because we don't have principal stresses calculated
+            strength, _ = self.find_fracture(stress_tensor[:(iters+1)])  # note: changed from just dominant direction stress to accomidate the multi-axis check
 
             # if we get a strength value, that means fracture was detected and we can leave the loop
             if strength[0] is not None:
@@ -431,6 +428,8 @@ class Simulation:
             else:
                 strength = principal_stresses[fracture_index]
                 fracture_timestep = fracture_index * self.thermo
+                print("FRACTUREEEEEE")
+
         
         return strength, fracture_timestep, fracture_index
 
@@ -473,8 +472,6 @@ class Simulation:
                     crit_strain = self.principalAxes_strain[fracture_index]
                     return strength, crit_strain, fracture_timestep
                 
-                print("FRACTUREEEEEE")
-
         return strength, fracture_timestep
     
     # pass through length six vector that contains all stresses or strains in each direction, computes the eigvals so you have the principal stresses,
@@ -558,19 +555,19 @@ class Simulation:
         # self.lmp.command(region_def)
         # self.lmp.command(deleting)
         if self.defect_type == 'SV':
-            delete_ids = self.pick_SV_atoms(self.defect_frac)
+            delete_ids = self.pick_SV_atoms(self.defect_perc)
             for atom in delete_ids:
                 self.lmp.command(f"group to_delete id {atom}")
                 self.lmp.command("delete_atoms group to_delete")
         
         # must add functionality for DV
 
-    # Pick atoms to delete for single vacancies: don't pick atoms near boundary
-    def pick_SV_atoms(self, delete_fraction, margin=5.0):
+    # Pick atoms to delete for single vacancies
+    def pick_SV_atoms(self, delete_percentage):
         atom_positions = self.sheet.extract_atom_positions()
 
         total_atoms = len(atom_positions)
-        n_delete = int(total_atoms * delete_fraction)
+        n_delete = int(total_atoms * (delete_percentage / 100))
 
         # Assume atom_positions is a Nx4 array: [id, x, y, z]
         ids = atom_positions[:, 0]
