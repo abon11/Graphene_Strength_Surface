@@ -1,199 +1,206 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import numpy as np
 
 def main():
-    # initialize the plots for this sheet's strength surface (if user wants)
-    figx, ax = plt.subplots()
-    ax.set_xlabel(r'$\sigma_1$')
-    ax.set_ylabel(r'$\sigma_2$')
-    ax.set_title(f'Molecular Strength Surface of SV-Defective Graphene (x-dominant)')
-
-    figy, ay = plt.subplots()
-    ay.set_xlabel(r'$\sigma_1$')
-    ay.set_ylabel(r'$\sigma_2$')
-    ay.set_title(f'Molecular Strength Surface of SV-Defective Graphene (y-dominant)')
-
-    filepath = "/data1/avb25/graphene_sim_data"
-
-    colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
-
-    s1 = np.array([
-        18.365, 18.412, 15.397, 14.006, 12.429, 0, 0, 0, 0,
-        -16.788, -23.467, -32.603, -43.362, -55.374, -58.481, -60.058,
-        -60.707, -62.377, -67.246, -67.71, -80.325, -82.319, -76.475,
-        -74.852, -72.719, 19.958, 25.527, 20.422, 26.92, 23.713,
-        24.093, 25.401, 26.498, 27.595, 25.443, 26.456, 23.924,
-        22.025, 17.806, 17.215, 16.076, 12.194, 14.388, 10.295,
-        8.4388, 5.9916, 0, 0, 0, 0
-    ])
-
-    s2 = np.array([
-        19.958, 25.527, 20.422, 26.92, 23.713, 24.093, 25.401, 26.498, 27.595,
-        25.443, 26.456, 23.924, 22.025, 17.806, 17.215, 16.076, 12.194, 14.388,
-        10.295, 8.4388, 5.9916, 0, 0, 0, 0, 18.365, 18.412, 15.397, 14.006,
-        12.429, 0, 0, 0, 0, -16.788, -23.467, -32.603, -43.362, -55.374,
-        -58.481, -60.058, -60.707, -62.377, -67.246, -67.71, -80.325,
-        -82.319, -76.475, -74.852, -72.719
-    ])
-
-    # ax.scatter(s1 / 1000, s2 / 1000, color='black', label='Sato Data')
-    # ay.scatter(s1 / 1000, s2 / 1000, color='black', label='Sato Data')
-
-    plot_group(ax, list(range(203, 214)), colors[0], label='60x60 pristine')  # x
-    plot_group(ay, list(range(280, 291)), colors[0], label='60x60 pristine')  # y
-
-    # plot the first two iterations outside for the legend
-    plot_group(ax, makelist(25), colors[3], label='60x60 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    plot_group(ay, makelist(36), colors[3], label='60x60 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
-    for i in range(47, 179, 22):
-        plot_group(ax, makelist(i), colors[3], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-        plot_group(ay, makelist(i+11), colors[3], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
-
-    # 1%
-    plot_group(ax, makelist(179), colors[2], label='60x60 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    plot_group(ay, makelist(190), colors[2], label='60x60 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
-    for i in range(179, 333, 22):
-        plot_group(ax, makelist(i), colors[2], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-        plot_group(ay, makelist(i+11), colors[2], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
+    folder = '/data1/avb25/graphene_sim_data/defected_data'
+    csv_file = f"{folder}/all_simulations.csv"  # <-- Path to your csv file
     
-    # 2%
-    plot_group(ax, makelist(333), colors[1], label='60x60 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    plot_group(ay, makelist(344), colors[1], label='60x60 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    # Define filters here
+    exact_filters = {
+        "Num Atoms x": 60,
+        "Num Atoms y": 60,
+        "Defect Type": "SV",
+        "Defect Percentage": 0.5
+        # "Defect Random Seed": 1
+    }
 
-    for i in range(333, 487, 22):
-        plot_group(ax, makelist(i), colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-        plot_group(ay, makelist(i+11), colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    range_filters = {
+        # "Defect Percentage": (0.4, 0.6)
+        "Defect Random Seed": (1, 5)
+    }
 
+    or_filters = {
+        # "Defect Type": ["SV", "DV"]
+    }
 
+    color_by_field = "Defect Random Seed"
 
+    # Load, filter, and plot
+    df = load_data(csv_file)
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
 
-    for i in range(949, 1015, 22):
-        plot_group(ax, makelist(i), colors[3], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-        plot_group(ay, makelist(i+11), colors[3], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    base_title = create_title(exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
 
-    for i in range(1015, 1081, 22):
-        plot_group(ax, makelist(i), colors[2], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-        plot_group(ay, makelist(i+11), colors[2], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
-    for i in range(1081, 1147, 22):
-        plot_group(ax, makelist(i), colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-        plot_group(ay, makelist(i+11), colors[1], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
-
-    # plot_group(ax, list(range(70, 81)), colors[3], label='100x100 pristine')  # x
-    # plot_group(ay, list(range(192, 203)), colors[3], label='100x100 pristine')  # y
-
-    # # plot the first two iterations outside for the legend
-    # plot_group(ax, makelist(487), colors[6], label='100x100 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    # plot_group(ay, makelist(498), colors[6], label='100x100 0.5% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
-    # for i in range(487, 641, 22):
-    #     plot_group(ax, makelist(i), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    #     plot_group(ay, makelist(i+11), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    xdom = filtered_df[filtered_df["Strain Rate x"] >= filtered_df["Strain Rate y"]]
+    ydom = filtered_df[filtered_df["Strain Rate y"] >= filtered_df["Strain Rate x"]]
 
 
-    # # 1%
-    # plot_group(ax, makelist(641), colors[6], label='100x100 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    # plot_group(ay, makelist(652), colors[6], label='100x100 1% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
-    # for i in range(641, 795, 22):
-    #     plot_group(ax, makelist(i), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    #     plot_group(ay, makelist(i+11), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
-    
-    # # 2%
-    # plot_group(ax, makelist(795), colors[6], label='100x100 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    # plot_group(ay, makelist(806), colors[6], label='100x100 2% SV', full_csv=f"{filepath}/defected_data/all_simulations.csv")
-
-    # for i in range(795, 949, 22):
-    #     plot_group(ax, makelist(i), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
-    #     plot_group(ay, makelist(i+11), colors[6], full_csv=f"{filepath}/defected_data/all_simulations.csv")
+    plot_strengths(xdom, folder, f"{base_title}, Armchair", color_by_field)
+    plot_strengths(ydom, folder, f"{base_title}, Zigzag", color_by_field)
 
 
-    ax.set_xlim(-15, 130)
-    ax.set_ylim(-15, 130)
-    ax.plot([-50, 130], [0, 0], color='black')
-    ax.plot([0, 0], [-50, 130], color='black')
-    ax.legend()
-
-    ay.set_xlim(-15, 130)
-    ay.set_ylim(-15, 130)
-    ay.plot([-50, 130], [0, 0], color='black')
-    ay.plot([0, 0], [-50, 130], color='black')
-    ay.legend()
+def load_data(csv_file):
+    """Load the simulation data from CSV."""
+    return pd.read_csv(csv_file)
 
 
-    figx.savefig(f"{filepath}/defected_data/Strength_Surface_DEFx60.png")
-    figy.savefig(f"{filepath}/defected_data/Strength_Surface_DEFy60.png")
+def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
+    if (exact_filters is None) and (range_filters is None) and (or_filters is None):
+        print("Warning: plotting entire dataset!")
+
+    """Filter the dataframe based on exact and range filters."""
+    filtered_df = df.copy()
+
+    # Exact matches
+    if exact_filters:
+        for column, value in exact_filters.items():
+            filtered_df = filtered_df[filtered_df[column] == value]
+
+    # Range matches
+    if range_filters:
+        for column, (min_val, max_val) in range_filters.items():
+            filtered_df = filtered_df[
+                (filtered_df[column] >= min_val) & (filtered_df[column] <= max_val)
+            ]
+
+    # OR matches
+    if or_filters:
+        for column, allowed_values in or_filters.items():
+            filtered_df = filtered_df[filtered_df[column].isin(allowed_values)]
+
+    return filtered_df
 
 
-# makes a list of 10 numbers
-def makelist(start):
-    ans = list(range(start, start+11))
-    return ans
+def extract_field_string(field_name, exact_filters=None, range_filters=None, or_filters=None, suffix=""):
+    """Extract a string representation of a field based on available filters."""
+    # Check for exact match
+    if exact_filters and field_name in exact_filters:
+        return f"{exact_filters[field_name]}{suffix}"
+
+    # Check for OR match
+    if or_filters and field_name in or_filters:
+        values = or_filters[field_name]
+        return f"{' or '.join(str(v) for v in values)}{suffix}"
+
+    # Check for range match
+    if range_filters and field_name in range_filters:
+        min_val, max_val = range_filters[field_name]
+        if min_val == max_val:
+            return f"{min_val}{suffix}"
+        else:
+            return f"{min_val}-{max_val}{suffix}"
+
+    return None
 
 
-def plot_group(ax, data_list, color, marker=None, label=None, full_csv='/data1/avb25/graphene_sim_data/pristine_data/all_simulations.csv'):
-    str1, str2 = get_sim_data(full_csv, data_list)
-    size = 8
-    if marker is None:
-        if label is not None:
-            ax.scatter(str1[0], str2[0], color=color, label=label, s=size)
+def create_title(exact_filters=None, range_filters=None, or_filters=None):
+    """Create a dynamic plot title based on filtering parameters."""
+    title_parts = []
 
-        for i in range(len(str1)):
-            ax.scatter(str1[i], str2[i], color=color, s=size)
-            ax.scatter(str2[i], str1[i], color=color, s=size)
-    
+    # Handle atom dimensions manually (because it combines two fields)
+    if exact_filters:
+        num_x = exact_filters.get("Num Atoms x")
+        num_y = exact_filters.get("Num Atoms y")
+        if num_x and num_y:
+            title_parts.append(f"{num_x}x{num_y}")
+
+    # Handle Defect Type
+    defect_type_str = extract_field_string("Defect Type", exact_filters, range_filters, or_filters)
+    if defect_type_str:
+        title_parts.append(defect_type_str)
+
+    # Handle Defect Percentage
+    defect_pct_str = extract_field_string("Defect Percentage", exact_filters, range_filters, or_filters, suffix="%")
+    if defect_pct_str:
+        title_parts.append(defect_pct_str)
+
+    # Handle Defect Random Seed
+    defect_rs_str = extract_field_string("Defect Random Seed", exact_filters, range_filters, or_filters)
+    if defect_rs_str:
+        title_parts.append(defect_rs_str)
+
+    # Join all parts
+    return ", ".join(title_parts)
+
+
+def clean_title(title):
+    """Convert a plot title into a filename-safe string."""
+    # Replace spaces with underscores
+    title = title.replace(" ", "_")
+    # Remove commas
+    title = title.replace(",", "")
+    # Replace percentage sign with pct
+    title = title.replace("%", "pct")
+    # Replace periods with nothing (or underscore if you prefer)
+    title = title.replace(".", "-")
+    return title
+
+
+def assign_colors(df, color_by_field=None):
+    """Assign a color to each point based on the given field."""
+    if color_by_field is None or color_by_field not in df.columns:
+        return ['blue'] * len(df), {}
+
+    unique_values = sorted(df[color_by_field].dropna().unique())
+    n_colors = len(unique_values)
+
+    if n_colors <= 9:
+        colormap = plt.colormaps.get_cmap('Set1')  # Strong separation
     else:
-        if label is not None:
-            ax.scatter(str1[0], str2[0], color=color, marker=marker, label=label, s=size)
+        colormap = plt.colormaps.get_cmap('tab20')  # fallback for many categories
 
-        for i in range(len(str1)):
-            ax.scatter(str1[i], str2[i], color=color, marker=marker, s=size)
-            ax.scatter(str2[i], str1[i], color=color, marker=marker, s=size)        
-
-
-def get_sim_data(csv_file, sim_ids, x_column="Strength_1", y_column="Strength_2"):
-    df = pd.read_csv(csv_file)
-
-    sim_ids = [f"{sim_id:05}" for sim_id in sim_ids]
+    value_to_color = {val: colormap(i / max(n_colors - 1, 1)) for i, val in enumerate(unique_values)}
+    colors = [value_to_color[val] for val in df[color_by_field]]
+    return colors, value_to_color
 
 
-    # Check that required columns exist
-    required_columns = [x_column, y_column, "Simulation ID"]
-    for col in required_columns:
-        if col not in df.columns:
-            raise ValueError(f"Column '{col}' not found in {csv_file}")
-
-    # Filter the DataFrame for the specified simulation IDs
-    df["Simulation ID"] = df["Simulation ID"].astype(str).str.zfill(5)  # Ensure IDs are 5 digits
-    filtered_df = df[df["Simulation ID"].isin(sim_ids)]
-
-    if filtered_df.empty:
-        raise ValueError("No matching data found for the specified simulation IDs.")
+def plot_strengths(df, folder, title, color_by_field):
+    """Scatter plot of Strength_1 vs Strength_2."""
+    if df.empty:
+        print("No data matches the specified filters.")
+        return
     
-    # Loop through each simulation ID and plot its data
-    x_data = []
-    y_data = []
-    for sim_id in sim_ids:
-        sim_data = filtered_df[filtered_df["Simulation ID"] == sim_id]  # all of the data for that sim_id
-        if sim_data.empty:
-            print(f"No data found for Simulation ID {sim_id}")
-            continue
-        x_data.append(np.abs(sim_data[x_column].iloc[0]))  # get the x data you want
-        y_data.append(np.abs(sim_data[y_column].iloc[0]))  # get the y data you want
-
-    # Convert to numpy arrays for easier manipulation
-    x_data = np.array(x_data)
-    y_data = np.array(y_data)
-
-    return x_data, y_data
+    colors, value_to_color = assign_colors(df, color_by_field=color_by_field)
     
+    if colors is None:
+        colors = ['blue'] * len(df)
+
+    plt.figure(figsize=(8,6))
+    plt.scatter(df["Strength_1"], df["Strength_2"], c=colors)
+    plt.scatter(df["Strength_2"], df["Strength_1"], c=colors)
+    plt.xlabel(r'$\sigma_1$')
+    plt.ylabel(r'$\sigma_2$')
+
+    plt.plot([-50, 130], [0, 0], color='black')
+    plt.plot([0, 0], [-50, 130], color='black')
+
+    plt.xlim(-15, 130)
+    plt.ylim(-15, 130)
+    plt.title(title)
+
+    # create legend
+    if value_to_color:
+        handles = []
+        labels = []
+        for val, color in value_to_color.items():
+            # Format value cleanly: no decimal if not needed
+            if isinstance(val, float) and val.is_integer():
+                val_str = str(int(val))
+            else:
+                val_str = str(val)
+            handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8))
+            labels.append(val_str)
+
+        legend_title = color_by_field if color_by_field else "Legend"
+        plt.legend(handles, labels, title=legend_title, loc='best', frameon=True)
+
+    fname = f"{folder}/plots/SS_{clean_title(title)}"
+    plt.savefig(fname)
+    plt.close()
+    print(f"Plot saved to {fname}.")
+   
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,3 @@
-from graphene_classes_deform import GrapheneSheet
-from graphene_classes_deform import Simulation
-import numpy as np
 import argparse
 import subprocess
 import time
@@ -32,7 +29,7 @@ def main():
 
     args = parser.parse_args()
 
-    min_cores = 12
+    min_cores = 1
     if args.nproc < min_cores:
         raise ValueError(f"Must use at least {min_cores} cores")
 
