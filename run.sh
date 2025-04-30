@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=16
-#SBATCH --job-name=dcc_TEST
+#SBATCH --ntasks=84
+#SBATCH --job-name=60x60_0p5SV_seed12
 #SBATCH --partition=scavenger
-#SBATCH --mem-per-cpu=100MB
+#SBATCH --mem-per-cpu=2GB
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=avb25@duke.edu
 #SBATCH -o TEST_%j.out
@@ -14,7 +14,8 @@ module purge
 echo "Start: $(date)"
 echo "cwd: $(pwd)"
 
-mpiexec -n 16 lmp -in in.rotate
+# mpiexec -n 16 lmp -in in.rotate
+python3 make_surface_slurm.py --nproc 84 --detailed_data true --defect_random_seed 12
 
 echo "End: $(date)"
 

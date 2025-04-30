@@ -1,13 +1,16 @@
 from mpi4py import MPI
 from graphene_classes_deform import GrapheneSheet
 from graphene_classes_deform import Simulation
-import numpy as np
+import socket, os
 import argparse
 from make_surface import str2bool
 
 
 def main():
     comm, rank = initialize_rank()
+
+    print(f"Running on {socket.gethostname()}, PID={os.getpid()}, MPI size={os.environ.get('OMPI_COMM_WORLD_SIZE', '?')}")
+
 
     parser = argparse.ArgumentParser()
     

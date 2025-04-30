@@ -7,3 +7,4 @@ venv/
 log.*
 *.data
 local_config.*
+*.out

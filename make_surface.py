@@ -30,7 +30,7 @@ def main():
 
     args = parser.parse_args()
 
-    min_cores = 1
+    min_cores = 4
     if args.nproc < min_cores:
         raise ValueError(f"Must use at least {min_cores} cores")
 
