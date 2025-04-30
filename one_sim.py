@@ -14,20 +14,6 @@ def main():
 
     parser = argparse.ArgumentParser()
     
-    # Default parameters
-    # parser.add_argument("--sheet_path", type=str, default="/data1/avb25/graphene_sim_data/data_files/data.60_60_rel1")
-    # parser.add_argument("--x_atoms", type=int, default=60)
-    # parser.add_argument("--y_atoms", type=int, default=60)
-
-    # parser.add_argument("--defect_type", type=str, default="SV")
-    # parser.add_argument("--defect_frac", type=float, default=0)
-    # parser.add_argument("--defect_random_seed", type=int, default=42)
-    # parser.add_argument("--sim_length", type=int, default=100000)
-    # parser.add_argument("--timestep", type=float, default=0.0005)
-    # parser.add_argument("--thermo", type=int, default=1000)
-    # parser.add_argument("--makeplots", type=bool, default=False)
-    # parser.add_argument("--detailed_data", type=bool, default=False)
-    
     parser.add_argument("--sheet_path", type=str, required=True)
     parser.add_argument("--x_atoms", type=int, required=True)
     parser.add_argument("--y_atoms", type=int, required=True)
@@ -41,6 +27,7 @@ def main():
     parser.add_argument("--makeplots", type=str, required=True)  # bool
     parser.add_argument("--detailed_data", type=str, required=True)  # bool
     parser.add_argument("--fracture_window", type=int, required=True)
+    parser.add_argument("--theta", type=float, required=True)
 
     parser.add_argument("--x_erate", type=float, required=True)
     parser.add_argument("--y_erate", type=float, required=True)
@@ -63,7 +50,7 @@ def main():
                  sim_length=args.sim_length, timestep=args.timestep, thermo=args.thermo, 
                  defect_type=args.defect_type, defect_perc=args.defect_perc, defect_random_seed=args.defect_random_seed,
                  makeplots=str2bool(args.makeplots), detailed_data=str2bool(args.detailed_data), fracture_window=args.fracture_window, 
-                 storage_path=args.storage_path)
+                 theta=args.theta, storage_path=args.storage_path)
     
 
 # initialize core usage etc.

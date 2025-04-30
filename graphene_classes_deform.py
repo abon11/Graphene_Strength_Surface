@@ -92,7 +92,7 @@ class Simulation:
                  x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
                  sim_length=100000, timestep=0.0005, thermo=1000, 
                  defect_type='SV', defect_perc=0, defect_random_seed=42,
-                 makeplots=False, detailed_data=False, fracture_window=10, 
+                 makeplots=False, detailed_data=False, fracture_window=10, theta=0,
                  storage_path=f'{local_config.DATA_DIR}/defected_data'):
         """
         Class to execute one simulation and store information about it.
@@ -113,6 +113,7 @@ class Simulation:
         - makeplots (bool): User specifies whether or not they want plots of stress vs time generated and saved (default False)
         - detailed_data (bool): User specifies whether or not they want to save the detailed timestep data (default False)
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
+        - theta (float): Angle of max principal stress (for storage only)
         - storage_path (str): filepath to where we want to store the data
         """
         self.comm = comm
@@ -134,6 +135,7 @@ class Simulation:
         self.makeplots = makeplots
         self.detailed_data = detailed_data
         self.fracture_window = fracture_window
+        self.theta = theta
         self.storage_path = storage_path
 
         self.starttime = time.perf_counter()  # start simulation timer
@@ -225,7 +227,8 @@ class Simulation:
             df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Fracture Time', 'Max Sim Length', 
-                                       'Output Timesteps', 'Fracture Window', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 'Simulation Time', 'Threads'])
+                                       'Output Timesteps', 'Fracture Window', 'Theta', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 
+                                       'Simulation Time', 'Threads'])
             df.to_csv(self.main_csv, index=False)
 
     def get_simid(self):
@@ -244,8 +247,8 @@ class Simulation:
                                 'CritStrain_1': [self.crit_strain[0]], 'CritStrain_2': [self.crit_strain[1]], 'CritStrain_3': [self.crit_strain[2]],
                                 'Strain Rate x': [self.x_erate], 'Strain Rate y': [self.y_erate], 'Strain Rate z': [self.z_erate],
                                 'Strain Rate xy': [self.xy_erate], 'Strain Rate xz': [self.xz_erate], 'Strain Rate yz': [self.yz_erate],
-                                'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length],
-                                'Output Timesteps': [self.thermo], 'Fracture Window': [self.fracture_window], 'Defect Type': [self.defect_type], 
+                                'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
+                                'Fracture Window': [self.fracture_window], 'Theta': [self.theta], 'Defect Type': [self.defect_type], 
                                 'Defect Percentage': [self.defect_perc], 'Defect Random Seed': [self.defect_random_seed], 'Simulation Time': [self.sim_duration],
                                 'Threads': [self.num_procs]})
         new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
