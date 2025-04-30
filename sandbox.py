@@ -1,11 +1,21 @@
 import pandas as pd
+import local_config
 
-df = pd.read_csv('/data1/avb25/graphene_sim_data/defected_data/all_simulations.csv')
+df = pd.read_csv(f'{local_config.DATA_DIR}/defected_data/all_simulations.csv')
 
-# Force 'Simulation ID' to be string and zero-padded
-df["Threads"] = 16
+# # Compute Theta
+# df["Theta"] = df.apply(
+#     lambda row: 0.0 if row["Strain Rate x"] >= row["Strain Rate y"] else 30.0,
+#     axis=1
+# )
+
+# # Reorder columns to place Theta between 'Fracture Window' and 'Defect Type'
+# cols = list(df.columns)
+# fw_index = cols.index("Fracture Window")
+# df = df[cols[:fw_index+1] + ["Theta"] + cols[fw_index+1:-1] + [cols[-1]]]
+df = df.drop(columns=["Theta1"])
 
 # Save it back
-df.to_csv('/data1/avb25/graphene_sim_data/defected_data/all_simulations.csv', index=False)
+df.to_csv(f'{local_config.DATA_DIR}/defected_data/all_simulations.csv', index=False)
 
 
