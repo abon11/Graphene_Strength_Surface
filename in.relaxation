@@ -1,5 +1,7 @@
 # Inputs a graphene sheet and runs relaxation to get it up to temperature and stable
 
+include local_config.lmp
+
 ## ---------------INITIALIZATION-------------------------------
 
 units          metal
@@ -10,7 +12,7 @@ newton         on
 
 ## ---------------ATOM DEFINITION------------------------------
 
-read_data      data_files/data.60_60_stiff  # Load initial data file
+read_data      ${data_dir}/data_files/data.60_60_stiff  # Load initial data file
 # read_data       ${datafile}
 
 
@@ -44,4 +46,4 @@ fix            2 all npt temp 273.0 273.0 0.1 x 0.0 0.0 0.1 y 0.0 0.0 0.1
 run            80000
 
 # Step 5: Save the Relaxed Configuration
-write_data     data_files/data.60_60_rel7
+write_data     ${data_dir}/data_files/data.60_60_rel7

@@ -1,5 +1,7 @@
 # LAMMPS Input Script for Uniaxial Tensile Test with AIREBO Potential
 
+include local_config.lmp
+
 # Initialize simulation
 units metal
 dimension 3
@@ -7,7 +9,7 @@ boundary p p p
 atom_style atomic
 
 # Read initial structure
-read_data /data1/avb25/graphene_sim_data/data_files/data.60_60_rel1
+read_data ${data_dir}/data_files/data.60_60_rel1
 # Define interatomic potential (AIREBO)
 pair_style airebo 3.0
 pair_coeff * * CH.airebo C

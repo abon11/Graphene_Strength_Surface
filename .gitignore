@@ -6,3 +6,4 @@ venv/
 *.png
 log.*
 *.data
+local_config.*

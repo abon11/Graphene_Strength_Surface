@@ -1,6 +1,7 @@
 import argparse
 import subprocess
 import time
+import local_config
 
 
 def main():
@@ -8,7 +9,7 @@ def main():
     parser = argparse.ArgumentParser()
     
     # Default parameters
-    parser.add_argument("--sheet_path", type=str, default="/data1/avb25/graphene_sim_data/data_files/data.60_60_rel1")
+    parser.add_argument("--sheet_path", type=str, default=f"{local_config.DATA_DIR}/data_files/data.60_60_rel1")
     parser.add_argument("--x_atoms", type=int, default=60)
     parser.add_argument("--y_atoms", type=int, default=60)
 
@@ -23,7 +24,7 @@ def main():
     parser.add_argument("--fracture_window", type=int, default=10)
 
     parser.add_argument("--both_directions", type=str, default="true")
-    parser.add_argument("--storage_path", type=str, default='/data1/avb25/graphene_sim_data/defected_data')
+    parser.add_argument("--storage_path", type=str, default=f'{local_config.DATA_DIR}/defected_data')
 
     parser.add_argument("--nproc", type=int, required=True)  # user specified number of processors to use
 

@@ -1,4 +1,4 @@
-# LAMMPS Input Script for Uniaxial Tensile Test with AIREBO Potential
+# LAMMPS Input Script for Uniaxial Tensile Test with AIREBO Potential, paired with python
 
 # Initialize simulation
 units metal

@@ -10,6 +10,8 @@ from datetime import timedelta, datetime
 import time
 from filelock import FileLock
 
+import local_config 
+
 
 class GrapheneSheet:
     def __init__(self, datafile_name, x_atoms, y_atoms):
@@ -91,7 +93,7 @@ class Simulation:
                  sim_length=100000, timestep=0.0005, thermo=1000, 
                  defect_type='SV', defect_perc=0, defect_random_seed=42,
                  makeplots=False, detailed_data=False, fracture_window=10, 
-                 storage_path='/data1/avb25/graphene_sim_data/defected_data'):
+                 storage_path=f'{local_config.DATA_DIR}/defected_data'):
         """
         Class to execute one simulation and store information about it.
         This essentially loads the specimen to failure.
