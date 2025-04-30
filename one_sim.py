@@ -47,13 +47,14 @@ def main():
     parser.add_argument("--yz_erate", type=float, required=True)
 
     parser.add_argument("--storage_path", type=str, required=True)
+    parser.add_argument("--num_procs", type=int, required=True)
 
 
     args = parser.parse_args()
 
     sheet = GrapheneSheet(args.sheet_path, args.x_atoms, args.y_atoms)
 
-    test = Simulation(comm=comm, rank=rank, sheet=sheet,
+    test = Simulation(comm=comm, rank=rank, sheet=sheet, num_procs=args.num_procs,
                  x_erate=args.x_erate, y_erate=args.y_erate, z_erate=args.z_erate, 
                  xy_erate=args.xy_erate, xz_erate=args.xz_erate, yz_erate=args.yz_erate, 
                  sim_length=args.sim_length, timestep=args.timestep, thermo=args.thermo, 

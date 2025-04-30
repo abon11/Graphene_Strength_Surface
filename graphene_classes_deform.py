@@ -86,7 +86,7 @@ class GrapheneSheet:
 
 class Simulation:
     # we basically want the whole simulation to run on initialization, then we can pull whatever we want from it for postprocessing
-    def __init__(self, comm, rank, sheet,
+    def __init__(self, comm, rank, sheet, num_procs,
                  x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
                  sim_length=100000, timestep=0.0005, thermo=1000, 
                  defect_type='SV', defect_perc=0, defect_random_seed=42,
@@ -100,7 +100,8 @@ class Simulation:
         - comm (???): ???
         - rank (???): ???
         - sheet (GrapheneSheet): Object that stores all necessary info about the sheet being used.
-        - x_erate (float): strain rate for fix deform (in 1/ps) (same for all other directions)
+        - num_procs (int): Specifies the number of processors used for this simulation - just to document along with the time
+        - x_erate (float): Strain rate for fix deform (in 1/ps) (same for all other directions)
         - sim_length (int): Number of timesteps before simulation is killed (max timesteps) 
         - timestep (float): Size of one timestep in LAMMPS simulation (picoseconds)
         - thermo (int): Frequency of timesteps you output data (if thermo = 100, output every 100 timesteps)
@@ -115,6 +116,7 @@ class Simulation:
         self.comm = comm
         self.rank = rank
         self.sheet = sheet
+        self.num_procs = num_procs
         self.x_erate = x_erate
         self.y_erate = y_erate
         self.z_erate = z_erate
@@ -221,7 +223,7 @@ class Simulation:
             df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Fracture Time', 'Max Sim Length', 
-                                       'Output Timesteps', 'Fracture Window', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 'Simulation Time'])
+                                       'Output Timesteps', 'Fracture Window', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 'Simulation Time', 'Threads'])
             df.to_csv(self.main_csv, index=False)
 
     def get_simid(self):
@@ -242,7 +244,8 @@ class Simulation:
                                 'Strain Rate xy': [self.xy_erate], 'Strain Rate xz': [self.xz_erate], 'Strain Rate yz': [self.yz_erate],
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length],
                                 'Output Timesteps': [self.thermo], 'Fracture Window': [self.fracture_window], 'Defect Type': [self.defect_type], 
-                                'Defect Percentage': [self.defect_perc], 'Defect Random Seed': [self.defect_random_seed], 'Simulation Time': [self.sim_duration]})
+                                'Defect Percentage': [self.defect_perc], 'Defect Random Seed': [self.defect_random_seed], 'Simulation Time': [self.sim_duration],
+                                'Threads': [self.num_procs]})
         new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
 
     def save_detailed_data(self):
@@ -256,7 +259,7 @@ class Simulation:
                            'Strain_xy': self.strain_tensor[:, 3], 'Strain_xz': self.strain_tensor[:, 4], 'Strain_yz': self.strain_tensor[:, 5],
                            'Pressure_x': self.pressure_tensor[:, 0], 'Pressure_y': self.pressure_tensor[:, 1], 'Pressure_z': self.pressure_tensor[:, 2]})
         
-        # this updates the old filenames to the now retrieved simulation id's
+        # now we the old filenames to the now retrieved simulation id's
 
         # rename the simulation directory and dumpfiles
         old_directory = self.simulation_directory

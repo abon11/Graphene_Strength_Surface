@@ -35,6 +35,9 @@ def main():
 
     max_jobs = args.nproc // min_cores
 
+    if max_jobs > 21:
+        input(f"Warning: Running 21 jobs on {min_cores} cores, leaving {args.nproc - (21 * min_cores)} unused. Press enter to continue. ")
+
     # these are the strain rates that correspond to creating a surface
     x_rates = [1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3]
     y_rates = [0, 1e-3, 9e-4, 8e-4, 7e-4, 6e-4, 5e-4, 4e-4, 3e-4, 2e-4, 1e-4]
@@ -44,8 +47,9 @@ def main():
 
     jobs = []
     for i in range(len(x_rates)):
+        # generates the command to pass to one_sim.py... pass min_cores as an argument as well because we store it in the csv
         job_cmd = (
-            f"mpiexec -n {min_cores} python3 one_sim.py {cli_args} "
+            f"mpiexec -n {min_cores} python3 one_sim.py {cli_args} --num_procs {min_cores} "
             f"--x_erate {x_rates[i]} --y_erate {y_rates[i]} --z_erate {0} "
             f"--xy_erate {0} --xz_erate {0} --yz_erate {0}"
         )
