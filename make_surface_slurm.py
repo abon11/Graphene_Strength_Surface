@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument("--sheet_path", type=str, default=f"{local_config.DATA_DIR}/data_files/data.60_60_rel1")
     parser.add_argument("--x_atoms", type=int, default=60)
     parser.add_argument("--y_atoms", type=int, default=60)
-    parser.add_argument("--defect_type", type=str, default="SV")
+    parser.add_argument("--defect_type", type=str, default="None")
     parser.add_argument("--defect_perc", type=float, default=0)
     parser.add_argument("--defect_random_seed", type=int, default=42)
     parser.add_argument("--sim_length", type=int, default=10000000)
