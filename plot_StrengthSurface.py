@@ -1,11 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import numpy as np
+import local_config
 
 def main():
-    folder = '/data1/avb25/graphene_sim_data/defected_data'
-    csv_file = f"{folder}/all_simulations.csv"  # <-- Path to your csv file
+    folder = f'{local_config.DATA_DIR}/defected_data'
+    csv_file = f"{folder}/all_simulations.csv"
     
     # Define filters here
     exact_filters = {
@@ -18,7 +17,7 @@ def main():
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6)
-        "Defect Random Seed": (1, 5)
+        "Defect Random Seed": (1, 42)
     }
 
     or_filters = {
@@ -26,9 +25,11 @@ def main():
     }
 
     color_by_field = "Defect Random Seed"
+    show_pristine = True
 
     # Load, filter, and plot
     df = load_data(csv_file)
+
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
 
     base_title = create_title(exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
@@ -36,14 +37,37 @@ def main():
     xdom = filtered_df[filtered_df["Strain Rate x"] >= filtered_df["Strain Rate y"]]
     ydom = filtered_df[filtered_df["Strain Rate y"] >= filtered_df["Strain Rate x"]]
 
+    if show_pristine:
+        pristine_df = get_pristine_subset(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
+        pris_x = pristine_df[pristine_df["Strain Rate x"] >= pristine_df["Strain Rate y"]]
+        pris_y = pristine_df[pristine_df["Strain Rate y"] >= pristine_df["Strain Rate x"]]
+    else:
+        pris_x = None
+        pris_y = None
 
-    plot_strengths(xdom, folder, f"{base_title}, Armchair", color_by_field)
-    plot_strengths(ydom, folder, f"{base_title}, Zigzag", color_by_field)
+    plot_strengths(xdom, folder, f"{base_title}, Armchair", color_by_field, pristine_data=pris_x)
+    plot_strengths(ydom, folder, f"{base_title}, Zigzag", color_by_field, pristine_data=pris_y)
 
 
 def load_data(csv_file):
     """Load the simulation data from CSV."""
     return pd.read_csv(csv_file)
+
+
+def get_pristine_subset(df, exact_filters=None, range_filters=None, or_filters=None):
+    """Return only the pristine rows that match all filters *except* defect fields."""
+    pristine_df = df[
+        (df["Defect Type"].isna() | (df["Defect Percentage"] == "None")) & 
+        ((df["Defect Percentage"].isna()) | (df["Defect Percentage"] == 0.0))
+    ]
+
+    exclude_keys = ["Defect Type", "Defect Percentage", "Defect Random Seed"]
+
+    exact_clean = {k: v for k, v in (exact_filters or {}).items() if k not in exclude_keys}
+    range_clean = {k: v for k, v in (range_filters or {}).items() if k not in exclude_keys}
+    or_clean    = {k: v for k, v in (or_filters or {}).items() if k not in exclude_keys}
+
+    return filter_data(pristine_df, exact_filters=exact_clean, range_filters=range_clean, or_filters=or_clean)
 
 
 def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
@@ -156,9 +180,9 @@ def assign_colors(df, color_by_field=None):
     return colors, value_to_color
 
 
-def plot_strengths(df, folder, title, color_by_field):
+def plot_strengths(df, folder, title, color_by_field, pristine_data=None):
     """Scatter plot of Strength_1 vs Strength_2."""
-    if df.empty:
+    if df.empty and (pristine_data is None or pristine_data.empty):
         print("No data matches the specified filters.")
         return
     
@@ -168,8 +192,11 @@ def plot_strengths(df, folder, title, color_by_field):
         colors = ['blue'] * len(df)
 
     plt.figure(figsize=(8,6))
-    plt.scatter(df["Strength_1"], df["Strength_2"], c=colors)
-    plt.scatter(df["Strength_2"], df["Strength_1"], c=colors)
+    plt.scatter(df["Strength_1"], df["Strength_2"], c=colors, alpha=0.7)
+    plt.scatter(df["Strength_2"], df["Strength_1"], c=colors, alpha=0.7)
+    if pristine_data is not None and not pristine_data.empty:
+        plt.scatter(pristine_data["Strength_1"], pristine_data["Strength_2"], c='black', alpha=0.7, label='Pristine')
+        plt.scatter(pristine_data["Strength_2"], pristine_data["Strength_1"], c='black', alpha=0.7)
     plt.xlabel(r'$\sigma_1$')
     plt.ylabel(r'$\sigma_2$')
 
@@ -192,6 +219,11 @@ def plot_strengths(df, folder, title, color_by_field):
                 val_str = str(val)
             handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8))
             labels.append(val_str)
+
+        # Add pristine legend entry
+        if pristine_data is not None and not pristine_data.empty:
+            handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=8))
+            labels.append("Pristine")
 
         legend_title = color_by_field if color_by_field else "Legend"
         plt.legend(handles, labels, title=legend_title, loc='best', frameon=True)

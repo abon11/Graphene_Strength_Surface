@@ -91,7 +91,7 @@ class Simulation:
     def __init__(self, comm, rank, sheet, num_procs,
                  x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
                  sim_length=100000, timestep=0.0005, thermo=1000, 
-                 defect_type='SV', defect_perc=0, defect_random_seed=42,
+                 defect_type='None', defect_perc=0, defect_random_seed=42,
                  makeplots=False, detailed_data=False, fracture_window=10, 
                  storage_path=f'{local_config.DATA_DIR}/defected_data'):
         """
@@ -151,6 +151,8 @@ class Simulation:
 
         if (defect_perc != 0):
             self.introduce_defects()
+        else:
+            self.defect_type = "None"  # if defect perc is 0, ensure that type is None to output correctly
 
         self.apply_fix_deform()
 
