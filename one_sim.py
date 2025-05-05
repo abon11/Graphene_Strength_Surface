@@ -53,7 +53,7 @@ def main():
 
 
 def str2bool(s):
-    if s.lower() == "true" or "1" or "yes" or "y":
+    if s.lower() == "true" or s.lower() == "yes" or s.lower() == "y" or s.lower() == "t":
         return True
     else:
         return False

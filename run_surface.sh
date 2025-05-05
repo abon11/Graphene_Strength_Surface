@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-MAX_JOBS_IN_FLIGHT=4
+MAX_JOBS_IN_FLIGHT=6
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=16
 
@@ -15,7 +15,7 @@ SIM_LENGTH=10000000
 TIMESTEP=0.0005
 THERMO=1000
 MAKEPLOTS="false"
-DETAILED_DATA="true"
+DETAILED_DATA="false"
 THETA=0  # degrees
 FRACTURE_WINDOW=10
 STORAGE_PATH="/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/defected_data"

@@ -9,6 +9,8 @@ import os
 from datetime import timedelta, datetime
 import time
 from filelock import FileLock
+import csv
+import sys
 
 import local_config 
 
@@ -138,6 +140,8 @@ class Simulation:
         self.theta = theta
         self.storage_path = storage_path
 
+        self.check_duplicate()  # ensure that we haven't run this sim yet
+
         self.starttime = time.perf_counter()  # start simulation timer
 
         self.erate_timestep = self.calculate_erateTimestep()  # used to calculate strain rate at any given timestep (just multiply this by whatever timestep you're on)
@@ -194,6 +198,51 @@ class Simulation:
                 # self.plot_pressure()
                 # self.plot_stressTensor()
 
+
+    def check_duplicate(self):
+        if self.rank != 0:
+            return  # Only rank 0 should check
+
+        csv_path = os.path.join(self.storage_path, "all_simulations.csv")
+        if not os.path.exists(csv_path):
+            return
+
+        def safe_float(val):
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return None
+
+        def safe_int(val):
+            try:
+                return int(float(val))
+            except (ValueError, TypeError):
+                return None
+
+        def safe_str(val):
+            return str(val).strip().lower() if val is not None else ""
+
+        with open(csv_path, newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                match = (
+                    abs(safe_float(row.get("Strain Rate x")) - self.x_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate y")) - self.y_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate z")) - self.z_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate xy")) - self.xy_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate xz")) - self.xz_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate yz")) - self.yz_erate) < 1e-10 and
+                    safe_int(row.get("Max Sim Length")) == self.sim_length and
+                    safe_int(row.get("Output Timesteps")) == self.thermo and
+                    safe_int(row.get("Fracture Window")) == self.fracture_window and
+                    safe_str(row.get("Defect Type")) == safe_str(self.defect_type) and
+                    abs(safe_float(row.get("Defect Percentage")) - self.defect_perc) < 1e-10 and
+                    safe_int(row.get("Defect Random Seed")) == self.defect_random_seed
+                )
+                if match:
+                    print(f"[Rank 0] Already completed. Skipping: x={self.x_erate}, y={self.y_erate}, xy={self.xy_erate}")
+                    sys.stdout.flush()
+                    self.comm.Abort()  # Clean exit for parallel jobs
 
     def finalize_dataset(self):
         # APPLY THE LOCKING MECHANISM HERE
