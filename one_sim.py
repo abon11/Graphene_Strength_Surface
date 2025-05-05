@@ -3,7 +3,6 @@ from graphene_classes_deform import GrapheneSheet
 from graphene_classes_deform import Simulation
 import socket, os
 import argparse
-from make_surface import str2bool
 
 
 def main():
@@ -51,7 +50,15 @@ def main():
                  defect_type=args.defect_type, defect_perc=args.defect_perc, defect_random_seed=args.defect_random_seed,
                  makeplots=str2bool(args.makeplots), detailed_data=str2bool(args.detailed_data), fracture_window=args.fracture_window, 
                  theta=args.theta, storage_path=args.storage_path)
-    
+
+
+def str2bool(s):
+    if s.lower() == "true" or "1" or "yes" or "y":
+        return True
+    else:
+        return False
+
+
 
 # initialize core usage etc.
 def initialize_rank():

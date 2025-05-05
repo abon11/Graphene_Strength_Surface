@@ -155,6 +155,7 @@ class Simulation:
             self.introduce_defects()
         else:
             self.defect_type = "None"
+            self.defect_random_seed = None
 
         self.apply_fix_deform()
 
