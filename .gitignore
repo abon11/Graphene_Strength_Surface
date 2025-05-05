@@ -8,3 +8,4 @@ log.*
 *.data
 local_config.*
 *.out
+*.lock

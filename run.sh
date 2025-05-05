@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=84
-#SBATCH --job-name=60x60_0p5SV_seed12
+#SBATCH --ntasks=16
+#SBATCH --job-name=TEST2
 #SBATCH --partition=scavenger
 #SBATCH --mem-per-cpu=2GB
 #SBATCH --mail-type=ALL
@@ -15,7 +15,8 @@ echo "Start: $(date)"
 echo "cwd: $(pwd)"
 
 # mpiexec -n 16 lmp -in in.rotate
-python3 make_surface_slurm.py --nproc 84 --detailed_data true --defect_random_seed 12
+# python3 make_surface_slurm.py --nproc 16 --detailed_data true --defect_random_seed 13
+mpiexec -n 16 python3 one_sim.py --sheet_path /hpc/home/avb25/Graphene_Strength_Surface/simulation_data/data_files/data.60_60_rel1 --x_atoms 60 --y_atoms 60 --defect_type SV --defect_perc 0 --defect_random_seed 13 --sim_length 10000000 --timestep 0.0005 --thermo 1000 --makeplots false --detailed_data true --fracture_window 10 --storage_path /hpc/home/avb25/Graphene_Strength_Surface/simulation_data/defected_data --num_procs 16 --x_erate 0.001 --y_erate 0.001 --z_erate 0 --xy_erate 0 --xz_erate 0 --yz_erate 0
 
 echo "End: $(date)"
 
