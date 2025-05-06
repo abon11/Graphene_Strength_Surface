@@ -4,7 +4,7 @@
 #SBATCH --job-name=one_sim_%j
 #SBATCH --partition=scavenger
 #SBATCH --mem-per-cpu=2GB
-#SBATCH -o one_sim_%j.out
+# SBATCH -o one_sim_%j.out
 
 # Parse inputs
 nprocs=$1
@@ -25,7 +25,6 @@ storage_path=${15}
 x_erate=${16}
 y_erate=${17}
 xy_erate=${18}
-
 
 
 echo "Running one_sim with: x="$x_erate" y="$y_erate" xy="$xy_erate" on $nprocs procs"
