@@ -9,3 +9,4 @@ log.*
 local_config.*
 *.out
 *.lock
+*.html

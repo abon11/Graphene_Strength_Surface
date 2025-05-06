@@ -1,6 +1,9 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import local_config
+import plotly.express as px
+import plotly.graph_objects as go
 
 def main():
     folder = f'{local_config.DATA_DIR}/defected_data'
@@ -17,14 +20,15 @@ def main():
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6)
-        "Defect Random Seed": (1, 42)
+        "Defect Random Seed": (1, 42),
+        "Theta": (0, 30)
     }
 
     or_filters = {
         # "Defect Type": ["SV", "DV"]
     }
 
-    color_by_field = "Defect Random Seed"
+    color_by_field = "Theta"
     show_pristine = True
 
     # Load, filter, and plot
@@ -34,19 +38,11 @@ def main():
 
     base_title = create_title(exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
 
-    xdom = filtered_df[filtered_df["Strain Rate x"] >= filtered_df["Strain Rate y"]]
-    ydom = filtered_df[filtered_df["Strain Rate y"] >= filtered_df["Strain Rate x"]]
-
     if show_pristine:
         pristine_df = get_pristine_subset(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
-        pris_x = pristine_df[pristine_df["Strain Rate x"] >= pristine_df["Strain Rate y"]]
-        pris_y = pristine_df[pristine_df["Strain Rate y"] >= pristine_df["Strain Rate x"]]
-    else:
-        pris_x = None
-        pris_y = None
 
-    plot_strengths(xdom, folder, f"{base_title}, Armchair", color_by_field, pristine_data=pris_x)
-    plot_strengths(ydom, folder, f"{base_title}, Zigzag", color_by_field, pristine_data=pris_y)
+    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
+    # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 
 def load_data(csv_file):
@@ -71,30 +67,123 @@ def get_pristine_subset(df, exact_filters=None, range_filters=None, or_filters=N
 
 
 def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
-    if (exact_filters is None) and (range_filters is None) and (or_filters is None):
-        print("Warning: plotting entire dataset!")
+    """
+    Filter df on exact, range, OR filters *and* make phantom copies
+    of any isotropic points (Strain Rate x == Strain Rate y)
+    at *every* Theta value the user asked for.
+    """
+    # 1) Copy and pull out Theta filters
+    filtered = df.copy()
+    theta_exact = None
+    theta_range = None
+    theta_or = None
 
-    """Filter the dataframe based on exact and range filters."""
-    filtered_df = df.copy()
+    if exact_filters and "Theta" in exact_filters:
+        theta_exact = exact_filters["Theta"]
+    if range_filters and "Theta" in range_filters:
+        theta_range = range_filters["Theta"]
+    if or_filters and "Theta" in or_filters:
+        theta_or = or_filters["Theta"]
 
-    # Exact matches
-    if exact_filters:
-        for column, value in exact_filters.items():
-            filtered_df = filtered_df[filtered_df[column] == value]
+    # Build the clean dicts without Theta
+    exact_clean = {k: v for k, v in (exact_filters or {}).items() if k != "Theta"}
+    range_clean = {k: v for k, v in (range_filters or {}).items() if k != "Theta"}
+    or_clean = {k: v for k, v in (or_filters    or {}).items() if k != "Theta"}
 
-    # Range matches
-    if range_filters:
-        for column, (min_val, max_val) in range_filters.items():
-            filtered_df = filtered_df[
-                (filtered_df[column] >= min_val) & (filtered_df[column] <= max_val)
-            ]
+    # 2) Apply non-Theta exact filters
+    for col, val in exact_clean.items():
+        filtered = filtered[filtered[col] == val]
 
-    # OR matches
-    if or_filters:
-        for column, allowed_values in or_filters.items():
-            filtered_df = filtered_df[filtered_df[column].isin(allowed_values)]
+    # 3) Apply non-Theta range filters
+    for col, (mn, mx) in range_clean.items():
+        filtered = filtered[(filtered[col] >= mn) & (filtered[col] <= mx)]
 
-    return filtered_df
+    # 4) Apply non-Theta OR filters
+    for col, vals in or_clean.items():
+        filtered = filtered[filtered[col].isin(vals)]
+
+    # 5) Separate iso vs aniso
+    iso_mask = filtered["Strain Rate x"] == filtered["Strain Rate y"]
+    aniso_mask = ~iso_mask
+
+    # 6) Build theta_list from whatever filters the user gave, but only from the Theta values present in the current filtered set.
+    theta_list = []
+
+    if theta_exact is not None:
+        theta_list = [theta_exact]
+
+    elif theta_or is not None:
+        # only the exact ones they asked for (and that exist)
+        theta_list = list(filtered.loc[filtered["Theta"].isin(theta_or), "Theta"].unique())
+
+    elif theta_range is not None:
+        mn, mx = theta_range
+        # pull only the Theta values in [mn, mx] that are actually in filtered
+        theta_list = list(filtered.loc[(filtered["Theta"] >= mn) & (filtered["Theta"] <= mx),"Theta"].unique())
+
+    # 7) Phantom-replicate iso rows
+    iso_df = filtered[iso_mask]
+    phantoms = []
+    for θ in theta_list:
+        tmp = iso_df.copy()
+        tmp["Theta"] = θ
+        phantoms.append(tmp)
+    if phantoms:
+        iso_phantom_df = pd.concat(phantoms, ignore_index=True)
+    else:
+        # if no Theta filters, just keep each iso at its original Θ
+        iso_phantom_df = iso_df.copy()
+
+    # 8) Now select aniso rows by Theta filters
+    if theta_exact is not None:
+        aniso_df = filtered[aniso_mask & (filtered["Theta"] == theta_exact)]
+    elif theta_or is not None:
+        aniso_df = filtered[aniso_mask & filtered["Theta"].isin(theta_or)]
+    elif theta_range is not None:
+        mn, mx = theta_range
+        aniso_df = filtered[aniso_mask & (filtered["Theta"] >= mn) & (filtered["Theta"] <= mx)]
+    else:
+        # no Theta filtering at all
+        aniso_df = filtered[aniso_mask]
+
+    # 9) Union iso_phantoms + aniso_df
+    result = pd.concat([iso_phantom_df, aniso_df], ignore_index=True)
+    return result
+
+
+# def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
+#     if (exact_filters is None) and (range_filters is None) and (or_filters is None):
+#         print("Warning: plotting entire dataset!")
+
+#     """Filter the dataframe based on exact and range filters."""
+#     filtered_df = df.copy()
+
+#     # Exact matches
+#     if exact_filters:
+#         for column, value in exact_filters.items():
+#             if column == "Theta":
+#                 # Split into:
+#                 # 1. rows where strain_x == strain_y → always keep
+#                 # 2. rows where strain_x != strain_y and theta == value
+#                 isotropic_mask = filtered_df["Strain Rate x"] == filtered_df["Strain Rate y"]
+#                 theta_mask = (filtered_df["Theta"] == value) & (~isotropic_mask)  # when theta is good and erate_x != erate_y
+#                 filtered_df = filtered_df[isotropic_mask | theta_mask]
+#             else:
+#                 filtered_df = filtered_df[filtered_df[column] == value]
+
+#     # Range matches
+#     if range_filters:
+#         for column, (min_val, max_val) in range_filters.items():
+#             filtered_df = filtered_df[
+#                 (filtered_df[column] >= min_val) & (filtered_df[column] <= max_val)
+#             ]
+
+#     # OR matches
+#     if or_filters:
+#         for column, allowed_values in or_filters.items():
+#             filtered_df = filtered_df[filtered_df[column].isin(allowed_values)]
+
+#     return filtered_df
 
 
 def extract_field_string(field_name, exact_filters=None, range_filters=None, or_filters=None, suffix=""):
@@ -145,6 +234,11 @@ def create_title(exact_filters=None, range_filters=None, or_filters=None):
     if defect_rs_str:
         title_parts.append(defect_rs_str)
 
+    # Handle Theta
+    theta_str = extract_field_string("Theta", exact_filters, range_filters, or_filters, suffix="deg")
+    if theta_str:
+        title_parts.append(theta_str)
+
     # Join all parts
     return ", ".join(title_parts)
 
@@ -180,7 +274,7 @@ def assign_colors(df, color_by_field=None):
     return colors, value_to_color
 
 
-def plot_strengths(df, folder, title, color_by_field, pristine_data=None):
+def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend=True):
     """Scatter plot of Strength_1 vs Strength_2."""
     if df.empty and (pristine_data is None or pristine_data.empty):
         print("No data matches the specified filters.")
@@ -226,13 +320,81 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None):
             labels.append("Pristine")
 
         legend_title = color_by_field if color_by_field else "Legend"
-        plt.legend(handles, labels, title=legend_title, loc='best', frameon=True)
+        if legend:
+            plt.legend(handles, labels, title=legend_title, loc='best', frameon=True)
 
     fname = f"{folder}/plots/SS_{clean_title(title)}"
     plt.savefig(fname)
     plt.close()
     print(f"Plot saved to {fname}.")
-   
+
+
+def plot_strengths_3d(df, folder, title, color_by_field, pristine_data=None):
+    # wrap angle into [0,30] deg
+    raw = df["Theta"] % 60
+    wrapped = np.where(raw <= 30, raw, 60 - raw)
+    df = df.copy()
+    df["wrapped_angle"] = wrapped
+
+    # base scatter
+    fig = px.scatter_3d(
+        df,
+        x="Strength_1",
+        y="Strength_2",
+        z="wrapped_angle",
+        color=color_by_field if color_by_field in df.columns else None,
+        title=title,
+        labels={"wrapped_angle": "Angle (deg)", "Strength_1": "σ₁", "Strength_2": "σ₂"},
+        opacity=0.7,
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=df["Strength_2"],
+            y=df["Strength_1"],
+            z=df["wrapped_angle"],
+            mode="markers",
+            marker=dict(
+                # if you used px color mapping, just copy the same colors:
+                color=fig.data[0].marker.color,
+                size=fig.data[0].marker.size
+            ),
+            name=f"{color_by_field}"
+        )
+    )
+
+    # add pristine as black markers
+    if pristine_data is not None and not pristine_data.empty:
+        p_raw = pristine_data["Theta"] % 60
+        p_wrap = np.where(p_raw <= 30, p_raw, 60 - p_raw)
+        pristine_data = pristine_data.copy()
+        pristine_data["wrapped_angle"] = p_wrap
+
+        fig.add_trace(
+            go.Scatter3d(
+                x=pristine_data["Strength_1"],
+                y=pristine_data["Strength_2"],
+                z=pristine_data["wrapped_angle"],
+                mode="markers",
+                marker=dict(color="black", size=4),
+                name="Pristine",
+            )
+        )
+        fig.add_trace(
+            go.Scatter3d(
+                x=pristine_data["Strength_2"],
+                y=pristine_data["Strength_1"],
+                z=pristine_data["wrapped_angle"],
+                mode="markers",
+                marker=dict(color="black", size=4),
+                name="Pristine",
+            )
+        )
+
+    # write out a self‐contained HTML you can open in any browser
+    html_path = f"{folder}/plots/3D_SS_{clean_title(title)}.html"
+    fig.write_html(html_path, include_plotlyjs="cdn")
+    print(f"Interactive 3D plot saved to {html_path}")
 
 if __name__ == "__main__":
     main()
