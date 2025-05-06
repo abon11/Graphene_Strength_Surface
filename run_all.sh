@@ -4,7 +4,7 @@
 export DEFECT_TYPE="SV"
 export DEFECT_PERC=0.5
 export DEFECT_RANDOM_SEED=42
-export THETA=15
+export THETA=25
 bash ./run_surface.sh &
 
 sleep 60
@@ -47,5 +47,13 @@ bash ./run_surface.sh &
 
 export DEFECT_RANDOM_SEED=13
 bash ./run_surface.sh &
+
+export DEFECT_TYPE="None"
+export DEFECT_PERC=0
+bash ./run_surface.sh &
+
+export THETA=15
+bash ./run_surface.sh &
+
 
 echo "DONE!!!"
