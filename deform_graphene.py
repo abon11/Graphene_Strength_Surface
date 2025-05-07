@@ -1,4 +1,4 @@
-# classes for graphene sample collection
+""" Houses all of the logic for running one simulation """
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,15 +6,17 @@ import pandas as pd
 from lammps import lammps
 from scipy.signal import find_peaks
 import os
-import skfem as fem
-from skfem.helpers import grad
-from scipy.spatial import Delaunay
-from datetime import timedelta
+from datetime import timedelta, datetime
 import time
+from filelock import FileLock
+import csv
+import sys
+
+import local_config 
 
 
 class GrapheneSheet:
-    def __init__(self, datafile_name, x_atoms, y_atoms, makeStrengthSurface=True):
+    def __init__(self, datafile_name, x_atoms, y_atoms):
         """
         Class to store information about a graphene sheet.
         
@@ -27,17 +29,7 @@ class GrapheneSheet:
         self.datafile_name = datafile_name
         self.x_atoms = x_atoms
         self.y_atoms = y_atoms
-        self.makeStrengthSurface = makeStrengthSurface
         self.volume = self.calcVolume()  # volume of sheet in angstroms cubed (note that this is unrelaxed)
-
-        if self.makeStrengthSurface:
-            # initialize the plots for this sheet's strength surface (if user wants)
-            fig, ax = plt.subplots()
-            ax.set_xlabel(r'$\sigma_1$')
-            ax.set_ylabel(r'$\sigma_2$')
-            ax.set_title(f'Molecular Strength Surface of Pristine Graphite ({x_atoms}x{y_atoms})')
-            self.fig = fig
-            self.ax = ax
 
     def __repr__(self):
         return f"GrapheneSheet(datafile_name='{self.datafile_name}', x_atoms={self.x_atoms}, y_atoms={self.y_atoms}, volume={self.volume})"
@@ -60,35 +52,50 @@ class GrapheneSheet:
         self.Lz = Lz
 
         return vol
+    
+    def extract_atom_positions(self):
+        """
+        Extract atom positions from a LAMMPS data file.
 
-    # given the three principal stresses, populate a point on the strength surface (eventually specity 2D or 3D)
-    def populate_surface(self, strength, dimension=2):
-        if dimension == 2:
-            self.ax.scatter(strength[0], strength[1], color='g')
+        Returns:
+        - positions: Nx4 NumPy array with columns [id, x, y, z]
+        """
+        positions = []
+        with open(self.datafile_name, 'r') as f:
+            lines = f.readlines()
 
-    def finish_surface_plot(self):
-        # Get the current x and y data (do this when you have more than one point)
-        # x_data = ax.collections[0].get_offsets()[:, 0]  # Extract x-coordinates
-        # y_data = ax.collections[0].get_offsets()[:, 1]  # Extract y-coordinates
+        # Find start of "Atoms" section
+        atom_start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("Atoms"):
+                atom_start = i + 2  # Skip "Atoms" line and its header
+                break
 
-        # # Calculate limits with some padding
-        # x_min, x_max = np.min(x_data), np.max(x_data)
-        # y_min, y_max = np.min(y_data), np.max(y_data)
+        if atom_start is None:
+            raise ValueError("Could not find 'Atoms' section in file.")
 
-        # padding = 0.1  # 10% padding
+        # Read until next empty line (end of atom section)
+        for line in lines[atom_start:]:
+            if line.strip() == '' or line.startswith('Velocities'):
+                break
+            parts = line.strip().split()
+            atom_id = int(parts[0])
+            x = float(parts[2])
+            y = float(parts[3])
+            z = float(parts[4])
+            positions.append([atom_id, x, y, z])
 
-        # # Set new limits with padding
-        # ax.set_xlim(x_min - padding * (x_max - x_min), x_max + padding * (x_max - x_min))
-        # ax.set_ylim(y_min - padding * (y_max - y_min), y_max + padding * (y_max - y_min))
-
-        self.fig.savefig(f'figures/{self.datafile_name.split(".")[1]}__strength_surface.png')
-        # plt.show()
+        return np.array(positions)
 
 
 class Simulation:
     # we basically want the whole simulation to run on initialization, then we can pull whatever we want from it for postprocessing
-    def __init__(self, comm, rank, sheet, x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
-                 sim_length=100000, timestep=0.0005, thermo=200, makeplots=False, fracture_window=10, storage_path='simulation_data/deform_data'):
+    def __init__(self, comm, rank, sheet, num_procs,
+                 x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
+                 sim_length=100000, timestep=0.0005, thermo=1000, 
+                 defect_type='None', defect_perc=0, defect_random_seed=42,
+                 makeplots=False, detailed_data=False, fracture_window=10, theta=0,
+                 storage_path=f'{local_config.DATA_DIR}/defected_data'):
         """
         Class to execute one simulation and store information about it.
         This essentially loads the specimen to failure.
@@ -97,16 +104,24 @@ class Simulation:
         - comm (???): ???
         - rank (???): ???
         - sheet (GrapheneSheet): Object that stores all necessary info about the sheet being used.
-        - x_erate (float): strain rate for fix deform (in 1/ps) (same for all other directions)
+        - num_procs (int): Specifies the number of processors used for this simulation - just to document along with the time
+        - x_erate (float): Strain rate for fix deform (in 1/ps) (same for all other directions)
         - sim_length (int): Number of timesteps before simulation is killed (max timesteps) 
         - timestep (float): Size of one timestep in LAMMPS simulation (picoseconds)
         - thermo (int): Frequency of timesteps you output data (if thermo = 100, output every 100 timesteps)
+        - defect_type (str): What type of defect is in the sheet? SV=Single Vacancy, DV=Double Vacancy.
+        - defect_frac (float): Percentage of total atoms removed for single vacancy defects
+        - defect_random_seed (int): Sets the random seed for the defect generation
         - makeplots (bool): User specifies whether or not they want plots of stress vs time generated and saved (default False)
+        - detailed_data (bool): User specifies whether or not they want to save the detailed timestep data (default False)
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
+        - theta (float): Angle of max principal stress (for storage only)
         - storage_path (str): filepath to where we want to store the data
         """
-
+        self.comm = comm
+        self.rank = rank
         self.sheet = sheet
+        self.num_procs = num_procs
         self.x_erate = x_erate
         self.y_erate = y_erate
         self.z_erate = z_erate
@@ -116,38 +131,35 @@ class Simulation:
         self.sim_length = sim_length
         self.timestep = timestep
         self.thermo = thermo
+        self.defect_type = defect_type
+        self.defect_perc = defect_perc
+        self.defect_random_seed = defect_random_seed
         self.makeplots = makeplots
+        self.detailed_data = detailed_data
         self.fracture_window = fracture_window
+        self.theta = theta
         self.storage_path = storage_path
+
+        self.check_duplicate()  # ensure that we haven't run this sim yet
 
         self.starttime = time.perf_counter()  # start simulation timer
 
         self.erate_timestep = self.calculate_erateTimestep()  # used to calculate strain rate at any given timestep (just multiply this by whatever timestep you're on)
 
-        self.big_csv = f'{storage_path}/all_simulations.csv'
-        self.initialize_bigcsv()  # initialize csv file for data storage
-        self.simulation_id = self.get_simid()  # returns string of simulation id (ex: '00001')
-
-        self.simulation_directory = self.create_storage_directory()  # create data storage directory (storage_path/sim{simid})
+        if detailed_data:
+            self.create_storage_directory()  # create data storage directory (storage_path/sim{datetime})
 
         lmp = lammps(comm=comm)  # initialize lammps
 
-        # import all variables to lammps
-        lmp.command(f"variable vol equal {sheet.volume}")
-        lmp.command(f"variable sheet_lx equal {sheet.Lx}")
-        lmp.command(f"variable sheet_ly equal {sheet.Ly}")
-        lmp.command(f"variable sheet_lz equal {sheet.Lz}")
-        lmp.command(f"variable timestep equal {self.timestep}")
-
-        lmp.command(f"variable conv_fact equal 0.0001")
-        lmp.command(f"variable datafile string {sheet.datafile_name}")
-        lmp.command(f"variable dump_output string {self.simulation_directory}/dump.sim{self.simulation_id}")
-
-        lmp.file("in.deform_py")
-
         self.lmp = lmp
-        self.comm = comm
-        self.rank = rank
+
+        self.setup_lammps()  # puts all needed variables in lammps and initializes file
+
+        if (defect_perc != 0):
+            self.introduce_defects()
+        else:
+            self.defect_type = "None"
+            self.defect_random_seed = None
 
         self.apply_fix_deform()
 
@@ -162,7 +174,12 @@ class Simulation:
         self.principal_stresses = principal_stresses  # array of all three principal stress values at each outputted thermo
         self.principalAxes_strain = principalAxes_strain  # array of strain values along all three principal directions at each outputted thermo
 
-        strength, crit_strain, fracture_time = self.find_fracture(principal_stresses, give_crit_strain=True)
+        try:
+            strength, crit_strain, fracture_time = self.find_fracture(principal_stresses, give_crit_strain=True)
+        except ValueError:
+            strength = [None, None, None]
+            crit_strain = [None, None, None]
+            fracture_time = None
 
         self.strength = strength  # vector of the three critical principal stresses at fracture (largest to smallest)
         self.crit_strain = crit_strain  # vector of the three critical strains in the principal sirections at fracture (largest to smallest)
@@ -171,51 +188,122 @@ class Simulation:
         self.sim_duration = timedelta(seconds=time.perf_counter() - self.starttime)
 
         if self.rank == 0:
+            self.finalize_dataset()  # gets simid and saves everything
+
             print(f'Material Strength ({sheet.x_atoms}x{sheet.y_atoms} sheet): {strength} GPa. ')
-            self.append_csv()  # append all data from the simulation to the csv file. 
-            self.save_detailed_data()
-            if sheet.makeStrengthSurface:
-                sheet.populate_surface(strength)
+
             if makeplots:
                 # right now we really only care about the principal stresses, so only output that
                 self.plot_principalStress()
                 # self.plot_pressure()
                 # self.plot_stressTensor()
 
+
+    def check_duplicate(self):
+        if self.rank != 0:
+            return  # Only rank 0 should check
+
+        csv_path = os.path.join(self.storage_path, "all_simulations.csv")
+        if not os.path.exists(csv_path):
+            return
+
+        def safe_float(val):
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return None
+
+        def safe_int(val):
+            try:
+                return int(float(val))
+            except (ValueError, TypeError):
+                return None
+
+        def safe_str(val):
+            return str(val).strip().lower() if val is not None else ""
+
+        with open(csv_path, newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                match = (
+                    abs(safe_float(row.get("Strain Rate x")) - self.x_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate y")) - self.y_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate z")) - self.z_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate xy")) - self.xy_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate xz")) - self.xz_erate) < 1e-10 and
+                    abs(safe_float(row.get("Strain Rate yz")) - self.yz_erate) < 1e-10 and
+                    safe_int(row.get("Max Sim Length")) == self.sim_length and
+                    safe_int(row.get("Output Timesteps")) == self.thermo and
+                    safe_int(row.get("Fracture Window")) == self.fracture_window and
+                    safe_str(row.get("Defect Type")) == safe_str(self.defect_type) and
+                    abs(safe_float(row.get("Defect Percentage")) - self.defect_perc) < 1e-10 and
+                    safe_int(row.get("Defect Random Seed")) == self.defect_random_seed
+                )
+                if match:
+                    print(f"[Rank 0] Already completed. Skipping: x={self.x_erate}, y={self.y_erate}, xy={self.xy_erate}")
+                    sys.stdout.flush()
+                    self.comm.Abort()  # Clean exit for parallel jobs
+
+    def finalize_dataset(self):
+        # APPLY THE LOCKING MECHANISM HERE
+        self.main_csv = f'{self.storage_path}/all_simulations.csv'
+        lockfile = f'{self.storage_path}/all_simulations.lock'
+
+        with FileLock(lockfile):
+            self.initialize_maincsv()  # initialize csv file for data storage
+
+            self.simulation_id = self.get_simid()  # returns string of simulation id (ex: '00001')
+
+            self.append_maincsv()  # append all data from the simulation to the csv file. 
+
+        if self.detailed_data:
+            self.save_detailed_data()
+
+
     # create the directory where we will be putting the detailed data for this simulation
+    # note that the names here are the timestamp - this will update to the simid upon successful simulation run - if failed, will stay as timestamp
     def create_storage_directory(self):
-        path = f'{self.storage_path}/sim{self.simulation_id}'
-        os.makedirs(path, exist_ok=True)
-        return path
+        if self.rank == 0:
+            timestamp_id = datetime.now().strftime("%Y%m%d%H%M%S%f")
+        else:
+            timestamp_id = None
+
+        timestamp_id = self.comm.bcast(timestamp_id, root=0)  # must do this to sync ranks up
+        self.timestamp_id = timestamp_id
+        self.simulation_directory = f'{self.storage_path}/sim{self.timestamp_id}'
+        os.makedirs(self.simulation_directory, exist_ok=True)
 
     # if the file doesn't exits, create one. if it does exist we'll just append to the old one so we don't overwrite data
-    def initialize_bigcsv(self):
-        if not os.path.exists(self.big_csv) or os.path.getsize(self.big_csv) == 0:
+    def initialize_maincsv(self):
+        if not os.path.exists(self.main_csv) or os.path.getsize(self.main_csv) == 0:
             df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Fracture Time', 'Max Sim Length', 
-                                       'Output Timesteps', 'Fracture Window', 'Simulation Time'])
-            df.to_csv(self.big_csv, index=False)
+                                       'Output Timesteps', 'Fracture Window', 'Theta', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 
+                                       'Simulation Time', 'Threads'])
+            df.to_csv(self.main_csv, index=False)
 
     def get_simid(self):
-        if os.path.exists(self.big_csv) and os.path.getsize(self.big_csv) > 0:
+        if os.path.exists(self.main_csv) and os.path.getsize(self.main_csv) > 0:
             # Read the existing file and find the maximum simulation id
-            df = pd.read_csv(self.big_csv)
+            df = pd.read_csv(self.main_csv)
             if "Simulation ID" in df.columns and not df.empty:
                 return str(df["Simulation ID"].max() + 1).zfill(5)
         # Default to 1 if the file doesn't exist or is empty
         return str(1).zfill(5)
 
     # appends a new simulation to the csv file for storage
-    def append_csv(self):
+    def append_maincsv(self):
         new_row = pd.DataFrame({'Simulation ID':[self.simulation_id], 'Num Atoms x': [self.sheet.x_atoms], 'Num Atoms y': [self.sheet.y_atoms], 
                                 'Strength_1': [self.strength[0]], 'Strength_2': [self.strength[1]], 'Strength_3': [self.strength[2]],
                                 'CritStrain_1': [self.crit_strain[0]], 'CritStrain_2': [self.crit_strain[1]], 'CritStrain_3': [self.crit_strain[2]],
                                 'Strain Rate x': [self.x_erate], 'Strain Rate y': [self.y_erate], 'Strain Rate z': [self.z_erate],
                                 'Strain Rate xy': [self.xy_erate], 'Strain Rate xz': [self.xz_erate], 'Strain Rate yz': [self.yz_erate],
-                                'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length],
-                                'Output Timesteps': [self.thermo], 'Fracture Window': [self.fracture_window], 'Simulation Time': [self.sim_duration]})
-        new_row.to_csv(self.big_csv, mode="a", header=False, index=False)
+                                'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
+                                'Fracture Window': [self.fracture_window], 'Theta': [self.theta], 'Defect Type': [self.defect_type], 
+                                'Defect Percentage': [self.defect_perc], 'Defect Random Seed': [self.defect_random_seed], 'Simulation Time': [self.sim_duration],
+                                'Threads': [self.num_procs]})
+        new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
 
     def save_detailed_data(self):
         df = pd.DataFrame({'Timestep': self.step_vector, 
@@ -228,8 +316,42 @@ class Simulation:
                            'Strain_xy': self.strain_tensor[:, 3], 'Strain_xz': self.strain_tensor[:, 4], 'Strain_yz': self.strain_tensor[:, 5],
                            'Pressure_x': self.pressure_tensor[:, 0], 'Pressure_y': self.pressure_tensor[:, 1], 'Pressure_z': self.pressure_tensor[:, 2]})
         
+        # now we the old filenames to the now retrieved simulation id's
+
+        # rename the simulation directory and dumpfiles
+        old_directory = self.simulation_directory
+        new_directory = f'{self.storage_path}/sim{self.simulation_id}'
+        os.rename(old_directory, new_directory)
+        self.simulation_directory = new_directory  # update directory
+
+        # rename dump files inside directory (if necessary)
+        for fname in os.listdir(new_directory):
+            if self.timestamp_id in fname:
+                new_fname = fname.replace(self.timestamp_id, self.simulation_id)
+                os.rename(os.path.join(new_directory, fname), os.path.join(new_directory, new_fname))
+
+
         detailed_csv_file = f'{self.simulation_directory}/sim{self.simulation_id}.csv'
         df.to_csv(detailed_csv_file, index=False)
+
+    ########## END DATASTORAGE ##########
+
+    # import all variables to lammps
+    def setup_lammps(self):
+        self.lmp.command(f"variable vol equal {self.sheet.volume}")
+        self.lmp.command(f"variable sheet_lx equal {self.sheet.Lx}")
+        self.lmp.command(f"variable sheet_ly equal {self.sheet.Ly}")
+        self.lmp.command(f"variable sheet_lz equal {self.sheet.Lz}")
+        self.lmp.command(f"variable timestep equal {self.timestep}")
+
+        self.lmp.command(f"variable conv_fact equal 0.0001")
+        self.lmp.command(f"variable datafile string {self.sheet.datafile_name}")
+
+        if self.detailed_data:
+            # make it with the timestamp id becasue we don't have simid yet
+            self.lmp.command(f"dump 1 all custom {self.thermo} {self.simulation_directory}/dump.sim{self.timestamp_id} id type x y z")
+
+        self.lmp.file("in.deform_py")
 
     # This writes the fix deform command for lammps and sends it to lammps
     def apply_fix_deform(self):
@@ -282,11 +404,8 @@ class Simulation:
         for step in range(0, self.sim_length, self.thermo):
             iters, stress_tensor, step_vector, pressure_tensor, strain_tensor = self.run_step(step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor)
 
-            column_sums = np.sum(np.abs(stress_tensor), axis=0)
-            dominant_direction = np.argmax(column_sums)
-
-            # checks when dominant direction stress drops to detect fracture - this is just an on the fly check because we don't have principal stresses calculated
-            strength, _ = self.find_fracture(stress_tensor[:(iters+1), dominant_direction].reshape(-1, 1))
+            # checks when stress drops to detect fracture - this is just an on the fly check because we don't have principal stresses calculated
+            strength, _ = self.find_fracture(stress_tensor[:(iters+1)])  # note: changed from just dominant direction stress to accomidate the multi-axis check
 
             # if we get a strength value, that means fracture was detected and we can leave the loop
             if strength[0] is not None:
@@ -349,6 +468,32 @@ class Simulation:
         strain_tensor[iters] = strain
         return iters, stress_tensor, step_vector, pressure_tensor, strain_tensor
     
+
+    def get_strength_info(self, stress_index, principal_stresses):
+        peaks, _ = find_peaks(principal_stresses[:, stress_index])
+        if len(peaks) == 0:
+            # No peaks found (idt this could ever happen but who knows lol)
+            strength = [None, None, None]
+            fracture_timestep = None
+        
+        # Now we are confident there is fracture, let's return the proper values
+        else:
+            fracture_index = peaks[np.argmax(principal_stresses[:, stress_index][peaks])]  # find the index of the highest peak
+
+            # see if this "fracture" is high enough to be considered (or is it just noise?)
+            # for fracture, the (peak - window) must be greater than the minimum point
+            if (np.max(principal_stresses[fracture_index]) - self.fracture_window < np.min(principal_stresses[:, 0][-10:])):
+                strength = [None, None, None]
+                fracture_timestep = None
+            else:
+                strength = principal_stresses[fracture_index]
+                fracture_timestep = fracture_index * self.thermo
+                print("FRACTUREEEEEE")
+
+        
+        return strength, fracture_timestep, fracture_index
+
+
     # input vector of principal stresses so far, outputs strength and fracture timestep (of it occurred), otherwise None for both
     # idea here is to have the previous 5 thermos be our testcase, and the previous 10 before that be what we're testing against
     # if the average of the previous 5 is lower than the average of the 10 before that, fracture has occurred and we should find peaks
@@ -363,38 +508,30 @@ class Simulation:
             mean_last_10 = sum(principal_stresses[:, 0][-10:]) / 10
             mean_15_before = sum(principal_stresses[:, 0][-25:-10]) / 15
 
-            # if we are still increasing on average, no fracture yet
-            if mean_last_10 >= mean_15_before:
+            # get the same for principal stress 2 (in case weird behavior)
+            mean_last_10_2 = sum(principal_stresses[:, 1][-10:]) / 10
+            mean_15_before_2 = sum(principal_stresses[:, 1][-25:-10]) / 15
+
+            sig0_intact = mean_last_10 >= mean_15_before
+            sig1_intact = mean_last_10_2 >= mean_15_before_2
+
+            # if we are still increasing on average in both directions, no fracture yet
+            if sig0_intact and sig1_intact:
                 strength = [None, None, None]
                 fracture_timestep = None
             
             # we have detected a significant drop on average (fracture)
             else:
-                peaks, _ = find_peaks(principal_stresses[:, 0])
-                if len(peaks) == 0:
-                    # No peaks found (idt this could ever happen but who knows lol)
-                    strength = [None, None, None]
-                    fracture_timestep = None
+                if not sig0_intact:
+                    strength, fracture_timestep, fracture_index = self.get_strength_info(0, principal_stresses)
                 
-                # Now we are confident there is fracture, let's return the proper values
-                else:
-                    fracture_index = peaks[np.argmax(principal_stresses[:, 0][peaks])]  # find the index of the highest peak
+                elif not sig1_intact:
+                    strength, fracture_timestep, fracture_index = self.get_strength_info(1, principal_stresses)
 
-                    # see if this "fracture" is high enough to be considered (or is it just noise?)
-                    # for fracture, the (peak - window) must be greater than the minimum point
-                    if (np.max(principal_stresses[fracture_index]) - self.fracture_window < np.min(principal_stresses[:, 0][-10:])):
-                        strength = [None, None, None]
-                        fracture_timestep = None
-                    else:
-                        strength = principal_stresses[fracture_index]
-                        fracture_timestep = fracture_index * self.thermo
-
-                        if give_crit_strain:
-                            crit_strain = self.principalAxes_strain[fracture_index]
-                            return strength, crit_strain, fracture_timestep
-                        
-                        print("FRACTUREEEEEE")
-
+                if give_crit_strain:
+                    crit_strain = self.principalAxes_strain[fracture_index]
+                    return strength, crit_strain, fracture_timestep
+                
         return strength, fracture_timestep
     
     # pass through length six vector that contains all stresses or strains in each direction, computes the eigvals so you have the principal stresses,
@@ -469,6 +606,38 @@ class Simulation:
         stress_tensor_ax.grid()
         stress_tensor_fig.savefig(f'{self.simulation_directory}_tensor_vs_time.png')
 
+    # puts the defects into the sheet - currently just one defect hardcoded in
+    def introduce_defects(self):
+        # this just deletes a sphere of radius 3 at (60, 30, 0)
+        # region_def = "region defects sphere 60 30 0 3"
+        # deleting = "delete_atoms region defects"
+
+        # self.lmp.command(region_def)
+        # self.lmp.command(deleting)
+        if self.defect_type == 'SV':
+            delete_ids = self.pick_SV_atoms(self.defect_perc)
+            for atom in delete_ids:
+                self.lmp.command(f"group to_delete id {atom}")
+                self.lmp.command("delete_atoms group to_delete")
+        
+        # must add functionality for DV
+
+    # Pick atoms to delete for single vacancies
+    def pick_SV_atoms(self, delete_percentage):
+        atom_positions = self.sheet.extract_atom_positions()
+
+        total_atoms = len(atom_positions)
+        n_delete = int(total_atoms * (delete_percentage / 100))
+
+        # Assume atom_positions is a Nx4 array: [id, x, y, z]
+        ids = atom_positions[:, 0]
+
+        # Randomly choose atoms to delete
+        np.random.seed(self.defect_random_seed)
+        delete_ids = np.random.choice(ids, n_delete, replace=False)
+
+        return delete_ids.astype(int)
+
 
 class Relaxation:
     def __init__(self, comm, rank, sheet):
@@ -495,3 +664,5 @@ class Relaxation:
         self.comm = comm
         self.rank = rank
         self.sheet = sheet
+
+        

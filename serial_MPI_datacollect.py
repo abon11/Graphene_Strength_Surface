@@ -1,6 +1,6 @@
 from mpi4py import MPI
-from graphene_classes_deform import GrapheneSheet
-from graphene_classes_deform import Simulation
+from deform_graphene import GrapheneSheet
+from deform_graphene import Simulation
 import numpy as np
 import matplotlib.pyplot as plt
 

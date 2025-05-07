@@ -1,3 +1,5 @@
+""" This script sucks but it sorta works """
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import os

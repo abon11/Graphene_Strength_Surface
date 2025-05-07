@@ -1,3 +1,5 @@
+""" This is used if you want to make a strength surface not using SLURM """
+
 import argparse
 import subprocess
 import time

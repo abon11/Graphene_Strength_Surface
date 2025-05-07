@@ -1,6 +1,8 @@
+""" This is what actually runs one simulation of a deformation of a graphene sheet """
+
 from mpi4py import MPI
-from graphene_classes_deform import GrapheneSheet
-from graphene_classes_deform import Simulation
+from deform_graphene import GrapheneSheet
+from deform_graphene import Simulation
 import socket, os
 import argparse
 
