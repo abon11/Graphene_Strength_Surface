@@ -41,8 +41,8 @@ def main():
     if show_pristine:
         pristine_df = get_pristine_subset(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
 
-    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
-    # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
+    # plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
+    plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 
 def load_data(csv_file):
@@ -72,7 +72,7 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
     of any isotropic points (Strain Rate x == Strain Rate y)
     at *every* Theta value the user asked for.
     """
-    # 1) Copy and pull out Theta filters
+    # Copy and pull out Theta filters
     filtered = df.copy()
     theta_exact = None
     theta_range = None
@@ -90,23 +90,23 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
     range_clean = {k: v for k, v in (range_filters or {}).items() if k != "Theta"}
     or_clean = {k: v for k, v in (or_filters    or {}).items() if k != "Theta"}
 
-    # 2) Apply non-Theta exact filters
+    # Apply non-Theta exact filters
     for col, val in exact_clean.items():
         filtered = filtered[filtered[col] == val]
 
-    # 3) Apply non-Theta range filters
+    # Apply non-Theta range filters
     for col, (mn, mx) in range_clean.items():
         filtered = filtered[(filtered[col] >= mn) & (filtered[col] <= mx)]
 
-    # 4) Apply non-Theta OR filters
+    # Apply non-Theta OR filters
     for col, vals in or_clean.items():
         filtered = filtered[filtered[col].isin(vals)]
 
-    # 5) Separate iso vs aniso
+    # Separate iso vs aniso
     iso_mask = filtered["Strain Rate x"] == filtered["Strain Rate y"]
     aniso_mask = ~iso_mask
 
-    # 6) Build theta_list from whatever filters the user gave, but only from the Theta values present in the current filtered set.
+    # Build theta_list from whatever filters the user gave, but only from the Theta values present in the current filtered set.
     theta_list = []
 
     if theta_exact is not None:
@@ -121,12 +121,12 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
         # pull only the Theta values in [mn, mx] that are actually in filtered
         theta_list = list(filtered.loc[(filtered["Theta"] >= mn) & (filtered["Theta"] <= mx),"Theta"].unique())
 
-    # 7) Phantom-replicate iso rows
+    # Phantom-replicate iso rows
     iso_df = filtered[iso_mask]
     phantoms = []
-    for θ in theta_list:
+    for th in theta_list:
         tmp = iso_df.copy()
-        tmp["Theta"] = θ
+        tmp["Theta"] = th
         phantoms.append(tmp)
     if phantoms:
         iso_phantom_df = pd.concat(phantoms, ignore_index=True)
@@ -134,7 +134,7 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
         # if no Theta filters, just keep each iso at its original Θ
         iso_phantom_df = iso_df.copy()
 
-    # 8) Now select aniso rows by Theta filters
+    # Now select aniso rows by Theta filters
     if theta_exact is not None:
         aniso_df = filtered[aniso_mask & (filtered["Theta"] == theta_exact)]
     elif theta_or is not None:
@@ -146,44 +146,9 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
         # no Theta filtering at all
         aniso_df = filtered[aniso_mask]
 
-    # 9) Union iso_phantoms + aniso_df
+    # Union iso_phantoms + aniso_df
     result = pd.concat([iso_phantom_df, aniso_df], ignore_index=True)
     return result
-
-
-# def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
-#     if (exact_filters is None) and (range_filters is None) and (or_filters is None):
-#         print("Warning: plotting entire dataset!")
-
-#     """Filter the dataframe based on exact and range filters."""
-#     filtered_df = df.copy()
-
-#     # Exact matches
-#     if exact_filters:
-#         for column, value in exact_filters.items():
-#             if column == "Theta":
-#                 # Split into:
-#                 # 1. rows where strain_x == strain_y → always keep
-#                 # 2. rows where strain_x != strain_y and theta == value
-#                 isotropic_mask = filtered_df["Strain Rate x"] == filtered_df["Strain Rate y"]
-#                 theta_mask = (filtered_df["Theta"] == value) & (~isotropic_mask)  # when theta is good and erate_x != erate_y
-#                 filtered_df = filtered_df[isotropic_mask | theta_mask]
-#             else:
-#                 filtered_df = filtered_df[filtered_df[column] == value]
-
-#     # Range matches
-#     if range_filters:
-#         for column, (min_val, max_val) in range_filters.items():
-#             filtered_df = filtered_df[
-#                 (filtered_df[column] >= min_val) & (filtered_df[column] <= max_val)
-#             ]
-
-#     # OR matches
-#     if or_filters:
-#         for column, allowed_values in or_filters.items():
-#             filtered_df = filtered_df[filtered_df[column].isin(allowed_values)]
-
-#     return filtered_df
 
 
 def extract_field_string(field_name, exact_filters=None, range_filters=None, or_filters=None, suffix=""):

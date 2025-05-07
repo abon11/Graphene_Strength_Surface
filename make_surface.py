@@ -2,99 +2,114 @@ import argparse
 import subprocess
 import time
 import local_config
+import sys
+import numpy as np
+
+MIN_CORES_PER_JOB = 12
 
 
-def main():
-
+def parse_args():
     parser = argparse.ArgumentParser()
-    
-    # Default parameters
+    parser.add_argument("--nproc", type=int, required=True, help="Total cores allocated to this SLURM job")
     parser.add_argument("--sheet_path", type=str, default=f"{local_config.DATA_DIR}/data_files/data.60_60_rel1")
     parser.add_argument("--x_atoms", type=int, default=60)
     parser.add_argument("--y_atoms", type=int, default=60)
-
-    parser.add_argument("--defect_type", type=str, default="SV")
+    parser.add_argument("--defect_type", type=str, default="None")
     parser.add_argument("--defect_perc", type=float, default=0)
     parser.add_argument("--defect_random_seed", type=int, default=42)
     parser.add_argument("--sim_length", type=int, default=10000000)
     parser.add_argument("--timestep", type=float, default=0.0005)
     parser.add_argument("--thermo", type=int, default=1000)
-    parser.add_argument("--makeplots", type=str, default="false")  # these are strings, then we do str2bool to make them bools
+    parser.add_argument("--makeplots", type=str, default="false")
     parser.add_argument("--detailed_data", type=str, default="false")
     parser.add_argument("--fracture_window", type=int, default=10)
-
+    parser.add_argument("--storage_path", type=str, default=f"{local_config.DATA_DIR}/defected_data")
     parser.add_argument("--both_directions", type=str, default="true")
-    parser.add_argument("--storage_path", type=str, default=f'{local_config.DATA_DIR}/defected_data')
+    parser.add_argument("--theta", type=float, default=0.0)
+    return parser.parse_args()
 
-    parser.add_argument("--nproc", type=int, required=True)  # user specified number of processors to use
 
-    args = parser.parse_args()
+def str2bool(s):
+    return s.lower() in ("true", "1", "yes", "y")
 
-    min_cores = 4
-    if args.nproc < min_cores:
-        raise ValueError(f"Must use at least {min_cores} cores")
 
-    max_jobs = args.nproc // min_cores
+def build_job_command(base_args, x_erate, y_erate, xy_erate, cores):
+    return [
+        "mpiexec", "-n", str(cores), 
+        "python3", "one_sim.py",
+        "--sheet_path", base_args.sheet_path,
+        "--x_atoms", str(base_args.x_atoms),
+        "--y_atoms", str(base_args.y_atoms),
+        "--defect_type", base_args.defect_type,
+        "--defect_perc", str(base_args.defect_perc),
+        "--defect_random_seed", str(base_args.defect_random_seed),
+        "--sim_length", str(base_args.sim_length),
+        "--timestep", str(base_args.timestep),
+        "--thermo", str(base_args.thermo),
+        "--makeplots", base_args.makeplots,
+        "--detailed_data", base_args.detailed_data,
+        "--fracture_window", str(base_args.fracture_window),
+        "--theta", base_args.theta,
+        "--storage_path", base_args.storage_path,
+        "--num_procs", str(cores),
+        "--x_erate", str(x_erate),
+        "--y_erate", str(y_erate),
+        "--z_erate", "0",
+        "--xy_erate", str(xy_erate),
+        "--xz_erate", "0",
+        "--yz_erate", "0"
+    ]
 
-    if max_jobs > 21:
-        input(f"Warning: Running 21 jobs on {min_cores} cores, leaving {args.nproc - (21 * min_cores)} unused. Press enter to continue. ")
-
-    # these are the strain rates that correspond to creating a surface
-    x_rates = [1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3]
-    y_rates = [0, 1e-3, 9e-4, 8e-4, 7e-4, 6e-4, 5e-4, 4e-4, 3e-4, 2e-4, 1e-4]
-
-    job_args = vars(args).copy()
-    cli_args = ' '.join(f"--{key} {value}" for key, value in job_args.items() if key not in ['nproc', 'both_directions'])
-
-    jobs = []
-    for i in range(len(x_rates)):
-        # generates the command to pass to one_sim.py... pass min_cores as an argument as well because we store it in the csv
-        job_cmd = (
-            f"mpiexec -n {min_cores} python3 one_sim.py {cli_args} --num_procs {min_cores} "
-            f"--x_erate {x_rates[i]} --y_erate {y_rates[i]} --z_erate {0} "
-            f"--xy_erate {0} --xz_erate {0} --yz_erate {0}"
-        )
-
-        jobs.append(job_cmd)
-
-        # flip x and y rates if necessary to get both sides
-        if str2bool(args.both_directions):
-            if x_rates[i] != y_rates[i]:
-                job_cmd = (
-                    f"mpiexec -n {min_cores} python3 one_sim.py {cli_args} "
-                    f"--x_erate {y_rates[i]} --y_erate {x_rates[i]} --z_erate {0} "
-                    f"--xy_erate {0} --xz_erate {0} --yz_erate {0}"
-                )
-                jobs.append(job_cmd)
-
+# given strain rates in principal directions and theta, it returns the x, y, and shear strain rates necessary to recreate it with sigma_1 being aligned with theta
+def rotate_load(erate_1, erate_2, theta_deg):
+    theta = np.deg2rad(theta_deg)
     
+    # convert lists to numpy arrays
+    erate_1 = np.array(erate_1)
+    erate_2 = np.array(erate_2)
+    
+    cos2 = np.cos(theta)**2
+    sin2 = np.sin(theta)**2
+    sincos = np.sin(theta) * np.cos(theta)
+    
+    x_rates = erate_1 * cos2 + erate_2 * sin2
+    y_rates = erate_2 * cos2 + erate_1 * sin2
+    xy_rates = (erate_1 - erate_2) * sincos
+
+    return x_rates, y_rates, xy_rates
+
+
+def main():
+    args = parse_args()
+    max_jobs = args.nproc // MIN_CORES_PER_JOB
+
+    erate_1 = [1e-3] * 11
+    erate_2 = [0, 1e-3, 9e-4, 8e-4, 7e-4, 6e-4, 5e-4, 4e-4, 3e-4, 2e-4, 1e-4]
+
+    x_rates, y_rates, xy_rates = rotate_load(erate_1, erate_2, args.theta)
+
+    job_queue = []
+    for i in range(len(x_rates)):
+        job_queue.append(build_job_command(args, x_rates[i], y_rates[i], xy_rates[i], MIN_CORES_PER_JOB))
+        if str2bool(args.both_directions) and x_rates[i] != y_rates[i]:
+            job_queue.append(build_job_command(args, y_rates[i], x_rates[i], xy_rates[i], MIN_CORES_PER_JOB))
+
     active = []
-    while jobs or active:
-        while len(active) < max_jobs and jobs:
-            job_cmd = jobs.pop(0)
-            print(f"Launching: {job_cmd}")
-            proc = subprocess.Popen(job_cmd, shell=True)
-            active.append(proc)
+    while job_queue or active:
+        while len(active) < max_jobs and job_queue:
+            cmd = job_queue.pop(0)
+            print("Launching:", " ".join(cmd), flush=True)
+            proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr)
+            active.append((proc, cmd))
 
-        for proc in active[:]:
+        for proc, cmd in active[:]:
             if proc.poll() is not None:
-                active.remove(proc)
+                print(f"Finished: {' '.join(cmd)}\nReturn code: {proc.returncode}", flush=True)
+                active.remove((proc, cmd))
 
-        time.sleep(1)
+        time.sleep(2)
 
-    print("All surfaces generated successfully!")
-
-
-def str2bool(string):
-        if isinstance(string, bool):
-            return string
-        if string.lower() in ('yes', 'true', 't', '1', 'y'):
-            return True
-        elif string.lower() in ('no', 'false', 'f', '0', 'n'):
-            return False
-        else:
-            raise argparse.ArgumentTypeError('Boolean value expected.')
-
+    print("All simulations completed successfully.", flush=True)
 
 
 if __name__ == '__main__':
