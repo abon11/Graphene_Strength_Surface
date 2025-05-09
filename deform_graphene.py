@@ -95,7 +95,7 @@ class Simulation:
                  sim_length=100000, timestep=0.0005, thermo=1000, 
                  defect_type='None', defect_perc=0, defect_random_seed=42,
                  makeplots=False, detailed_data=False, fracture_window=10, theta=0,
-                 storage_path=f'{local_config.DATA_DIR}/defected_data'):
+                 storage_path=f'{local_config.DATA_DIR}/defected_data', accept_dupes=False):
         """
         Class to execute one simulation and store information about it.
         This essentially loads the specimen to failure.
@@ -117,6 +117,7 @@ class Simulation:
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
         - theta (float): Angle of max principal stress (for storage only)
         - storage_path (str): filepath to where we want to store the data
+        - accept_dupes (bool): Don't kill the simulation if we find a duplicate
         """
         self.comm = comm
         self.rank = rank
@@ -140,7 +141,8 @@ class Simulation:
         self.theta = theta
         self.storage_path = storage_path
 
-        self.check_duplicate()  # ensure that we haven't run this sim yet
+        if not accept_dupes:
+            self.check_duplicate()  # ensure that we haven't run this sim yet
 
         self.starttime = time.perf_counter()  # start simulation timer
 
@@ -495,8 +497,8 @@ class Simulation:
 
 
     # input vector of principal stresses so far, outputs strength and fracture timestep (of it occurred), otherwise None for both
-    # idea here is to have the previous 5 thermos be our testcase, and the previous 10 before that be what we're testing against
-    # if the average of the previous 5 is lower than the average of the 10 before that, fracture has occurred and we should find peaks
+    # idea here is to have the previous 10 thermos be our testcase, and the previous 15 before that be what we're testing against
+    # if the average of the previous 10 is lower than the average of the 15 before that, fracture has occurred and we should find peaks
     # we know that principal_stresses[:, 0] will always be the dominant direction
     def find_fracture(self, principal_stresses, give_crit_strain=False):
         # Not enough thermos to actually check
@@ -512,8 +514,8 @@ class Simulation:
             mean_last_10_2 = sum(principal_stresses[:, 1][-10:]) / 10
             mean_15_before_2 = sum(principal_stresses[:, 1][-25:-10]) / 15
 
-            sig0_intact = mean_last_10 >= mean_15_before
-            sig1_intact = mean_last_10_2 >= mean_15_before_2
+            sig0_intact = mean_last_10 >= (mean_15_before * 0.9)  # slightly degrade to reduce false positives
+            sig1_intact = mean_last_10_2 >= (mean_15_before_2 * 0.9)
 
             # if we are still increasing on average in both directions, no fracture yet
             if sig0_intact and sig1_intact:
