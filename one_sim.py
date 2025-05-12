@@ -38,6 +38,7 @@ def main():
     parser.add_argument("--yz_erate", type=float, required=True)
 
     parser.add_argument("--storage_path", type=str, required=True)
+    parser.add_argument("--accept_dupes", type=str, required=True)  # bool
     parser.add_argument("--num_procs", type=int, required=True)
 
 
@@ -51,7 +52,7 @@ def main():
                  sim_length=args.sim_length, timestep=args.timestep, thermo=args.thermo, 
                  defect_type=args.defect_type, defect_perc=args.defect_perc, defect_random_seed=args.defect_random_seed,
                  makeplots=str2bool(args.makeplots), detailed_data=str2bool(args.detailed_data), fracture_window=args.fracture_window, 
-                 theta=args.theta, storage_path=args.storage_path)
+                 theta=args.theta, storage_path=args.storage_path, accept_dupes=str2bool(args.accept_dupes))
 
 
 def str2bool(s):

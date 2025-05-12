@@ -13,23 +13,26 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defect Type": "SV",
-        "Defect Percentage": 0.5
+        "Defect Type": "None",
+        "Defect Percentage": 0,
         # "Defect Random Seed": 1
+        # "Theta": 90
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6)
-        "Defect Random Seed": (1, 42),
-        "Theta": (0, 30)
+        # "Defect Random Seed": (1, 42)
+        # "Theta": (0, 90)
+        "Simulation ID": (2575, 3000)
     }
 
     or_filters = {
         # "Defect Type": ["SV", "DV"]
+        "Theta": [0, 30, 60, 90]
     }
 
     color_by_field = "Theta"
-    show_pristine = True
+    show_pristine = False
 
     # Load, filter, and plot
     df = load_data(csv_file)
@@ -40,9 +43,11 @@ def main():
 
     if show_pristine:
         pristine_df = get_pristine_subset(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
+    else:
+        pristine_df = None
 
-    # plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
-    plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
+    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
+    # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 
 def load_data(csv_file):
@@ -66,7 +71,7 @@ def get_pristine_subset(df, exact_filters=None, range_filters=None, or_filters=N
     return filter_data(pristine_df, exact_filters=exact_clean, range_filters=range_clean, or_filters=or_clean)
 
 
-def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
+def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, dupe_thetas=True):
     """
     Filter df on exact, range, OR filters *and* make phantom copies
     of any isotropic points (Strain Rate x == Strain Rate y)
@@ -92,7 +97,12 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
 
     # Apply non-Theta exact filters
     for col, val in exact_clean.items():
-        filtered = filtered[filtered[col] == val]
+        if col == "Defect Type" and (val == "None" or val is None):
+            # Match rows where the value is "None" or NaN
+            mask = (filtered[col] == "None") | (filtered[col].isna())
+            filtered = filtered[mask]
+        else:
+            filtered = filtered[filtered[col] == val]
 
     # Apply non-Theta range filters
     for col, (mn, mx) in range_clean.items():
@@ -100,10 +110,19 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
 
     # Apply non-Theta OR filters
     for col, vals in or_clean.items():
-        filtered = filtered[filtered[col].isin(vals)]
+        if col == "Defect Type":
+            has_none = "None" in vals or None in vals
+            val_set = set(vals) - {"None", None}
+
+            mask = filtered[col].isin(val_set)
+            if has_none:
+                mask |= filtered[col].isna()
+            filtered = filtered[mask]
+        else:
+            filtered = filtered[filtered[col].isin(vals)]
 
     # Separate iso vs aniso
-    iso_mask = filtered["Strain Rate x"] == filtered["Strain Rate y"]
+    iso_mask = (filtered["Strain Rate x"] == filtered["Strain Rate y"]) & (filtered["Strain Rate xy"] == 0)
     aniso_mask = ~iso_mask
 
     # Build theta_list from whatever filters the user gave, but only from the Theta values present in the current filtered set.
@@ -123,15 +142,17 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None):
 
     # Phantom-replicate iso rows
     iso_df = filtered[iso_mask]
-    phantoms = []
-    for th in theta_list:
-        tmp = iso_df.copy()
-        tmp["Theta"] = th
-        phantoms.append(tmp)
-    if phantoms:
-        iso_phantom_df = pd.concat(phantoms, ignore_index=True)
+
+    if dupe_thetas and theta_list:
+        # Replicate isotropic rows to each requested theta
+        phantoms = []
+        for th in theta_list:
+            tmp = iso_df.copy()
+            tmp["Theta"] = th
+            phantoms.append(tmp)
+        iso_phantom_df = pd.concat(phantoms, ignore_index=True) if phantoms else pd.DataFrame(columns=filtered.columns)
     else:
-        # if no Theta filters, just keep each iso at its original Θ
+        # Either don't duplicate or no theta filtering — keep original
         iso_phantom_df = iso_df.copy()
 
     # Now select aniso rows by Theta filters

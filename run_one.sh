@@ -23,9 +23,10 @@ detailed_data=${12}
 theta=${13}
 fracture_window=${14}
 storage_path=${15}
-x_erate=${16}
-y_erate=${17}
-xy_erate=${18}
+accept_dupes=${16}
+x_erate=${17}
+y_erate=${18}
+xy_erate=${19}
 
 
 echo "Running one_sim with: x="$x_erate" y="$y_erate" xy="$xy_erate" on $nprocs procs"
@@ -44,6 +45,7 @@ mpiexec -n "$nprocs" python3 one_sim.py \
     --detailed_data "$detailed_data" \
     --fracture_window "$fracture_window" \
     --storage_path "$storage_path" \
+    --accept_dupes "$accept_dupes" \
     --num_procs "$nprocs" \
     --theta "$theta" \
     --x_erate "$x_erate" \
