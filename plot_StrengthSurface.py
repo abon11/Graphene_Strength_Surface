@@ -6,7 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 def main():
-    folder = f'{local_config.DATA_DIR}/defected_data'
+    folder = f'{local_config.DATA_DIR}/rotation_tests'
     csv_file = f"{folder}/all_simulations.csv"
     
     # Define filters here
@@ -28,7 +28,7 @@ def main():
 
     or_filters = {
         # "Defect Type": ["SV", "DV"]
-        # "Theta": [0, 30, 60, 90]
+        "Theta": [0, 60]
     }
 
     color_by_field = "Theta"
@@ -271,7 +271,7 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
     if colors is None:
         colors = ['blue'] * len(df)
 
-    plt.figure(figsize=(8,6))
+    plt.figure(figsize=(8, 8))
     plt.scatter(df["Strength_1"], df["Strength_2"], c=colors, alpha=0.7)
     plt.scatter(df["Strength_2"], df["Strength_1"], c=colors, alpha=0.7)
     if pristine_data is not None and not pristine_data.empty:
