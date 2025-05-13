@@ -26,7 +26,7 @@ def main():
 
     or_filters = {
         # "Defect Type": ["SV", "DV"],
-        "Theta": [0, 30, 60, 90]
+        # "Theta": [0, 30, 60, 90]
     }
     # ====================================
     df = pd.read_csv(csv_file)

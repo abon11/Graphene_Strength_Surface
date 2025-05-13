@@ -23,12 +23,12 @@ def main():
         # "Defect Percentage": (0.4, 0.6)
         # "Defect Random Seed": (1, 42)
         # "Theta": (0, 90)
-        "Simulation ID": (2575, 3000)
+        # "Simulation ID": (2575, 3000)
     }
 
     or_filters = {
         # "Defect Type": ["SV", "DV"]
-        "Theta": [0, 30, 60, 90]
+        # "Theta": [0, 30, 60, 90]
     }
 
     color_by_field = "Theta"

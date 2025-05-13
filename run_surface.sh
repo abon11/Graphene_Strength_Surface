@@ -61,7 +61,11 @@ for strain in "${STRAIN_LIST[@]}"; do
 
     # Throttle to MAX_JOBS_IN_FLIGHT
     while (( $(count_jobs) >= MAX_JOBS_IN_FLIGHT )); do
-        sleep 10
+        # sleep 10
+        min_seconds=30 # Minimum sleep time in seconds
+        max_seconds=60 # Maximum sleep time in seconds
+        random_seconds=$(( (RANDOM % (max_seconds - min_seconds + 1)) + min_seconds ))
+        sleep $random_seconds
     done
 
     echo "Submitting job: x=$x_erate y=$y_erate xy=$xy_erate"
