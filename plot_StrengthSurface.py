@@ -6,32 +6,34 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 def main():
-    folder = f'{local_config.DATA_DIR}/rotation_tests'
+    # folder = f'{local_config.DATA_DIR}/rotation_tests'
+    folder = f'{local_config.DATA_DIR}/defected_data'
+
     csv_file = f"{folder}/all_simulations.csv"
     
     # Define filters here
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defect Type": "None",
-        "Defect Percentage": 0,
-        # "Defect Random Seed": 1
-        # "Theta": 90
+        "Defect Type": "SV",
+        "Defect Percentage": 0.5,
+        "Defect Random Seed": 69,
+        "Theta": 0
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6)
-        # "Defect Random Seed": (1, 42)
+        # "Defect Random Seed": (1, 100)
         # "Theta": (0, 90)
         # "Simulation ID": (2575, 3000)
     }
 
     or_filters = {
         # "Defect Type": ["SV", "DV"]
-        "Theta": [0, 60]
+        # "Theta": [0, 60]
     }
 
-    color_by_field = "Theta"
+    color_by_field = "Defect Random Seed"
     show_pristine = False
 
     # Load, filter, and plot
@@ -46,7 +48,7 @@ def main():
     else:
         pristine_df = None
 
-    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
+    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=False)
     # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 

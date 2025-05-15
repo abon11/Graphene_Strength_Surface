@@ -12,15 +12,15 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defect Type": "None",  # will match NaN or "None"
-        "Defect Percentage": 0,
-        "Defect Random Seed": 35
+        "Defect Type": "SV",  # will match NaN or "None"
+        "Defect Percentage": 0.5,
+        "Defect Random Seed": 65
         # "Theta": 90
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        # "Defect Random Seed": (1, 42),
+        # "Defect Random Seed": (66, 100),
         # "Theta": (0, 90),
     }
 
