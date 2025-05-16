@@ -95,7 +95,7 @@ class Simulation:
                  sim_length=100000, timestep=0.0005, thermo=1000, 
                  defect_type='None', defect_perc=0, defect_random_seed=42,
                  makeplots=False, detailed_data=False, fracture_window=10, theta=0,
-                 storage_path=f'{local_config.DATA_DIR}/defected_data', accept_dupes=False):
+                 storage_path=f'{local_config.DATA_DIR}/defected_data', accept_dupes=False, angle_testing=False):
         """
         Class to execute one simulation and store information about it.
         This essentially loads the specimen to failure.
@@ -118,6 +118,7 @@ class Simulation:
         - theta (float): Angle of max principal stress (for storage only)
         - storage_path (str): filepath to where we want to store the data
         - accept_dupes (bool): Don't kill the simulation if we find a duplicate
+        - angle_testing (bool): Execute simulation and data storage for the angle testing dataset - to generate erate_x, y, xy map to sigma_1, 2, theta. 
         """
         self.comm = comm
         self.rank = rank
@@ -140,6 +141,7 @@ class Simulation:
         self.fracture_window = fracture_window
         self.theta = theta
         self.storage_path = storage_path
+        self.angle_testing = angle_testing
 
         if not accept_dupes:
             self.check_duplicate()  # ensure that we haven't run this sim yet
@@ -166,7 +168,13 @@ class Simulation:
         self.apply_fix_deform()
 
         stress_tensor, pressure_tensor, step_vector, strain_tensor = self.run_simulation()
-        principal_stresses = self.compute_principal_StressStrain(stress_tensor)
+
+        if angle_testing:
+            # principal directions is a vector of the angle of the dominant loading direction
+            principal_stresses, self.principal_angles = self.compute_principal_StressStrain(stress_tensor, return_theta=True)
+        else:
+            principal_stresses = self.compute_principal_StressStrain(stress_tensor)
+            
         principalAxes_strain = self.compute_principal_StressStrain(strain_tensor)
 
         self.stress_tensor = stress_tensor  # array of all six stress values at each outputted thermo
@@ -190,7 +198,7 @@ class Simulation:
         self.sim_duration = timedelta(seconds=time.perf_counter() - self.starttime)
 
         if self.rank == 0:
-            self.finalize_dataset()  # gets simid and saves everything
+            self.finalize_dataset()  # gets simid and saves everything, also handles if we only did angle testing
 
             print(f'Material Strength ({sheet.x_atoms}x{sheet.y_atoms} sheet): {strength} GPa. ')
 
@@ -278,11 +286,15 @@ class Simulation:
     # if the file doesn't exits, create one. if it does exist we'll just append to the old one so we don't overwrite data
     def initialize_maincsv(self):
         if not os.path.exists(self.main_csv) or os.path.getsize(self.main_csv) == 0:
-            df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
+            if self.angle_testing:
+                df = pd.DataFrame(columns=['Simulation ID', 'Strain Rate x', 'Strain Rate y', 'Strain Rate xy', 'Sigma_1', 'Sigma_2', 'Theta'])
+            else:
+                df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Fracture Time', 'Max Sim Length', 
                                        'Output Timesteps', 'Fracture Window', 'Theta', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 
                                        'Simulation Time', 'Threads'])
+            
             df.to_csv(self.main_csv, index=False)
 
     def get_simid(self):
@@ -296,7 +308,11 @@ class Simulation:
 
     # appends a new simulation to the csv file for storage
     def append_maincsv(self):
-        new_row = pd.DataFrame({'Simulation ID':[self.simulation_id], 'Num Atoms x': [self.sheet.x_atoms], 'Num Atoms y': [self.sheet.y_atoms], 
+        if self.angle_testing:
+            new_row = pd.DataFrame({'Simulation ID':[self.simulation_id], 'Strain Rate x': [self.x_erate], 'Strain Rate y': [self.y_erate], 'Strain Rate xy': [self.xy_erate],
+                                    'Sigma_1': [self.principal_stresses[-1, 0]], 'Sigma_2': [self.principal_stresses[-1, 1]], 'Theta': [self.principal_angles[-1]]})
+        else:
+            new_row = pd.DataFrame({'Simulation ID':[self.simulation_id], 'Num Atoms x': [self.sheet.x_atoms], 'Num Atoms y': [self.sheet.y_atoms], 
                                 'Strength_1': [self.strength[0]], 'Strength_2': [self.strength[1]], 'Strength_3': [self.strength[2]],
                                 'CritStrain_1': [self.crit_strain[0]], 'CritStrain_2': [self.crit_strain[1]], 'CritStrain_3': [self.crit_strain[2]],
                                 'Strain Rate x': [self.x_erate], 'Strain Rate y': [self.y_erate], 'Strain Rate z': [self.z_erate],
@@ -406,6 +422,7 @@ class Simulation:
         for step in range(0, self.sim_length, self.thermo):
             iters, stress_tensor, step_vector, pressure_tensor, strain_tensor = self.run_step(step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor)
 
+            self.check_buckle()
             # checks when stress drops to detect fracture - this is just an on the fly check because we don't have principal stresses calculated
             strength, _ = self.find_fracture(stress_tensor[:(iters+1)])  # note: changed from just dominant direction stress to accomidate the multi-axis check
 
@@ -427,6 +444,15 @@ class Simulation:
 
         return stress_tensor, pressure_tensor, step_vector, strain_tensor
     
+    def check_buckle(self, tol=10):
+        zmax = self.lmp.extract_variable("zmax", None, 0)
+        zmin = self.lmp.extract_variable("zmin", None, 0)
+        height = max(abs(zmax), abs(zmin))
+        if height > tol:
+            print(f"[Rank 0] Buckling detected, max height of {height}. Aborting this sim.")
+            sys.stdout.flush()
+            self.comm.Abort()  # Clean exit for parallel jobs
+
     # returns a vector of length 3 representing the pressure in each direction (imposed by npt)
     def extract_pressure(self):
         xx = self.lmp.extract_variable("p_x", None, 0)
@@ -538,9 +564,12 @@ class Simulation:
     
     # pass through length six vector that contains all stresses or strains in each direction, computes the eigvals so you have the principal stresses,
     # or the strain along the principal axes, and returns - ordered from which direction experienced max stress (or strain) to min stress (or strain)
-    def compute_principal_StressStrain(self, tensor):
+    def compute_principal_StressStrain(self, tensor, return_theta=False):
         num_timesteps = tensor.shape[0]
         principal_values = np.zeros((num_timesteps, 3))
+
+        if return_theta:
+            thetas = np.zeros(num_timesteps)
 
         for i in range(num_timesteps):
             # get whole stress tensor for this timestep
@@ -549,8 +578,22 @@ class Simulation:
                                     [tensor[i, 4], tensor[i, 5], tensor[i, 2]]])
             
             # compute principal stresses and principal directions - this is sorted from lowest to highest eigval every time, 
-            eigvals = np.linalg.eigvalsh(matrix)
+            eigvals, eigvecs = np.linalg.eigh(matrix)
             principal_values[i] = eigvals[::-1]
+            eigvecs = eigvecs[:, ::-1]
+
+            # if we want the angle of the dominant principal stress(for angle data generation)
+            if return_theta:
+                # Get dominant eigenvector (corresponding to max principal value)
+                v = eigvecs[:, 0]  # dominant eigenvector
+                # Project into x-y plane and compute angle from x-axis
+                theta_deg = np.degrees(np.arctan2(v[1], v[0])) % 180
+                if theta_deg >= 90:
+                    theta_deg -= 90
+                thetas[i] = theta_deg
+        
+        if return_theta:
+            return principal_values, thetas
 
         return principal_values
     

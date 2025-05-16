@@ -60,9 +60,21 @@ variable p_x equal pxx
 variable p_y equal pyy
 variable p_z equal pzz
 
+# Define variable for max absolute z-position (to detect potential buckling)
+# variable zmax atom abs(z)
+# variable max_abs_z equal max(v_zmax)
+
+compute zpos all property/atom z
+compute zma all reduce max c_zpos
+compute zmi all reduce min c_zpos
+
+variable zmax equal c_zma
+variable zmin equal c_zmi
+
+
 # Output settings
 
-thermo_style custom step temp press lx v_stress_xx v_stress_yy v_stress_zz v_stress_xy v_stress_xz v_stress_yz v_p_x v_p_y v_p_z 
+thermo_style custom step temp press lx v_stress_xx v_stress_yy v_stress_zz v_stress_xy v_stress_xz v_stress_yz v_p_x v_p_y v_p_z v_zmax v_zmin
 
 # Dump file for visualization
 # dump 1 all custom 100 ${dump_output} id type x y z
