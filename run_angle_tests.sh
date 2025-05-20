@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Configuration
-MAX_JOBS_IN_FLIGHT=10
-TOTAL_SIMS=10000
+MAX_JOBS_IN_FLIGHT=12
+TOTAL_SIMS=3
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=12
 
@@ -56,11 +56,9 @@ rand_erates() {
     xy_raw=$(awk -v z=$xy_raw -v f=$zero_xy 'BEGIN {print z * f}')
 
     # Ensure at least one component is non-zero
-    total=$(awk -v x=$x_raw -v y=$y_raw -v z=$xy_raw 'BEGIN {print x + y + z}')
-    if (( $(awk -v t=$total 'BEGIN {print (t == 0)}') )); then
+    xy_total=$(awk -v x=$x_raw -v y=$y_raw 'BEGIN {print x + y}')
+    if (( $(awk -v t=$xy_total 'BEGIN {print (t == 0)}') )); then
         x_raw=1
-        y_raw=0
-        xy_raw=0
     fi
 
     norm=$(awk -v x=$x_raw -v y=$y_raw -v z=$xy_raw 'BEGIN {print sqrt(x*x + y*y + z*z)}')
