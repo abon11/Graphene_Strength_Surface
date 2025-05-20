@@ -1,19 +1,16 @@
-# import pandas as pd
-# import local_config
+import pandas as pd
+import local_config
+import matplotlib.pyplot as plt
 
-# df = pd.read_csv(f'{local_config.DATA_DIR}/defected_data/all_simulations.csv')
+df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
 
-
-# # Convert Simulation ID to integer (in case it's stored as string)
-# df["Simulation ID"] = df["Simulation ID"].astype(str).str.zfill(5)
-# mask = (df["Simulation ID"] < "01438") & (df["Theta"] == 30)
-
-# # Update Theta values
-# df.loc[mask, "Theta"] = 90
+# df["Sigma_Ratio"] = df["Sigma_2"] / df["Sigma_1"]
 
 # # Save it back
-# df.to_csv(f'{local_config.DATA_DIR}/defected_data/all_simulations.csv', index=False)
+# df.to_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv', index=False)
 
+plt.scatter(df["Simulation ID"], df["Sigma_Ratio"])
+plt.savefig("ratiotest.png")
 
 import numpy as np
 # theta = np.deg2rad(60)
@@ -28,5 +25,8 @@ import numpy as np
 #     xy = (e1 - e2) * sincos
 #     print(f"{x} {y} {xy}")
 
-m = np.diagflat([1, 2, 3])
-print(m)
+# def f(x0, x1, x2):
+#     return (((((x1 * 1.6953) - (np.sqrt(x1) * 0.0072833)) + ((x0 - x1) * 31.825) ** 2) + x2) - (x0 * ((np.sqrt(np.sqrt(x2)) * 2.5234) + -2.0038))) * 4222
+
+# print(f(0.000523804, 7.21375e-05, 3.98339e-05))  # 5.981216118903219
+# print(f(0.000699599, 0.000666074, 0.000168195))  # 9.4895822170042

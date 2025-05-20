@@ -14,6 +14,8 @@ module purge
 echo "Start: $(date)"
 echo "cwd: $(pwd)"
 
+export TERM=dumb
+export NO_COLOR=1
 python3 stress_strain_map.py
 
 echo "End: $(date)"
