@@ -10,3 +10,5 @@ local_config.*
 *.out
 *.lock
 *.html
+*.pkl
+*.bak
