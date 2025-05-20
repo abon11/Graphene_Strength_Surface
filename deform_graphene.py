@@ -232,27 +232,40 @@ class Simulation:
         def safe_str(val):
             return str(val).strip().lower() if val is not None else ""
 
+        def compare(col, value, is_float=True):
+            if col not in row or row[col] is None:
+                return True  # Column missing → ignore condition
+            if is_float:
+                ref = safe_float(row[col])
+                return ref is not None and abs(ref - value) < 1e-10
+            else:
+                ref = safe_int(row[col]) if isinstance(value, int) else safe_str(row[col])
+                return ref == value
+
         with open(csv_path, newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 match = (
-                    abs(safe_float(row.get("Strain Rate x")) - self.x_erate) < 1e-10 and
-                    abs(safe_float(row.get("Strain Rate y")) - self.y_erate) < 1e-10 and
-                    abs(safe_float(row.get("Strain Rate z")) - self.z_erate) < 1e-10 and
-                    abs(safe_float(row.get("Strain Rate xy")) - self.xy_erate) < 1e-10 and
-                    abs(safe_float(row.get("Strain Rate xz")) - self.xz_erate) < 1e-10 and
-                    abs(safe_float(row.get("Strain Rate yz")) - self.yz_erate) < 1e-10 and
-                    safe_int(row.get("Max Sim Length")) == self.sim_length and
-                    safe_int(row.get("Output Timesteps")) == self.thermo and
-                    safe_int(row.get("Fracture Window")) == self.fracture_window and
-                    safe_str(row.get("Defect Type")) == safe_str(self.defect_type) and
-                    abs(safe_float(row.get("Defect Percentage")) - self.defect_perc) < 1e-10 and
-                    safe_int(row.get("Defect Random Seed")) == self.defect_random_seed
+                    compare("Strain Rate x", self.x_erate) and
+                    compare("Strain Rate y", self.y_erate) and
+                    compare("Strain Rate z", self.z_erate) and
+                    compare("Strain Rate xy", self.xy_erate) and
+                    compare("Strain Rate xz", self.xz_erate) and
+                    compare("Strain Rate yz", self.yz_erate) and
+                    compare("Num Atoms x", self.sheet.x_atoms, is_float=False) and
+                    compare("Num Atoms y", self.sheet.y_atoms, is_float=False) and
+                    compare("Max Sim Length", self.sim_length, is_float=False) and
+                    compare("Output Timesteps", self.thermo, is_float=False) and
+                    compare("Fracture Window", self.fracture_window, is_float=False) and
+                    compare("Defect Type", safe_str(self.defect_type), is_float=False) and
+                    compare("Defect Percentage", self.defect_perc) and
+                    compare("Defect Random Seed", self.defect_random_seed, is_float=False)
                 )
                 if match:
                     print(f"[Rank 0] Already completed. Skipping: x={self.x_erate}, y={self.y_erate}, xy={self.xy_erate}")
                     sys.stdout.flush()
-                    self.comm.Abort()  # Clean exit for parallel jobs
+                    self.comm.Abort()
+
 
     def finalize_dataset(self):
         # APPLY THE LOCKING MECHANISM HERE
@@ -444,7 +457,7 @@ class Simulation:
 
         return stress_tensor, pressure_tensor, step_vector, strain_tensor
     
-    def check_buckle(self, tol=10):
+    def check_buckle(self, tol=3):
         zmax = self.lmp.extract_variable("zmax", None, 0)
         zmin = self.lmp.extract_variable("zmin", None, 0)
         height = max(abs(zmax), abs(zmin))
@@ -588,8 +601,8 @@ class Simulation:
                 v = eigvecs[:, 0]  # dominant eigenvector
                 # Project into x-y plane and compute angle from x-axis
                 theta_deg = np.degrees(np.arctan2(v[1], v[0])) % 180
-                if theta_deg >= 90:
-                    theta_deg -= 90
+                # if theta_deg >= 90:
+                #     theta_deg -= 90
                 thetas[i] = theta_deg
         
         if return_theta:
