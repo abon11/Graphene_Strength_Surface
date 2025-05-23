@@ -2,7 +2,7 @@
 
 # Configuration
 MAX_JOBS_IN_FLIGHT=12
-TOTAL_SIMS=3
+TOTAL_SIMS=134
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=12
 
@@ -34,7 +34,7 @@ rand_float() {
 rand_erates() {
     local min_mag=1e-4
     local max_mag=1e-3
-    local p_zero=0.05
+    local p_zero=0
 
     # Seed once for this function call
     seed=$(od -An -N2 -i /dev/random | tr -d ' ')
