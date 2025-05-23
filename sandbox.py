@@ -9,8 +9,12 @@ df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
 # # Save it back
 # df.to_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv', index=False)
 
-plt.scatter(df["Simulation ID"], df["Sigma_Ratio"])
-plt.savefig("ratiotest.png")
+
+plt.hist(df["Strain Rate x"], bins=60, color='skyblue')
+plt.xlabel("Strain Rate x")
+plt.ylabel("Frequency")
+plt.title("Distribution of Principal Strain rate x")
+plt.savefig("xtest.png")
 
 import numpy as np
 # theta = np.deg2rad(60)

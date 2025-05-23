@@ -17,7 +17,7 @@ def main():
         "Num Atoms y": 60,
         "Defect Type": "SV",
         "Defect Percentage": 0.5,
-        "Defect Random Seed": 69,
+        "Defect Random Seed": 1,
         "Theta": 0
     }
 
