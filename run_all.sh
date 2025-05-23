@@ -4,231 +4,307 @@
 export DEFECT_TYPE="SV"
 export DEFECT_PERC=0.5
 export THETA=0
-export DEFECT_RANDOM_SEED=25
+export DEFECT_RANDOM_SEED=101
 bash ./run_surface.sh &
 
 sleep 60
 
-export DEFECT_RANDOM_SEED=26
+export DEFECT_RANDOM_SEED=102
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=27
+export DEFECT_RANDOM_SEED=103
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=28
+export DEFECT_RANDOM_SEED=104
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=29
+export DEFECT_RANDOM_SEED=105
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=30
+export DEFECT_RANDOM_SEED=106
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=31
+export DEFECT_RANDOM_SEED=107
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=32
+export DEFECT_RANDOM_SEED=108
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=33
+export DEFECT_RANDOM_SEED=109
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=34
+export DEFECT_RANDOM_SEED=110
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=35
+export DEFECT_RANDOM_SEED=111
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=36
+export DEFECT_RANDOM_SEED=112
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=37
+export DEFECT_RANDOM_SEED=113
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=38
+export DEFECT_RANDOM_SEED=114
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=39
+export DEFECT_RANDOM_SEED=115
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=40
+export DEFECT_RANDOM_SEED=116
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=41
+export DEFECT_RANDOM_SEED=117
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=43
+export DEFECT_RANDOM_SEED=118
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=44
+export DEFECT_RANDOM_SEED=119
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=45
+export DEFECT_RANDOM_SEED=120
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=46
+export DEFECT_RANDOM_SEED=121
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=47
+export DEFECT_RANDOM_SEED=122
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=48
+export DEFECT_RANDOM_SEED=123
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=49
+export DEFECT_RANDOM_SEED=124
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=50
+export DEFECT_RANDOM_SEED=125
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=51
+export DEFECT_RANDOM_SEED=126
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=52
+export DEFECT_RANDOM_SEED=127
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=53
+export DEFECT_RANDOM_SEED=128
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=54
+export DEFECT_RANDOM_SEED=129
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=55
+export DEFECT_RANDOM_SEED=130
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=56
+export DEFECT_RANDOM_SEED=131
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=57
+export DEFECT_RANDOM_SEED=132
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=58
+export DEFECT_RANDOM_SEED=133
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=59
+export DEFECT_RANDOM_SEED=134
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=60
+export DEFECT_RANDOM_SEED=135
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=61
+export DEFECT_RANDOM_SEED=136
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=62
+export DEFECT_RANDOM_SEED=137
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=63
+export DEFECT_RANDOM_SEED=138
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=64
+export DEFECT_RANDOM_SEED=139
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=65
+export DEFECT_RANDOM_SEED=140
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=66
+export DEFECT_RANDOM_SEED=141
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=67
+export DEFECT_RANDOM_SEED=142
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=68
+export DEFECT_RANDOM_SEED=143
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=69
+export DEFECT_RANDOM_SEED=144
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=70
+export DEFECT_RANDOM_SEED=145
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=71
+export DEFECT_RANDOM_SEED=146
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=72
+export DEFECT_RANDOM_SEED=147
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=73
+export DEFECT_RANDOM_SEED=148
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=74
+export DEFECT_RANDOM_SEED=149
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=75
+export DEFECT_RANDOM_SEED=150
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=76
+export DEFECT_RANDOM_SEED=151
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=77
+export DEFECT_RANDOM_SEED=152
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=78
+export DEFECT_RANDOM_SEED=153
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=79
+export DEFECT_RANDOM_SEED=154
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=80
+export DEFECT_RANDOM_SEED=155
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=81
+export DEFECT_RANDOM_SEED=156
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=82
+export DEFECT_RANDOM_SEED=157
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=83
+export DEFECT_RANDOM_SEED=158
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=84
+export DEFECT_RANDOM_SEED=159
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=85
+export DEFECT_RANDOM_SEED=160
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=86
+export DEFECT_RANDOM_SEED=161
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=87
+export DEFECT_RANDOM_SEED=162
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=88
+export DEFECT_RANDOM_SEED=163
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=89
+export DEFECT_RANDOM_SEED=164
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=90
+export DEFECT_RANDOM_SEED=165
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=91
+export DEFECT_RANDOM_SEED=166
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=92
+export DEFECT_RANDOM_SEED=167
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=93
+export DEFECT_RANDOM_SEED=168
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=94
+export DEFECT_RANDOM_SEED=169
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=95
+export DEFECT_RANDOM_SEED=170
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=96
+export DEFECT_RANDOM_SEED=171
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=97
+export DEFECT_RANDOM_SEED=172
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=98
+export DEFECT_RANDOM_SEED=173
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=99
+export DEFECT_RANDOM_SEED=174
 bash ./run_surface.sh &
 
-export DEFECT_RANDOM_SEED=100
+export DEFECT_RANDOM_SEED=175
 bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=176
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=177
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=178
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=179
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=180
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=181
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=182
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=183
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=184
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=185
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=186
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=187
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=188
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=189
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=190
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=191
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=192
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=193
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=194
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=195
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=196
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=197
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=198
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=199
+bash ./run_surface.sh &
+
+export DEFECT_RANDOM_SEED=200
+bash ./run_surface.sh &
+
 
 echo "DONE!!!"
