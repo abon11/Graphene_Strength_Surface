@@ -48,6 +48,7 @@ def main():
     surfaces = []
     alphas = []
     ks = []
+    ps = []
 
     plot_together = True
 
@@ -65,7 +66,7 @@ def main():
         datapoints = [DataPoint(row) for _, row in group_df.iterrows()]
 
         # Create Surface and fit Drucker-Prager
-        surface = Surface(datapoints)
+        surface = Surface3P(datapoints)  # changed from just surface
         surface.fit_drucker_prager()
 
         # Optionally store the seed for tracking
@@ -73,7 +74,7 @@ def main():
         print(f"Fit surface for seed {int(seed)}.")
 
         stats = surface.compute_loss_statistics()
-        print(f"Seed {int(surface.seed)}: alpha = {surface.alpha:.4f}, k = {surface.k:.4f}... RMSE: {stats["rmse"]:.4f}, Max Residual: {stats["max_residual"]:.4f}, Total Loss: {stats["total_loss"]:.4f}.")
+        print(f"Seed {int(surface.seed)}: alpha = {surface.alpha:.4f}, k = {surface.k:.4f}, p = {surface.p:.4f}... RMSE: {stats["rmse"]:.4f}, Max Residual: {stats["max_residual"]:.4f}, Total Loss: {stats["total_loss"]:.4f}.")
         if stats["rmse"] is not np.nan:
             rmse.append(stats["rmse"])
             loss.append(stats["total_loss"])
@@ -81,15 +82,18 @@ def main():
         surfaces.append(surface)
         alphas.append(surface.alpha)
         ks.append(surface.k)
+        ps.append(surface.p)
 
-        rows.append({"Seed": surface.seed, "alpha": surface.alpha, "k": surface.k})
+        rows.append({"Seed": surface.seed, "alpha": surface.alpha, "k": surface.k, "p": surface.p})
+
+        surface.plot_surface_fit()
 
     if len(rmse) > 0:
         print(f"Final average RMSE over {len(rmse)} samples: {np.sum(rmse) / len(rmse)}")
         print(f"Final average total loss over {len(loss)} samples: {np.sum(loss) / len(loss)}")
 
     df_params = pd.DataFrame(rows)
-    df_params.to_csv("drucker_prager_params.csv", index=False)
+    df_params.to_csv("drucker_prager3_params.csv", index=False)
 
 
 class BaseSurface:    
@@ -151,7 +155,7 @@ class Surface(BaseSurface):
         """
         This class defines a single strength surface and can fit a Drucker-Prager model to it
         
-        df (list[DataPoint]): list of datapoints for the surface
+        points (list[DataPoint]): list of datapoints for the surface
         """
 
         self.points = points
@@ -231,6 +235,130 @@ class Surface(BaseSurface):
             "max_residual": max_residual
         }
 
+
+class Surface3P(Surface):
+    def __init__(self, points):
+        """
+        This class defines a single strength surface and can fit a Drucker-Prager model to it
+        
+        points (list[DataPoint]): list of datapoints for the surface
+        """
+
+        self.points = points
+        self.seed = self.check_seed()
+        self.alpha = None
+        self.k = None
+        self.p = None
+        self.fit_result = None
+
+    def loss(self, params):
+        """
+        Loss function to minimize: sum of squared Drucker-Prager residuals.
+
+        params: [alpha, k, p]
+        """
+        alpha, k, p = params
+        residuals = []
+        for point in self.points:
+            i1, j2 = point.calculate_invariants()
+            residual = np.sqrt(j2) + alpha * i1 + p * i1 ** 2 - k
+            residuals.append(residual ** 2)
+        return sum(residuals)
+
+    def fit_drucker_prager(self):
+        """
+        Fit Drucker-Prager3 parameters (alpha, k, p) to the current surface by minimizing the least squares loss.
+        Stores the optimized values in self.alpha, self.k, and self.p.
+        """
+        try:
+            result = minimize(self.loss, x0=[0.0, 1.0, 0.5])
+            self.fit_result = result 
+            if result.success or "precision loss" in result.message:
+                self.alpha, self.k, self.p = result.x
+            else:
+                raise RuntimeError(f"Minimization failed: {result.message}")
+
+        except RuntimeError as e:
+            print(f"Warning: Seed {int(self.seed)} fit failed. {e}")
+            self.alpha, self.k, self.p = np.nan, np.nan, np.nan
+
+    def compute_loss_statistics(self):
+        if self.alpha is np.nan or self.k is np.nan or self.p is np.nan:
+            return {
+                "total_loss": np.nan,
+                "mse": np.nan,
+                "rmse": np.nan,
+                "max_residual": np.nan
+            }
+        
+        residuals = []
+        for point in self.points:
+            i1, j2 = point.calculate_invariants()
+            r = np.sqrt(j2) + self.alpha * i1 + self.p * i1 ** 2 - self.k
+            residuals.append(r)
+
+        residuals = np.array(residuals)
+        n = len(residuals)
+        total_loss = np.sum(residuals**2)
+        mse = total_loss / n
+        rmse = np.sqrt(mse)
+        max_residual = np.max(np.abs(residuals))
+
+        return {
+            "total_loss": total_loss,
+            "mse": mse,
+            "rmse": rmse,
+            "max_residual": max_residual
+        }
+    
+    def plot_surface_fit(self, resolution=1000):
+
+        # Set plot range around your data
+        sig1_vals = [dp.df["Strength_1"] for dp in self.points]
+        sig2_vals = [dp.df["Strength_2"] for dp in self.points]
+        min_sig, max_sig = min(sig1_vals + sig2_vals), max(sig1_vals + sig2_vals)
+        grid = np.linspace(min_sig * 1.1, max_sig * 1.1, resolution)
+
+        # Create sigma1, sigma2 grid
+        sig1, sig2 = np.meshgrid(grid, grid)
+        sig3 = np.zeros_like(sig1)  
+
+        # Compute I1 and sqrt(J2)
+        i1 = sig1 + sig2 + sig3
+        mean_stress = i1 / 3
+        dev_xx = sig1 - mean_stress
+        dev_yy = sig2 - mean_stress
+        dev_zz = sig3 - mean_stress
+
+        j2 = 0.5 * (dev_xx**2 + dev_yy**2 + dev_zz**2)
+
+        # Evaluate DP function
+        F = np.sqrt(j2) + self.alpha * i1 + self.p * i1 ** 2 - self.k
+
+        plt.figure(figsize=(8, 8))
+
+        # Plot contour where f = 0 (the strength boundary)
+        plt.contour(sig1, sig2, F, levels=[0], colors="red", linewidths=2)
+        plt.plot([], [], color="red", label="DP surface")  # for legend (cs.collections is not working)
+
+        # Plot data points
+        plt.scatter(sig1_vals, sig2_vals, color="blue", label="MD failure points")
+        plt.scatter(sig2_vals, sig1_vals, color="blue")
+
+        plt.plot([-50, 130], [0, 0], color='black')
+        plt.plot([0, 0], [-50, 130], color='black')
+
+        plt.xlabel(r"$\sigma_1$")
+        plt.ylabel(r"$\sigma_2$")
+
+        plt.xlim(-15, 100)
+        plt.ylim(-15, 100)
+
+        plt.title(f"Fitted Drucker-Prager Surface (Seed {int(self.seed)})")
+        plt.legend()
+
+        plt.savefig(f'{local_config.DATA_DIR}/defected_data/plots/DP3_fitted_{int(self.seed)}.png')
+        plt.close()
 
 if __name__ == "__main__":
     main()

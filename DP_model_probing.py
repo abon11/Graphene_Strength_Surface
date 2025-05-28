@@ -14,6 +14,7 @@ from scipy.stats import norm
 from scipy.stats import gaussian_kde
 from scipy.stats import jarque_bera
 from scipy.stats import norm, rankdata
+from scipy.interpolate import interp1d
 
 
 def main():
@@ -84,7 +85,10 @@ def main():
     # Map back
     alpha_new = inverse_empirical_cdf(alphas, u_alpha_new)
     k_new = inverse_empirical_cdf(ks, u_k_new)
-    # plot_alpha_k(alpha_new, k_new)
+    plot_alpha_k(alphas, ks, newdata=[alpha_new, k_new])
+
+    plot_pdf_in_gaussian_space(z_alpha, z_k, mean, cov)
+    estimate_pdf_in_alpha_k_space(alphas, ks, mean, cov)
     # plot_marginal_histogram(alphas, data2=alpha_new, label="alpha")
     # plot_marginal_histogram(ks, data2=k_new, label="k")
     # # plot_marginal_histogram(alpha_new, label="new_alpha_samples")
@@ -94,9 +98,9 @@ def main():
     # plot_alpha_k(alpha_new, k_new, pdf=copula_model)
 
     strengths = map_to_strength(alphas, ks)
-    generic_scatter(strengths[0], strengths[1], xlab=r'$\sigma_{cs}$', ylab=r'$\sigma_{ts}$', title='data_in_stress')
-    strengths = map_to_strength(alpha_new, k_new)
-    generic_scatter(strengths[0], strengths[1], xlab=r'$\sigma_{cs}$', ylab=r'$\sigma_{ts}$', title='samples_in_stress')
+    # generic_scatter(strengths[0], strengths[1], xlab=r'$\sigma_{cs}$', ylab=r'$\sigma_{ts}$', title='data_in_stress')
+    new_strengths = map_to_strength(alpha_new, k_new)
+    generic_scatter(strengths[0], strengths[1], newdata=new_strengths, xlab=r'$\sigma_{cs}$', ylab=r'$\sigma_{ts}$', title='Uniaxial Strengths')
 
 
 def inverse_empirical_cdf(original_data, u_vals):
@@ -119,6 +123,64 @@ def mv_normal_approx(alphas, ks):
     cov = np.cov(X.T)
     pdf = multivariate_normal(mean=mean, cov=cov)
     return pdf, mean, cov
+
+
+def plot_pdf_in_gaussian_space(z_alpha, z_k, mean, cov, resolution=200):
+    # Set up Gaussian grid
+    z1 = np.linspace(min(z_alpha) - 3, max(z_alpha) + 3, resolution)
+    z2 = np.linspace(min(z_k) - 3, max(z_k) + 3, resolution)
+    Z1, Z2 = np.meshgrid(z1, z2)
+    
+    grid_points = np.column_stack([Z1.ravel(), Z2.ravel()])
+    
+    # Evaluate multivariate Gaussian PDF
+    pdf_vals = multivariate_normal(mean=mean, cov=cov).pdf(grid_points)
+    pdf_grid = pdf_vals.reshape(Z1.shape)
+
+    # Plot
+    plt.figure(figsize=(8, 6))
+    contour = plt.contourf(Z1, Z2, pdf_grid, levels=30, cmap="viridis")
+    plt.colorbar(contour, label="PDF")
+    plt.scatter(z_alpha, z_k, color='red', s=10, label="Transformed Data")
+    plt.title("PDF in Gaussian Space (z_alpha, z_k)")
+    plt.xlabel("z_alpha")
+    plt.ylabel("z_k")
+    plt.legend()
+    plt.savefig("gaussian_pdf.png")
+
+
+def estimate_pdf_in_alpha_k_space(alphas, ks, mean, cov, resolution=50):
+
+    # Step 1: Set up grid in (alpha, k) space
+    alpha_grid = np.linspace(min(alphas), max(alphas), resolution)
+    k_grid = np.linspace(min(ks), max(ks), resolution)
+    A, K = np.meshgrid(alpha_grid, k_grid)
+    
+    # Step 2: Build inverse empirical CDF functions
+    def empirical_cdf(x, samples):
+        ranks = rankdata(samples)
+        u = ranks / (len(samples) + 1)
+        sorted_x = np.sort(samples)
+        return interp1d(sorted_x, u, bounds_error=False, fill_value=(0,1))(x)
+
+    u_alpha_vals = empirical_cdf(A.ravel(), alphas)
+    u_k_vals = empirical_cdf(K.ravel(), ks)
+
+    z_alpha_vals = norm.ppf(u_alpha_vals)
+    z_k_vals = norm.ppf(u_k_vals)
+
+    Z = np.column_stack([z_alpha_vals, z_k_vals])
+    pdf_vals = multivariate_normal.pdf(Z, mean=mean, cov=cov)
+    pdf_grid = pdf_vals.reshape(A.shape)
+
+    # Step 3: Plot
+    plt.figure(figsize=(8,6))
+    cp = plt.contourf(A, K, pdf_grid, levels=20, cmap='viridis')
+    plt.colorbar(cp, label="PDF")
+    plt.xlabel("alpha")
+    plt.ylabel("k")
+    plt.title("Estimated PDF in (alpha, k) space")
+    plt.savefig("PDF.png")
 
 
 def sample_from_ellipse(mean, cov, n_samples=100, confidence=0.90):
@@ -250,7 +312,7 @@ def plot_surface_fit(surface, resolution=1000):
 
 
 # changed this from inputing surfaces to alphas, ks
-def plot_alpha_k(alphas, ks, pdf=None, ci=None, resolution=100):
+def plot_alpha_k(alphas, ks, newdata=None, pdf=None, ci=None, resolution=100):
 
     corr, pval = pearsonr(alphas, ks)
     print(f"Correlation between alpha and k: r = {corr}, p = {pval}")
@@ -296,21 +358,31 @@ def plot_alpha_k(alphas, ks, pdf=None, ci=None, resolution=100):
         ax.legend()
         fig.savefig("alpha_vs_k_MAP_new.png")
     else:
-        ax.scatter(alphas, ks)
+        if newdata is not None:
+            ax.scatter(newdata[0], newdata[1], label='Sampled Data', alpha=0.4, color='green', s=15)
+        ax.scatter(alphas, ks, label='Original Data', alpha=0.4, color='k', s=15)
+        ax.plot([0, 0], [25, 50], '--', color='red', label=r'$\sigma_{ts} = \sigma_{cs}$')
+        if newdata is not None:
+            fig.legend()
         ax.set_xlabel(r'$\alpha$')
         ax.set_ylabel("k")
-        ax.set_title("Drucker-Prager Fit Parameters - new samples")
-        fig.savefig("alpha_vs_k_new.png")
+        ax.set_title("Drucker-Prager Fit Parameters")
+        fig.savefig("alpha_vs_k_all.png")
 
 
-def generic_scatter(x1, x2, xlab='', ylab='', title=''):
+def generic_scatter(x1, x2, newdata=None, xlab='', ylab='', title=''):
     fig, ax = plt.subplots()
-    ax.scatter(x1, x2)
+    if newdata is not None:
+        ax.scatter(newdata[0], newdata[1], label="Sampled Data", alpha=0.4, color='green', s=15)
+    ax.scatter(x1, x2, label="Original Data", alpha=0.4, color='k', s=15)
+    ax.plot([25, 110], [25, 110], '--', color='red', label=r'$\sigma_{ts} = \sigma_{cs}$')
+    if newdata is not None:
+        plt.legend()
     ax.set_xlabel(xlab)
     ax.set_ylabel(ylab)
     ax.set_title(title)
-    ax.set_xlim(-5, 110)
-    ax.set_ylim(-5, 110)
+    ax.set_xlim(25, 110)
+    ax.set_ylim(25, 110)
     fig.savefig(f'{title}.png')
 
 

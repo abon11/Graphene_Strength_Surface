@@ -14,7 +14,7 @@ def main():
         "Num Atoms y": 60,
         "Defect Type": "SV",  # will match NaN or "None"
         "Defect Percentage": 0.5,
-        "Defect Random Seed": 65
+        "Defect Random Seed": 102
         # "Theta": 90
     }
 
