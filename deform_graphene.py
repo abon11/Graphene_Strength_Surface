@@ -435,7 +435,8 @@ class Simulation:
         for step in range(0, self.sim_length, self.thermo):
             iters, stress_tensor, step_vector, pressure_tensor, strain_tensor = self.run_step(step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor)
 
-            self.check_buckle()
+            if self.angle_testing:
+                self.check_buckle()
             # checks when stress drops to detect fracture - this is just an on the fly check because we don't have principal stresses calculated
             strength, _ = self.find_fracture(stress_tensor[:(iters+1)])  # note: changed from just dominant direction stress to accomidate the multi-axis check
 
