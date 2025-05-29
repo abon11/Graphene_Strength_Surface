@@ -14,13 +14,13 @@ def main():
         "Num Atoms y": 60,
         "Defect Type": "SV",  # will match NaN or "None"
         "Defect Percentage": 0.5,
-        "Defect Random Seed": 102
+        "Defect Random Seed": 115
         # "Theta": 90
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        # "Defect Random Seed": (66, 100),
+        # "Defect Random Seed": (110, 113)
         # "Theta": (0, 90),
     }
 
