@@ -1,12 +1,13 @@
 #!/bin/bash
+export MAX_JOBS_IN_FLIGHT=25
 
 # First batch
 export DEFECT_TYPE="SV"
 export DEFECT_PERC=0.5
 export THETA=0
 
-echo "SUBMITTING SEED 101"
-export DEFECT_RANDOM_SEED=101
+echo "SUBMITTING SEED 183"
+export DEFECT_RANDOM_SEED=183
 bash ./run_surface.sh &
 
 
@@ -15,16 +16,16 @@ count_jobs() {
 }
 
 
-for i in {102..200}; do
+for i in {184..500}; do
     while true; do
         current_jobs=$(count_jobs)
 
-        if (( current_jobs < 10 )); then
+        if (( current_jobs < MAX_JOBS_IN_FLIGHT )); then
             # Wait a little, then re-check
-            sleep 10
+            sleep 20
             current_jobs_post_wait=$(count_jobs)
 
-            if (( current_jobs_post_wait < 10 )); then
+            if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
                 echo "SUBMITTING SEED $i"
                 export DEFECT_RANDOM_SEED="$i"
                 bash ./run_surface.sh &

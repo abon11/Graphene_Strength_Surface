@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-MAX_JOBS_IN_FLIGHT=10
+MAX_JOBS_IN_FLIGHT="${MAX_JOBS_IN_FLIGHT:-10}"
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=12
 
