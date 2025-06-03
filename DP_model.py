@@ -30,7 +30,7 @@ def main():
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        "Defect Random Seed": (1, 100)
+        "Defect Random Seed": (1, 500)
         # "Theta": (0, 90),
     }
 
@@ -48,11 +48,11 @@ def main():
     surfaces = []
     alphas = []
     ks = []
-    ps = []
+    # ps = []
 
-    plot_together = True
+    individual_plots = False
 
-    if ((len(grouped) >= 10) and (plot_together == False)):
+    if ((len(grouped) >= 10) and (individual_plots == True)):
         inp = input(f"Warning! Set to save {len(grouped)} plots. Was this intentional? Type 'n' to quit. ")
         if inp == 'n':
             exit()
@@ -66,7 +66,7 @@ def main():
         datapoints = [DataPoint(row) for _, row in group_df.iterrows()]
 
         # Create Surface and fit Drucker-Prager
-        surface = Surface3P(datapoints)  # changed from just surface
+        surface = Surface(datapoints)  # changed from just surface
         surface.fit_drucker_prager()
 
         # Optionally store the seed for tracking
@@ -74,7 +74,7 @@ def main():
         print(f"Fit surface for seed {int(seed)}.")
 
         stats = surface.compute_loss_statistics()
-        print(f"Seed {int(surface.seed)}: alpha = {surface.alpha:.4f}, k = {surface.k:.4f}, p = {surface.p:.4f}... RMSE: {stats["rmse"]:.4f}, Max Residual: {stats["max_residual"]:.4f}, Total Loss: {stats["total_loss"]:.4f}.")
+        print(f"Seed {int(surface.seed)}: alpha = {surface.alpha:.4f}, k = {surface.k:.4f}... RMSE: {stats["rmse"]:.4f}, Max Residual: {stats["max_residual"]:.4f}, Total Loss: {stats["total_loss"]:.4f}.")
         if stats["rmse"] is not np.nan:
             rmse.append(stats["rmse"])
             loss.append(stats["total_loss"])
@@ -82,18 +82,19 @@ def main():
         surfaces.append(surface)
         alphas.append(surface.alpha)
         ks.append(surface.k)
-        ps.append(surface.p)
+        # ps.append(surface.p)
 
-        rows.append({"Seed": surface.seed, "alpha": surface.alpha, "k": surface.k, "p": surface.p})
+        rows.append({"Seed": surface.seed, "alpha": surface.alpha, "k": surface.k})
 
-        surface.plot_surface_fit()
+        if individual_plots:
+            surface.plot_surface_fit()
 
     if len(rmse) > 0:
         print(f"Final average RMSE over {len(rmse)} samples: {np.sum(rmse) / len(rmse)}")
         print(f"Final average total loss over {len(loss)} samples: {np.sum(loss) / len(loss)}")
 
     df_params = pd.DataFrame(rows)
-    df_params.to_csv("drucker_prager3_params.csv", index=False)
+    df_params.to_csv("drucker_prager_params500.csv", index=False)
 
 
 class BaseSurface:    
