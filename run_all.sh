@@ -6,8 +6,8 @@ export DEFECT_TYPE="SV"
 export DEFECT_PERC=0.5
 export THETA=0
 
-echo "SUBMITTING SEED 183"
-export DEFECT_RANDOM_SEED=183
+echo "SUBMITTING SEED 501"
+export DEFECT_RANDOM_SEED=501
 bash ./run_surface.sh &
 
 
@@ -16,7 +16,7 @@ count_jobs() {
 }
 
 
-for i in {184..500}; do
+for i in {502..750}; do
     while true; do
         current_jobs=$(count_jobs)
 
