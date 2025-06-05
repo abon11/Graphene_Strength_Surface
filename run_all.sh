@@ -6,8 +6,8 @@ export DEFECT_TYPE="SV"
 export DEFECT_PERC=0.5
 export THETA=0
 
-echo "SUBMITTING SEED 543"
-export DEFECT_RANDOM_SEED=543
+echo "SUBMITTING SEED 751"
+export DEFECT_RANDOM_SEED=751
 bash ./run_surface.sh &
 
 
@@ -19,11 +19,11 @@ send_email_notification() {
     echo "Seed $1 has been submitted" | mail -s "HPC Job Notification" avb25@duke.edu
 }
 
-send_email_notification "543"
+send_email_notification "751"
 
 
 
-for i in {544..750}; do
+for i in {752..1000}; do
     while true; do
         current_jobs=$(count_jobs)
 
