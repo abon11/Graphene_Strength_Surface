@@ -20,7 +20,7 @@ def main():
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        "Defect Random Seed": (720, 750)
+        "Defect Random Seed": (963, 963)
         # "Theta": (0, 90),
     }
 
