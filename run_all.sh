@@ -1,13 +1,13 @@
 #!/bin/bash
-export MAX_JOBS_IN_FLIGHT=25
+export MAX_JOBS_IN_FLIGHT=30
 
 # First batch
 export DEFECT_TYPE="SV"
-export DEFECT_PERC=0.5
+export DEFECT_PERC=2.0
 export THETA=0
 
-echo "SUBMITTING SEED 963"
-export DEFECT_RANDOM_SEED=963
+echo "SUBMITTING SEED 10"
+export DEFECT_RANDOM_SEED=10
 bash ./run_surface.sh &
 
 
@@ -19,11 +19,11 @@ send_email_notification() {
     echo "Seed $1 has been submitted" | mail -s "HPC Job Notification" avb25@duke.edu
 }
 
-send_email_notification "963"
+send_email_notification "10"
 
 
 
-for i in {964..1000}; do
+for i in {11..100}; do
     while true; do
         current_jobs=$(count_jobs)
 
