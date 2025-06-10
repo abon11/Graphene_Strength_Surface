@@ -1,5 +1,5 @@
 #!/bin/bash
-export MAX_JOBS_IN_FLIGHT=30
+export MAX_JOBS_IN_FLIGHT=25
 
 export START_SEED=101
 

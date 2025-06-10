@@ -30,7 +30,7 @@ def main():
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        "Defect Random Seed": (1, 500)
+        "Defect Random Seed": (1, 1000)
         # "Theta": (0, 90),
     }
 
@@ -94,7 +94,7 @@ def main():
         print(f"Final average total loss over {len(loss)} samples: {np.sum(loss) / len(loss)}")
 
     df_params = pd.DataFrame(rows)
-    df_params.to_csv("drucker_prager_params500.csv", index=False)
+    df_params.to_csv("drucker_prager_params1000.csv", index=False)
 
 
 class BaseSurface:    
