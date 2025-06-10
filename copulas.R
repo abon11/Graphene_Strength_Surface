@@ -128,10 +128,10 @@ grid$density <- c_uv * f_alpha * f_k
 ggplot(grid, aes(x = alpha, y = k, fill = density)) +
   geom_tile() +
   geom_point(data = original_df, aes(x = alpha, y = k),
-             color = "white", size = 1.5, alpha = 0.5, inherit.aes = FALSE) +
+             color = "white", size = 0.5, alpha = 0.35, inherit.aes = FALSE) +
   scale_fill_viridis_c() +
   labs(title = "True Joint PDF from Copula + Marginals") +
-  coord_cartesian(xlim = c(-0.15, 0.15), ylim = c(24, 53)) +
+  coord_cartesian(xlim = c(-0.25, 0.25), ylim = c(min(k) - 5, max(k) + 5)) +
   theme_minimal()
 
 
