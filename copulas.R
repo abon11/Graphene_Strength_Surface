@@ -20,6 +20,7 @@ alpha_unit <- (alpha - lower) / (upper - lower)
 
 # Fit marginals - these use maximum likelihood estimation
 fit_beta <- fitdist(alpha_unit, "beta", method = "mle")
+fit_beta$estimate
 fit_gamma <- fitdist(k, "gamma", method = "mle")
 
 # Convert to pseudo-observations
@@ -91,7 +92,7 @@ ggplot(plot_df, aes(x = k, fill = source)) +
 # This is for the full PDF
 # Generate density grid over domain
 alpha_vals <- seq(lower - 0.1, upper + 0.1, length.out = 1000)
-k_vals <- seq(-5, max(k) + 5, length.out = 1000)
+k_vals <- seq(-5, max(k) + 10, length.out = 1000)
 grid <- expand.grid(alpha = alpha_vals, k = k_vals)
 
 # Marginal CDFs and PDFs
@@ -139,7 +140,7 @@ ggplot(grid, aes(x = alpha, y = k, fill = density)) +
 ggplot(grid, aes(x = alpha, y = k)) +
   geom_tile(aes(fill = density)) +
   geom_point(data = original_df, aes(x = alpha, y = k),
-             color = "white", size = 1.5, alpha = 0.5, inherit.aes = FALSE) +
+             color = "white", size = 0.5, alpha = 0.35, inherit.aes = FALSE) +
   stat_contour(
     aes(z = density), breaks = c(1e-15),
     color = "red", linewidth = 1
@@ -149,7 +150,7 @@ ggplot(grid, aes(x = alpha, y = k)) +
     title = "Joint PDF with Zero-Density Contour",
     fill = "Density"
   ) +
-  coord_cartesian(xlim = c(-0.15, 0.15), ylim = c(24, 53)) +
+  coord_cartesian(xlim = c(-0.25, 0.25), ylim = c(min(k) - 5, max(k) + 5)) +
   theme_minimal()
 
 
