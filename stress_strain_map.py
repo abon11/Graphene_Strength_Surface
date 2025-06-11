@@ -50,7 +50,11 @@ model.fit(X_train_scaled, y_train_scaled)  # fit the model using scaled training
 y_pred_scaled = model.predict(X_test_scaled)  # predict from the scaled x test data, getting scaled y data
 y_pred = y_scaler.inverse_transform(y_pred_scaled.reshape(-1, 1)).ravel()  # unscale the predicted y, giving us actual predictions
 
-joblib.dump(model, "outputs/model.pkl")
+joblib.dump(model, "outputs/nn_ratio.pkl")
+
+joblib.dump(x_scaler, "outputs/x_scaler.pkl")
+joblib.dump(y_scaler, "outputs/y_scaler_ratio.pkl")  # or ...ratio.pkl for the other one
+
 
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
