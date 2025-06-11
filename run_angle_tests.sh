@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Configuration
-MAX_JOBS_IN_FLIGHT=12
-TOTAL_SIMS=134
+MAX_JOBS_IN_FLIGHT=25
+TOTAL_SIMS=1000
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=12
 
@@ -42,6 +42,9 @@ rand_erates() {
     echo
 }
 
+send_email_notification() {
+    echo "Angle sim $1 has been submitted" | mail -s "HPC Job Notification" avb25@duke.edu
+}
 
 submit_job() {
     local x_erate=$1
@@ -61,11 +64,14 @@ for ((i = 1; i <= TOTAL_SIMS; i++)); do
 
     # Throttle job submissions
     while (( $(count_jobs) >= MAX_JOBS_IN_FLIGHT )); do
-        sleep_time=$((30 + RANDOM % 31))  # Sleep 30–60 sec
-        sleep $sleep_time
+        sleep 30
     done
 
     echo "Submitting job #$i: x=$x_erate y=$y_erate xy=$xy_erate"
+
+    if (( i % 100 == 0 )); then
+        send_email_notification "$i"
+    fi
     submit_job "$x_erate" "$y_erate" "$xy_erate"
 done
 
