@@ -32,52 +32,14 @@ rand_float() {
 }
 
 rand_erates() {
-    local min_mag=1e-4
-    local max_mag=1e-3
-    local p_zero=0
-
-    # Seed once for this function call
-    seed=$(od -An -N2 -i /dev/random | tr -d ' ')
-    
-    read x_raw y_raw xy_raw <<< $(awk -v seed=$seed 'BEGIN {
-        srand(seed)
-        print rand(), rand(), rand()
-    }')
-
-    # Randomly zero out components (note: must also fix srand in these)
-    seed=$(od -An -N2 -i /dev/random | tr -d ' ')
-    read zero_x zero_y zero_xy <<< $(awk -v seed=$seed -v p=$p_zero 'BEGIN {
-        srand(seed)
-        print (rand()<p)?0:1, (rand()<p)?0:1, (rand()<p)?0:1
-    }')
-
-    x_raw=$(awk -v x=$x_raw -v f=$zero_x 'BEGIN {print x * f}')
-    y_raw=$(awk -v y=$y_raw -v f=$zero_y 'BEGIN {print y * f}')
-    xy_raw=$(awk -v z=$xy_raw -v f=$zero_xy 'BEGIN {print z * f}')
-
-    # Ensure at least one component is non-zero
-    xy_total=$(awk -v x=$x_raw -v y=$y_raw 'BEGIN {print x + y}')
-    if (( $(awk -v t=$xy_total 'BEGIN {print (t == 0)}') )); then
-        x_raw=1
-    fi
-
-    norm=$(awk -v x=$x_raw -v y=$y_raw -v z=$xy_raw 'BEGIN {print sqrt(x*x + y*y + z*z)}')
-    x_unit=$(awk -v x=$x_raw -v n=$norm 'BEGIN {print x/n}')
-    y_unit=$(awk -v y=$y_raw -v n=$norm 'BEGIN {print y/n}')
-    xy_unit=$(awk -v z=$xy_raw -v n=$norm 'BEGIN {print z/n}')
-
-    # Magnitude
-    seed=$(od -An -N2 -i /dev/random | tr -d ' ')
-    mag=$(awk -v seed=$seed -v min=$min_mag -v max=$max_mag 'BEGIN {
-        srand(seed)
-        print min + rand() * (max - min)
-    }')
-
-    x_erate=$(awk -v u=$x_unit -v m=$mag 'BEGIN {print u * m}')
-    y_erate=$(awk -v u=$y_unit -v m=$mag 'BEGIN {print u * m}')
-    xy_erate=$(awk -v u=$xy_unit -v m=$mag 'BEGIN {print u * m}')
-
-    echo "$x_erate $y_erate $xy_erate"
+    for _ in {1..3}; do
+        seed=$(od -An -N2 -i /dev/random | tr -d ' ')
+        awk -v seed=$seed 'BEGIN {
+            srand(seed)
+            printf "%.8f ", 0.0001 + rand() * (0.001 - 0.0001)
+        }'
+    done
+    echo
 }
 
 
@@ -106,3 +68,5 @@ for ((i = 1; i <= TOTAL_SIMS; i++)); do
     echo "Submitting job #$i: x=$x_erate y=$y_erate xy=$xy_erate"
     submit_job "$x_erate" "$y_erate" "$xy_erate"
 done
+
+
