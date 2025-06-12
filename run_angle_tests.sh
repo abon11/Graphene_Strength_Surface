@@ -2,7 +2,7 @@
 
 # Configuration
 MAX_JOBS_IN_FLIGHT=25
-TOTAL_SIMS=1000
+TOTAL_SIMS=5000
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=12
 
@@ -69,7 +69,7 @@ for ((i = 1; i <= TOTAL_SIMS; i++)); do
 
     echo "Submitting job #$i: x=$x_erate y=$y_erate xy=$xy_erate"
 
-    if (( i % 100 == 0 )); then
+    if (( i % 1000 == 0 )); then
         send_email_notification "$i"
     fi
     submit_job "$x_erate" "$y_erate" "$xy_erate"

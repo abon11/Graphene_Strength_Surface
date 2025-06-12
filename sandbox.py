@@ -12,15 +12,15 @@ df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
 # df.to_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv', index=False)
 
 
-# plt.hist(df["Strain Rate x"], bins=60, color='skyblue', alpha=0.5, label='x')
-# plt.hist(df["Strain Rate y"], bins=60, color='red', alpha=0.5, label='y')
-# plt.hist(df["Strain Rate xy"], bins=60, color='grey', alpha=0.5, label='xy')
+plt.hist(df["Strain Rate x"], bins=60, color='skyblue', alpha=0.5, label='x')
+plt.hist(df["Strain Rate y"], bins=60, color='red', alpha=0.5, label='y')
+plt.hist(df["Strain Rate xy"], bins=60, color='grey', alpha=0.5, label='xy')
 
-# plt.xlabel("Strain Rate")
-# plt.ylabel("Frequency")
-# plt.legend()
-# plt.title("Distribution of Applied Strain Rates")
-# plt.savefig("erates.png")
+plt.xlabel("Strain Rate")
+plt.ylabel("Frequency")
+plt.legend()
+plt.title("Distribution of Applied Strain Rates")
+plt.savefig("erates.png")
 
 
 # plt.hist(df["Theta"], bins=60, color='skyblue', alpha=0.5, label='theta')
@@ -32,16 +32,16 @@ df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
 # plt.savefig("thetas.png")
 
 # Load numbers from file
-with open("all_erates.txt", "r") as f:
-    data = [float(line.strip()) for line in f if line.strip()]
+# with open("all_erates.txt", "r") as f:
+#     data = [float(line.strip()) for line in f if line.strip()]
 
-# Plot histogram
-plt.hist(data, bins=50, edgecolor='black', alpha=0.7)
-plt.xlabel("Value")
-plt.ylabel("Frequency")
-plt.title("Histogram of Values from File")
-plt.tight_layout()
-plt.show()
+# # Plot histogram
+# plt.hist(data, bins=50, edgecolor='black', alpha=0.7)
+# plt.xlabel("Value")
+# plt.ylabel("Frequency")
+# plt.title("Histogram of Values from File")
+# plt.tight_layout()
+# plt.show()
 
 
 
