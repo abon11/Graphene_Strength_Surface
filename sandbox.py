@@ -21,28 +21,27 @@ plt.ylabel("Frequency")
 plt.legend()
 plt.title("Distribution of Applied Strain Rates")
 plt.savefig("erates.png")
+plt.close()
 
 
-# plt.hist(df["Theta"], bins=60, color='skyblue', alpha=0.5, label='theta')
+plt.hist(df["Theta"], bins=60, color='skyblue', alpha=0.5, label='theta')
 
-# plt.xlabel("Theta")
-# plt.ylabel("Frequency")
-# plt.legend()
-# plt.title("Distribution of Theta")
-# plt.savefig("thetas.png")
+plt.xlabel("Theta")
+plt.ylabel("Frequency")
+plt.legend()
+plt.title("Distribution of Theta")
+plt.savefig("thetas.png")
+plt.close()
 
-# Load numbers from file
-# with open("all_erates.txt", "r") as f:
-#     data = [float(line.strip()) for line in f if line.strip()]
 
-# # Plot histogram
-# plt.hist(data, bins=50, edgecolor='black', alpha=0.7)
-# plt.xlabel("Value")
-# plt.ylabel("Frequency")
-# plt.title("Histogram of Values from File")
-# plt.tight_layout()
-# plt.show()
 
+plt.hist(df["Sigma_Ratio"], bins=60, color='skyblue', alpha=0.5, label='ratio')
+
+plt.xlabel("Ratio")
+plt.ylabel("Frequency")
+plt.legend()
+plt.title("Distribution of Sigma Ratio")
+plt.savefig("ratios.png")
 
 
 
