@@ -12,7 +12,7 @@ y_scaler_theta = joblib.load("outputs/y_scaler_theta.pkl")
 y_scaler_ratio = joblib.load("outputs/y_scaler_ratio.pkl")
 
 # === Define target outputs ===
-target_theta = 90       # degrees
+target_theta = 0       # degrees
 target_ratio = 0       # sigma_2 / sigma_1
 
 # === Scale target outputs ===

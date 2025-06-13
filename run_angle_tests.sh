@@ -36,11 +36,19 @@ rand_erates() {
         seed=$(od -An -N2 -i /dev/random | tr -d ' ')
         awk -v seed=$seed 'BEGIN {
             srand(seed)
-            printf "%.8f ", 0.0001 + rand() * (0.001 - 0.0001)
+            r = rand()
+            if (r < 0.02) {
+                printf "0.00000000 "
+            } else if (r > 0.95) {
+                printf "0.00100000 "
+            } else {
+                printf "%.8f ", 0.0001 + rand() * (0.001 - 0.0001)
+            }
         }'
     done
     echo
 }
+
 
 send_email_notification() {
     echo "Angle sim $1 has been submitted" | mail -s "HPC Job Notification" avb25@duke.edu

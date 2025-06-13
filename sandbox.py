@@ -1,47 +1,52 @@
 import pandas as pd
 import local_config
 import matplotlib.pyplot as plt
+import numpy as np
 
 df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
 
-# df["Sigma_Ratio"] = df["Sigma_2"] / df["Sigma_1"]
+# df["Sigma_Ratio"] = np.abs(df["Sigma_2"] / df["Sigma_1"])
 
 # df['Theta'] = df['Theta'].apply(lambda x: min(x, 180 - x))
 
 # # Save it back
 # df.to_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv', index=False)
 
+plt.scatter(df["Sigma_Ratio"], df["Theta"], s=1)
+plt.xlabel("Sigma Ratio")
+plt.ylabel("Theta")
+plt.show()
 
-plt.hist(df["Strain Rate x"], bins=60, color='skyblue', alpha=0.5, label='x')
-plt.hist(df["Strain Rate y"], bins=60, color='red', alpha=0.5, label='y')
-plt.hist(df["Strain Rate xy"], bins=60, color='grey', alpha=0.5, label='xy')
+# plt.hist(df["Strain Rate x"], bins=60, color='skyblue', alpha=0.5, label='x')
+# plt.hist(df["Strain Rate y"], bins=60, color='red', alpha=0.5, label='y')
+# plt.hist(df["Strain Rate xy"], bins=60, color='grey', alpha=0.5, label='xy')
 
-plt.xlabel("Strain Rate")
-plt.ylabel("Frequency")
-plt.legend()
-plt.title("Distribution of Applied Strain Rates")
-plt.savefig("erates.png")
-plt.close()
-
-
-plt.hist(df["Theta"], bins=60, color='skyblue', alpha=0.5, label='theta')
-
-plt.xlabel("Theta")
-plt.ylabel("Frequency")
-plt.legend()
-plt.title("Distribution of Theta")
-plt.savefig("thetas.png")
-plt.close()
+# plt.xlabel("Strain Rate")
+# plt.ylabel("Frequency")
+# plt.legend()
+# plt.title("Distribution of Applied Strain Rates")
+# plt.savefig("erates.png")
+# plt.close()
 
 
+# plt.hist(df["Theta"], bins=60, color='skyblue', alpha=0.5, label='theta')
 
-plt.hist(df["Sigma_Ratio"], bins=60, color='skyblue', alpha=0.5, label='ratio')
+# plt.xlabel("Theta")
+# plt.ylabel("Frequency")
+# plt.legend()
+# plt.title("Distribution of Theta")
+# plt.savefig("thetas.png")
+# plt.close()
 
-plt.xlabel("Ratio")
-plt.ylabel("Frequency")
-plt.legend()
-plt.title("Distribution of Sigma Ratio")
-plt.savefig("ratios.png")
+
+
+# plt.hist(df["Sigma_Ratio"], bins=60, color='skyblue', alpha=0.5, label='ratio')
+
+# plt.xlabel("Ratio")
+# plt.ylabel("Frequency")
+# plt.legend()
+# plt.title("Distribution of Sigma Ratio")
+# plt.savefig("ratios.png")
 
 
 
