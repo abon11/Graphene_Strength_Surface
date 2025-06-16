@@ -2,7 +2,7 @@
 
 # Configuration
 MAX_JOBS_IN_FLIGHT=25
-TOTAL_SIMS=5000
+TOTAL_SIMS=28000
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=12
 
