@@ -2,7 +2,7 @@
 
 # Configuration
 MAX_JOBS_IN_FLIGHT=25
-TOTAL_SIMS=28000
+TOTAL_SIMS=1
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=12
 
@@ -65,22 +65,26 @@ count_jobs() {
     squeue -u "$USER" --noheader | awk '$3 ~ /^one_sim_/ {count++} END {print count+0}'
 }
 
-# Main loop
-for ((i = 1; i <= TOTAL_SIMS; i++)); do
-    # Generate random strain rates
+# # Main loop
+# for ((i = 1; i <= TOTAL_SIMS; i++)); do
+#     # Generate random strain rates
+#     read -r x_erate y_erate xy_erate <<< "$(rand_erates)"
+
+#     # Throttle job submissions
+#     while (( $(count_jobs) >= MAX_JOBS_IN_FLIGHT )); do
+#         sleep 30
+#     done
+
+#     # echo "Submitting job #$i: x=$x_erate y=$y_erate xy=$xy_erate"
+#     echo "Submitting job #$i: x=0.001 y=0.0009 xy=0"
+
+#     if (( i % 1000 == 0 )); then
+#         send_email_notification "$i"
+#     fi
+#     submit_job "0.001" "0.0001" "0"
+# done
+
+for ((i = 1; i <= 10000; i++)); do
     read -r x_erate y_erate xy_erate <<< "$(rand_erates)"
-
-    # Throttle job submissions
-    while (( $(count_jobs) >= MAX_JOBS_IN_FLIGHT )); do
-        sleep 30
-    done
-
-    echo "Submitting job #$i: x=$x_erate y=$y_erate xy=$xy_erate"
-
-    if (( i % 1000 == 0 )); then
-        send_email_notification "$i"
-    fi
-    submit_job "$x_erate" "$y_erate" "$xy_erate"
+    echo "$x_erate $y_erate $xy_erate" >> samples.txt
 done
-
-
