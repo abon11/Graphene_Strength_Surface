@@ -13,7 +13,7 @@ Y_ATOMS="${Y_ATOMS:-60}"
 DEFECT_TYPE="${DEFECT_TYPE:-None}"
 DEFECT_PERC="${DEFECT_PERC:-0}"
 DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-1}"
-SIM_LENGTH="${SIM_LENGTH:-25000}"
+SIM_LENGTH="${SIM_LENGTH:-20000}"
 ACCEPT_DUPES="${ACCEPT_DUPES:-false}"
 TIMESTEP="${TIMESTEP:-0.0005}"
 THERMO="${THERMO:-1000}"
@@ -73,14 +73,13 @@ for ((i = 1; i <= TOTAL_SIMS; i++)); do
 
     # Throttle job submissions
     while (( $(count_jobs) >= MAX_JOBS_IN_FLIGHT )); do
-        sleep 30
+        sleep 10
     done
 
-    # echo "Submitting job #$i: x=$x_erate y=$y_erate xy=$xy_erate"
-    echo "Submitting job #$i: x=0.001 y=0.0009 xy=0"
+    echo "Submitting job #$i: x=$x_erate y=$y_erate xy=$xy_erate"
 
     if (( i % 5000 == 0 )); then
         send_email_notification "$i"
     fi
-    submit_job "0.001" "0.0001" "0"
+    submit_job "$x_erate" "$y_erate" "$xy_erate"
 done
