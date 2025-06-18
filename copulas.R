@@ -45,7 +45,7 @@ fit_cop <- fitCopula(cop, u, method = "ml")  # uses MLE
 cop_fitted <- fit_cop@copula  # extract best fit
 
 # Sample from copula
-u_sampled <- rCopula(1000, cop_fitted)
+u_sampled <- rCopula(100000, cop_fitted)
 
 # Invert marginals using quantile function
 alpha_sampled_scaled <- qbeta(
@@ -67,6 +67,21 @@ plot_df <- rbind(original_df, sampled_df)
 # clipped_alphas <- alpha_unit * (upper - lower) + lower
 # clipped_df <- data.frame(alpha = clipped_alphas, k = k, source = "original_clipped")
 # plot_clipped_df <- rbind(clipped_df, sampled_df)
+
+# turn alphas and ks into sigma_ts and sigma_cs (for visualization)
+cs <- (3 * k_samp) / (sqrt(3) - 3 * alpha_samp)
+ts <- (3 * k_samp) / (sqrt(3) + 3 * alpha_samp)
+str_df <- data.frame(sigma_cs = cs, sigma_ts = ts, source = "Sampled Strength")
+
+# Plot strength scatter
+ggplot(str_df, aes(x = sigma_cs, y = sigma_ts, color = source)) +
+  geom_point(alpha = 0.6) +
+  labs(
+    title = "Sampled Strengths in Stress Space",
+    x = "Compressive Strength", y = "Tensile Strength"
+  ) +
+  coord_cartesian(xlim = c(30, 130), ylim = c(30, 130)) +
+  theme_bw()
 
 # Plot joint scatter
 ggplot(plot_df, aes(x = alpha, y = k, color = source)) +

@@ -3,40 +3,52 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.multioutput import MultiOutputRegressor
 import pandas as pd
 import local_config
 import os
 import pickle
 import joblib
 
-target = 'both'  # can be 'theta', 'ratio', or 'both'
+target = 'theta'  # can be 'theta', 'ratio', or 'both'
+mod = 'nn'  # can be 'nn', 'gb, or 'sr'
 
 if target != 'both' and target != 'theta' and target != 'ratio':
     print("Target must be 'both', 'theta', or 'ratio'!")
+    exit()
+
+if mod != 'nn' and mod != 'sr' and mod != 'gb':
+    print("Model must be either 'nn', 'gb', or 'sr'!")
     exit()
 
 os.environ["NUM_THREADS"] = "8"
 
 df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
 
-# model = PySRRegressor(
-#     model_selection="best",
-#     niterations=1000,
-#     binary_operators=["+", "*", "-", "/"],
-#     unary_operators=["square", "sqrt", "log"],
-#     loss="loss(x, y) = (x - y)^2",
-#     verbosity=1,
-#     procs=0,  # auto-threaded
-# )
-
-model = MLPRegressor(
-    hidden_layer_sizes=(128, 64, 64),   # two hidden layers with 64 neurons each
-    activation='relu',             # ReLU nonlinearity
-    solver='adam',                 # good for most problems
-    max_iter=2000,                 # increase if convergence is slow
-    random_state=42,
-    verbose=True
-)
+if mod == 'sr':
+    model = PySRRegressor(
+        model_selection="best",
+        niterations=1000,
+        binary_operators=["+", "*", "-", "/"],
+        unary_operators=["square", "sqrt", "log"],
+        loss="loss(x, y) = (x - y)^2",
+        verbosity=1,
+        procs=0,  # auto-threaded
+    )
+elif mod == 'nn':
+    model = MLPRegressor(
+        hidden_layer_sizes=(128, 64, 64),   # two hidden layers with 64 neurons each
+        activation='relu',             # ReLU nonlinearity
+        solver='adam',                 # good for most problems
+        max_iter=2000,                 # increase if convergence is slow
+        random_state=42,
+        verbose=True
+    )
+elif mod == 'gb':
+    model = HistGradientBoostingRegressor(max_iter=500, learning_rate=0.05, max_depth=10, random_state=42)
+    if target == 'both':
+        model = MultiOutputRegressor(model)
 
 X = df[["Strain Rate x", "Strain Rate y", "Strain Rate xy"]].values
 if target == 'theta':
@@ -71,7 +83,7 @@ else:
 
 
 joblib.dump(x_scaler, "outputs/x_scaler.pkl")
-joblib.dump(model, f"outputs/nn_{target}.pkl")
+joblib.dump(model, f"outputs/{mod}_{target}.pkl")
 joblib.dump(y_scaler, f"outputs/y_scaler_{target}.pkl")
 
 mse = mean_squared_error(y_test, y_pred)

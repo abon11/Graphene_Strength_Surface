@@ -8,7 +8,8 @@ import pickle
 import matplotlib.pyplot as plt
 import joblib
 
-target = 'both'  # can be 'theta', 'ratio', or 'both'
+target = 'ratio'  # can be 'theta', 'ratio', or 'both'
+mod = 'nn'  # can be 'nn' or 'sr'
 
 if target != 'both' and target != 'theta' and target != 'ratio':
     print("Target must be 'both', 'theta', or 'ratio'!")
@@ -20,7 +21,7 @@ os.environ["NUM_THREADS"] = "8"
 df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
 
 # could do try/except here for more robustness in the future
-model = joblib.load(f"outputs/nn_{target}.pkl")
+model = joblib.load(f"outputs/{mod}_{target}.pkl")
 
 # with open(f"outputs/symbreg_ratio/checkpoint.pkl", "rb") as f:
 #     model = pickle.load(f)
@@ -53,8 +54,8 @@ if target != 'both':
     plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], '--r')
     plt.xlabel("True")
     plt.ylabel("Predicted")
-    plt.title(f"Predicted vs. Actual - {target}")
-    plt.savefig(f"outputs/pva_{target}.png")
+    plt.title(f"Predicted vs. Actual - {target}, {mod}")
+    plt.savefig(f"outputs/{mod}_pva_{target}.png")
     plt.close()
 
     residuals = y_test - y_pred
@@ -62,16 +63,16 @@ if target != 'both':
     plt.axhline(0, color='r', linestyle='--')
     plt.xlabel("Predicted")
     plt.ylabel("Residual")
-    plt.title(f"Residuals vs. Predicted - {target}")
+    plt.title(f"Residuals vs. Predicted - {target}, {mod}")
     plt.tight_layout()
-    plt.savefig(f"outputs/resid_{target}.png")
+    plt.savefig(f"outputs/{mod}_resid_{target}.png")
     plt.close()
 
     mse = mean_squared_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
 
     print(f"MSE: {mse:.6f}")
-    print(f"R² Score: {r2:.4f}")
+    print(f"R^2 Score: {r2:.4f}")
 
 else:
     # Multi-output: Sigma Ratio (index 0) and Theta (index 1)
@@ -85,9 +86,9 @@ else:
         )
         plt.xlabel("True")
         plt.ylabel("Predicted")
-        plt.title(f"Predicted vs. Actual - {label}")
+        plt.title(f"Predicted vs. Actual - {label}, {mod}")
         plt.tight_layout()
-        plt.savefig(f"outputs/pva_{label}.png")
+        plt.savefig(f"outputs/{mod}_pva_{label}.png")
         plt.close()
 
         residuals = y_test[:, i] - y_pred[:, i]
@@ -95,9 +96,9 @@ else:
         plt.axhline(0, color='r', linestyle='--')
         plt.xlabel("Predicted")
         plt.ylabel("Residual")
-        plt.title(f"Residuals vs. Predicted - {label}")
+        plt.title(f"Residuals vs. Predicted - {label}, {mod}")
         plt.tight_layout()
-        plt.savefig(f"outputs/resid_{label}.png")
+        plt.savefig(f"outputs/{mod}_resid_{label}.png")
         plt.close()
 
     # Combined metrics
@@ -106,8 +107,8 @@ else:
 
     print(f"MSE (Sigma Ratio): {mse[0]:.6f}")
     print(f"MSE (Theta):       {mse[1]:.6f}")
-    print(f"R²  (Sigma Ratio): {r2[0]:.4f}")
-    print(f"R²  (Theta):       {r2[1]:.4f}")
+    print(f"R^2 (Sigma Ratio): {r2[0]:.4f}")
+    print(f"R^2 (Theta):       {r2[1]:.4f}")
 
 
 print(model)
