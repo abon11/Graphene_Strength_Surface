@@ -69,19 +69,20 @@ plot_df <- rbind(original_df, sampled_df)
 # plot_clipped_df <- rbind(clipped_df, sampled_df)
 
 # turn alphas and ks into sigma_ts and sigma_cs (for visualization)
-cs <- (3 * k_samp) / (sqrt(3) - 3 * alpha_samp)
-ts <- (3 * k_samp) / (sqrt(3) + 3 * alpha_samp)
-str_df <- data.frame(sigma_cs = cs, sigma_ts = ts, source = "Sampled Strength")
+cs <- (3 * k) / (sqrt(3) - 3 * alpha)
+bs <- (3 * k) / (sqrt(3) + 6 * alpha)
+ts <- (3 * k) / (sqrt(3) + 3 * alpha)
+str_df <- data.frame(sigma_cs = cs, sigma_ts = ts, sigma_bs = bs, source = "Sampled Strength")
 
 # Plot strength scatter
-ggplot(str_df, aes(x = sigma_cs, y = sigma_ts, color = source)) +
+ggplot(str_df, aes(x = sigma_ts, y = sigma_cs, color = source)) +
   geom_point(alpha = 0.6) +
   labs(
     title = "Sampled Strengths in Stress Space",
-    x = "Compressive Strength", y = "Tensile Strength"
+    x = "Tensile Strength", y = "Compressive Strength"
   ) +
   coord_cartesian(xlim = c(30, 130), ylim = c(30, 130)) +
-  theme_bw()
+  theme_bw(base_size = 22)
 
 # Plot joint scatter
 ggplot(plot_df, aes(x = alpha, y = k, color = source)) +
@@ -149,6 +150,65 @@ ggplot(grid, aes(x = alpha, y = k, fill = density)) +
   labs(title = "True Joint PDF from Copula + Marginals") +
   coord_cartesian(xlim = c(-0.25, 0.25), ylim = c(min(k) - 5, max(k) + 5)) +
   theme_bw(base_size = 22)
+
+
+ts_vals <- seq(10, 140, length.out = 300)
+cs_vals <- seq(10, 140, length.out = 300)
+# bs_vals <- seq(10, 140, length.out = 300)
+strength_grid <- expand.grid(ts = ts_vals, cs = cs_vals)
+
+strength_grid$alpha <- (strength_grid$cs - strength_grid$ts) / (sqrt(3) * (strength_grid$ts + strength_grid$cs))
+strength_grid$k <- (2 * strength_grid$cs * strength_grid$ts) / (sqrt(3) * (strength_grid$ts + strength_grid$cs))
+
+# strength_grid$alpha <- (strength_grid$ts - strength_grid$bs) / (sqrt(3) * (2 * strength_grid$bs - strength_grid$ts))
+# strength_grid$k <- (strength_grid$ts) / (sqrt(3) * (2 - (strength_grid$ts * strength_grid$bs)))
+strength_grid <- strength_grid[is.finite(strength_grid$alpha) & is.finite(strength_grid$k), ]
+
+
+alpha_unit_grid <- (strength_grid$alpha - lower) / (upper - lower)
+u1_grid <- pbeta(alpha_unit_grid, shape1 = fit_beta$estimate["shape1"], shape2 = fit_beta$estimate["shape2"])
+u2_grid <- pgamma(strength_grid$k, shape = fit_gamma$estimate["shape"], rate = fit_gamma$estimate["rate"])
+f_alpha <- dbeta(alpha_unit_grid, shape1 = fit_beta$estimate["shape1"], shape2 = fit_beta$estimate["shape2"]) / (upper - lower)
+f_k <- dgamma(strength_grid$k, shape = fit_gamma$estimate["shape"], rate = fit_gamma$estimate["rate"])
+c_uv <- dCopula(cbind(u1_grid, u2_grid), copula = cop_fitted)
+
+strength_grid$density <- c_uv * f_alpha * f_k
+
+ggplot(strength_grid, aes(x = ts, y = cs, fill = density)) +
+  geom_tile() +
+  geom_point(data = original_df, aes(x = ts, y = cs),
+             color = "white", size = 0.5, alpha = 0.35, inherit.aes = FALSE) +
+  scale_x_continuous(breaks = round(seq(20, 130, by = 20), 30)) +
+  scale_y_continuous(breaks = round(seq(20, 130, by = 20), 30)) +
+  scale_fill_viridis_c() +
+  labs(title = "Joint PDF in Strength Space",
+       x = "Tensile strength (ts)",
+       y = "Compressive strength (cs)") +
+  coord_cartesian(xlim = c(20, 130), ylim = c(20, 130)) +
+  theme_bw(base_size = 22)
+
+
+
+ggplot(strength_grid, aes(x = ts, y = cs, fill = density)) +
+  geom_tile() +
+  geom_point(data = original_df, aes(x = ts, y = cs),
+             color = "white", size = 0.5, alpha = 0.35, inherit.aes = FALSE) +
+  scale_x_continuous(breaks = round(seq(20, 130, by = 20), 30)) +
+  scale_y_continuous(breaks = round(seq(20, 130, by = 20), 30)) +
+  scale_fill_viridis_c() +
+  labs(title = "Joint PDF in Strength Space",
+       x = "Tensile Strength",
+       y = "Compressive Strength") +
+  coord_cartesian(xlim = c(20, 130), ylim = c(20, 130)) +
+  theme_bw(base_size = 22)
+
+
+
+
+
+
+
+
 
 
 # Joint PDF with zero-density contour
