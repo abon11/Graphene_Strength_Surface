@@ -436,6 +436,8 @@ def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, ti
         ax.set_title("DP Surfaces Overlayed by Random Seed", fontsize=20)
     if showlabels:
         ax.legend()
+
+    fig.tight_layout()
     if title:
         plt.savefig(title)
     else:

@@ -24,13 +24,13 @@ def main():
         "Num Atoms y": 60,
         "Defect Type": "SV",
         "Defect Percentage": 0.5,
-        "Theta": 0
-        # "Defect Random Seed": 54
+        "Theta": 0,
+        "Defect Random Seed": 54
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        "Defect Random Seed": (1, 1000)
+        # "Defect Random Seed": (1, 1000)
         # "Theta": (0, 90),
     }
 
@@ -50,7 +50,7 @@ def main():
     ks = []
     # ps = []
 
-    individual_plots = False
+    individual_plots = True
 
     if ((len(grouped) >= 10) and (individual_plots == True)):
         inp = input(f"Warning! Set to save {len(grouped)} plots. Was this intentional? Type 'n' to quit. ")
@@ -282,8 +282,9 @@ class Surface(BaseSurface):
         plt.xticks(fontsize=15)
         plt.yticks(fontsize=15)
 
-        plt.title(f"Fitted Drucker-Prager Surface (Seed {int(self.seed)})", fontsize=20)
-        plt.legend()
+        plt.title(f"Fit Drucker-Prager Surface (Seed {int(self.seed)})", fontsize=20)
+        plt.legend(fontsize=15)
+        plt.tight_layout()
 
         plt.savefig(f'{local_config.DATA_DIR}/defected_data/plots/DP_fitted_{int(self.seed)}.png')
         plt.close()

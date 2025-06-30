@@ -17,13 +17,13 @@ def main():
         "Num Atoms y": 60,
         "Defect Type": "SV",
         "Defect Percentage": 0.5,
-        "Defect Random Seed": 1,
+        # "Defect Random Seed": 1,
         "Theta": 0
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6)
-        # "Defect Random Seed": (1, 100)
+        "Defect Random Seed": (1, 1000)
         # "Theta": (0, 90)
         # "Simulation ID": (2575, 3000)
     }
@@ -33,8 +33,8 @@ def main():
         # "Theta": [0, 60]
     }
 
-    color_by_field = "Defect Random Seed"
-    show_pristine = False
+    color_by_field = None
+    show_pristine = True
 
     # Load, filter, and plot
     df = load_data(csv_file)
@@ -48,7 +48,7 @@ def main():
     else:
         pristine_df = None
 
-    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=False)
+    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
     # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 
@@ -274,44 +274,51 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
         colors = ['blue'] * len(df)
 
     plt.figure(figsize=(8, 8))
-    plt.scatter(df["Strength_1"], df["Strength_2"], c=colors, alpha=0.7)
-    plt.scatter(df["Strength_2"], df["Strength_1"], c=colors, alpha=0.7)
+    plt.scatter(df["Strength_1"], df["Strength_2"], c=colors, alpha=0.05, label='Defective')
+    plt.scatter(df["Strength_2"], df["Strength_1"], c=colors, alpha=0.05)
     if pristine_data is not None and not pristine_data.empty:
         plt.scatter(pristine_data["Strength_1"], pristine_data["Strength_2"], c='black', alpha=0.7, label='Pristine')
         plt.scatter(pristine_data["Strength_2"], pristine_data["Strength_1"], c='black', alpha=0.7)
-    plt.xlabel(r'$\sigma_1$')
-    plt.ylabel(r'$\sigma_2$')
+    plt.xlabel(r'$\sigma_1$', fontsize=18)
+    plt.ylabel(r'$\sigma_2$', fontsize=18)
 
     plt.plot([-50, 130], [0, 0], color='black')
     plt.plot([0, 0], [-50, 130], color='black')
 
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+
     plt.xlim(-15, 130)
     plt.ylim(-15, 130)
-    plt.title(title)
+    plt.title(title, fontsize=20)
+    plt.title("Molecular Strength Surfaces 0f 0.5% SV Graphene", fontsize=20)
 
-    # create legend
-    if value_to_color:
-        handles = []
-        labels = []
-        for val, color in value_to_color.items():
-            # Format value cleanly: no decimal if not needed
-            if isinstance(val, float) and val.is_integer():
-                val_str = str(int(val))
-            else:
-                val_str = str(val)
-            handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8))
-            labels.append(val_str)
+    plt.legend(fontsize=15)
 
-        # Add pristine legend entry
-        if pristine_data is not None and not pristine_data.empty:
-            handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=8))
-            labels.append("Pristine")
+    # # create legend
+    # if value_to_color:
+    #     handles = []
+    #     labels = []
+    #     for val, color in value_to_color.items():
+    #         # Format value cleanly: no decimal if not needed
+    #         if isinstance(val, float) and val.is_integer():
+    #             val_str = str(int(val))
+    #         else:
+    #             val_str = str(val)
+    #         handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8))
+    #         labels.append(val_str)
 
-        legend_title = color_by_field if color_by_field else "Legend"
-        if legend:
-            plt.legend(handles, labels, title=legend_title, loc='best', frameon=True)
+    #     # Add pristine legend entry
+    #     if pristine_data is not None and not pristine_data.empty:
+    #         handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=8))
+    #         labels.append("Pristine")
+
+    #     legend_title = color_by_field if color_by_field else "Legend"
+    #     if legend:
+    #         plt.legend(handles, labels, title=legend_title, loc='best', frameon=True)
 
     fname = f"{folder}/plots/SS_{clean_title(title)}"
+    plt.tight_layout()
     plt.savefig(fname)
     plt.close()
     print(f"Plot saved to {fname}.")
