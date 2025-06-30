@@ -148,7 +148,7 @@ ggplot(grid, aes(x = alpha, y = k, fill = density)) +
   scale_fill_viridis_c() +
   labs(title = "True Joint PDF from Copula + Marginals") +
   coord_cartesian(xlim = c(-0.25, 0.25), ylim = c(min(k) - 5, max(k) + 5)) +
-  theme_minimal()
+  theme_bw(base_size = 22)
 
 
 # Joint PDF with zero-density contour
@@ -166,7 +166,7 @@ ggplot(grid, aes(x = alpha, y = k)) +
     fill = "Density"
   ) +
   coord_cartesian(xlim = c(-0.25, 0.25), ylim = c(min(k) - 5, max(k) + 5)) +
-  theme_minimal()
+  theme_bw()
 
 
 
@@ -189,12 +189,12 @@ ggplot() +
   geom_line(data = alpha_pdf_df, aes(x = alpha, y = pdf),
             color = "black", size = 1) +
   labs(
-    title = "True PDF vs. Original for α",
-    x = expression(alpha),
+    title = "True Marginal PDF vs. Data for α",
+    x = "α",
     y = "Density"
   ) +
   coord_cartesian(xlim = c(-0.15, 0.15)) +
-  theme_minimal()
+  theme_bw(base_size = 22)
 
 
 
@@ -213,8 +213,8 @@ ggplot() +
   geom_line(data = k_pdf_df, aes(x = k, y = pdf),
             color = "black", size = 1) +
   labs(
-    title = "True PDF vs. Original for k",
+    title = "True Marginal PDF vs. Data for k",
     x = "k",
-    y = "Density"
+    y = "Density",
   ) +
-  theme_minimal()
+  theme_bw(base_size = 22)
