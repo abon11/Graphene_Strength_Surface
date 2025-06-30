@@ -8,12 +8,12 @@ import pickle
 import matplotlib.pyplot as plt
 import joblib
 
-target = 'ratio'  # can be 'theta', 'ratio', or 'both'
+target = 'sigmas'  # can be 'theta', 'ratio', or 'both'
 mod = 'nn'  # can be 'nn' or 'sr'
 
-if target != 'both' and target != 'theta' and target != 'ratio':
-    print("Target must be 'both', 'theta', or 'ratio'!")
-    exit()
+# if target != 'both' and target != 'theta' and target != 'ratio':
+#     print("Target must be 'both', 'theta', or 'ratio'!")
+#     exit()
 
 
 os.environ["NUM_THREADS"] = "8"
@@ -33,6 +33,8 @@ elif target == 'ratio':
     y = df["Sigma_Ratio"].values
 elif target == 'both':
     y = df[["Sigma_Ratio", "Theta"]].values 
+elif target == 'sigmas':
+    y = df[["Sigma_x", "Sigma_y", "Sigma_xy"]].values
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -42,13 +44,13 @@ y_scaler = joblib.load(f"outputs/y_scaler_{target}.pkl")
 X_test_scaled = x_scaler.transform(X_test)
 y_pred_scaled = model.predict(X_test_scaled)  # predict from the scaled x test data, getting scaled y data
 
-if target != 'both':
+if target != 'both' and target != 'sigmas':
     y_pred = y_scaler.inverse_transform(y_pred_scaled.reshape(-1, 1)).ravel()  # unscale the predicted y, giving us actual predictions
 else:
     y_pred = y_scaler.inverse_transform(y_pred_scaled)  # unscale the predicted y, giving us actual predictions
 
 
-if target != 'both':
+if target != 'both' and target != 'sigmas':
     # Single-output plot
     plt.scatter(y_test, y_pred, alpha=0.5)
     plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], '--r')
@@ -75,8 +77,11 @@ if target != 'both':
     print(f"R^2 Score: {r2:.4f}")
 
 else:
-    # Multi-output: Sigma Ratio (index 0) and Theta (index 1)
-    labels = ["both_ratio", "both_theta"]
+    if target == 'both':
+        # Multi-output: Sigma Ratio (index 0) and Theta (index 1)
+        labels = ["both_ratio", "both_theta"]
+    else:
+        labels = ['sigma_x', 'sigma_y', 'sigma_xy']
     for i, label in enumerate(labels):
         plt.scatter(y_test[:, i], y_pred[:, i], alpha=0.5)
         plt.plot(
@@ -105,10 +110,17 @@ else:
     mse = mean_squared_error(y_test, y_pred, multioutput='raw_values')
     r2 = r2_score(y_test, y_pred, multioutput='raw_values')
 
-    print(f"MSE (Sigma Ratio): {mse[0]:.6f}")
-    print(f"MSE (Theta):       {mse[1]:.6f}")
-    print(f"R^2 (Sigma Ratio): {r2[0]:.4f}")
-    print(f"R^2 (Theta):       {r2[1]:.4f}")
-
+    if target == 'both':
+        print(f"MSE (Sigma Ratio): {mse[0]:.6f}")
+        print(f"MSE (Theta):       {mse[1]:.6f}")
+        print(f"R^2 (Sigma Ratio): {r2[0]:.4f}")
+        print(f"R^2 (Theta):       {r2[1]:.4f}")
+    else:
+        print(f"MSE (Sigma x):  {mse[0]:.6f}")
+        print(f"MSE (Sigma y):  {mse[1]:.6f}")
+        print(f"MSE (Sigma xy): {mse[2]:.6f}")
+        print(f"R^2 (Sigma x):  {r2[0]:.4f}")
+        print(f"R^2 (Sigma y):  {r2[1]:.4f}")
+        print(f"R^2 (Sigma xy): {r2[2]:.4f}")
 
 print(model)

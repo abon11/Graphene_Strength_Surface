@@ -11,12 +11,12 @@ import os
 import pickle
 import joblib
 
-target = 'theta'  # can be 'theta', 'ratio', or 'both'
+target = 'sigmas'  # can be 'theta', 'ratio', or 'both'
 mod = 'nn'  # can be 'nn', 'gb, or 'sr'
 
-if target != 'both' and target != 'theta' and target != 'ratio':
-    print("Target must be 'both', 'theta', or 'ratio'!")
-    exit()
+# if target != 'both' and target != 'theta' and target != 'ratio':
+#     print("Target must be 'both', 'theta', or 'ratio'!")
+#     exit()
 
 if mod != 'nn' and mod != 'sr' and mod != 'gb':
     print("Model must be either 'nn', 'gb', or 'sr'!")
@@ -57,6 +57,8 @@ elif target == 'ratio':
     y = df["Sigma_Ratio"].values
 elif target == 'both':
     y = df[["Sigma_Ratio", "Theta"]].values 
+elif target == 'sigmas':
+    y = df[["Sigma_x", "Sigma_y", "Sigma_xy"]].values
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -67,7 +69,7 @@ y_scaler = StandardScaler()
 X_train_scaled = x_scaler.fit_transform(X_train)
 X_test_scaled = x_scaler.transform(X_test)
 
-if target == 'both':
+if target == 'both' or target == 'sigmas':
     y_train_scaled = y_scaler.fit_transform(y_train)
 
     model.fit(X_train_scaled, y_train_scaled)  # fit the model using scaled training data

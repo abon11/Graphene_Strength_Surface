@@ -24,8 +24,8 @@ def main():
         "Num Atoms y": 60,
         "Defect Type": "SV",
         "Defect Percentage": 0.5,
-        "Theta": 0,
-        # "Defect Random Seed": 1
+        "Theta": 0
+        # "Defect Random Seed": 54
     }
 
     range_filters = {
@@ -235,6 +235,58 @@ class Surface(BaseSurface):
             "rmse": rmse,
             "max_residual": max_residual
         }
+    
+    def plot_surface_fit(self, resolution=1000):
+
+        # Set plot range around your data
+        sig1_vals = [dp.df["Strength_1"] for dp in self.points]
+        sig2_vals = [dp.df["Strength_2"] for dp in self.points]
+        min_sig, max_sig = min(sig1_vals + sig2_vals), max(sig1_vals + sig2_vals)
+        grid = np.linspace(min_sig * 1.1, max_sig * 1.1, resolution)
+
+        # Create sigma1, sigma2 grid
+        sig1, sig2 = np.meshgrid(grid, grid)
+        sig3 = np.zeros_like(sig1)  
+
+        # Compute I1 and sqrt(J2)
+        i1 = sig1 + sig2 + sig3
+        mean_stress = i1 / 3
+        dev_xx = sig1 - mean_stress
+        dev_yy = sig2 - mean_stress
+        dev_zz = sig3 - mean_stress
+
+        j2 = 0.5 * (dev_xx**2 + dev_yy**2 + dev_zz**2)
+
+        # Evaluate DP function
+        F = np.sqrt(j2) + self.alpha * i1 - self.k
+
+        plt.figure(figsize=(8, 8))
+
+        # Plot contour where f = 0 (the strength boundary)
+        plt.contour(sig1, sig2, F, levels=[0], colors="red", linewidths=2)
+        plt.plot([], [], color="red", label="DP surface")  # for legend (cs.collections is not working)
+
+        # Plot data points
+        plt.scatter(sig1_vals, sig2_vals, color="blue", label="MD failure points")
+        plt.scatter(sig2_vals, sig1_vals, color="blue")
+
+        plt.plot([-50, 130], [0, 0], color='black')
+        plt.plot([0, 0], [-50, 130], color='black')
+
+        plt.xlabel(r"$\sigma_1$", fontsize=18)
+        plt.ylabel(r"$\sigma_2$", fontsize=18)
+
+        plt.xlim(-15, 100)
+        plt.ylim(-15, 100)
+
+        plt.xticks(fontsize=15)
+        plt.yticks(fontsize=15)
+
+        plt.title(f"Fitted Drucker-Prager Surface (Seed {int(self.seed)})", fontsize=20)
+        plt.legend()
+
+        plt.savefig(f'{local_config.DATA_DIR}/defected_data/plots/DP_fitted_{int(self.seed)}.png')
+        plt.close()
 
 
 class Surface3P(Surface):

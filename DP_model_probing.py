@@ -27,15 +27,15 @@ def main():
     seeds = df_params["Seed"].values
 
     # turn them into Surface objects for convenience (and plot if we want)
-    # surfaces = []
-    # for a, k, seed in zip(alphas, ks, seeds):
-    #     surface = MadeSurface(a, k, seed=seed)
-    #     if not plot_together:
-    #         plot_surface_fit(surface)
+    surfaces = []
+    for a, k, seed in zip(alphas, ks, seeds):
+        surface = MadeSurface(a, k, seed=seed)
+        if not plot_together:
+            plot_surface_fit(surface)
 
-    #     # surface.plot_loss_landscape()
-    # if plot_together:
-    #     plot_all_surfaces(surfaces)
+        surfaces.append(surface)
+    if plot_together:
+        plot_all_surfaces(surfaces)
 
     # sns.histplot(alphas, kde=True, stat="density")
     # # sns.kdeplot(alphas, bw_adjust=0.5, label="KDE")
@@ -61,34 +61,34 @@ def main():
     # plot_all_surfaces(ci_stress_surfaces, mean=mean, title='90% CI Sampling')
 
     # Fit marginal distributions, converting to uniform distribution using empirical CDF
-    u_alpha = rankdata(alphas) / (len(alphas) + 1)
-    u_k = rankdata(ks) / (len(ks) + 1)
+    # u_alpha = rankdata(alphas) / (len(alphas) + 1)
+    # u_k = rankdata(ks) / (len(ks) + 1)
 
-    # Map uniforms to standard normals
-    z_alpha = norm.ppf(u_alpha)
-    z_k = norm.ppf(u_k)
+    # # Map uniforms to standard normals
+    # z_alpha = norm.ppf(u_alpha)
+    # z_k = norm.ppf(u_k)
 
-    # Model the joint distribution in standard normal space
-    Z = np.column_stack([z_alpha, z_k])
-    mean = np.mean(Z, axis=0)
-    cov = np.cov(Z.T)
-    copula_model = multivariate_normal(mean=mean, cov=cov)
+    # # Model the joint distribution in standard normal space
+    # Z = np.column_stack([z_alpha, z_k])
+    # mean = np.mean(Z, axis=0)
+    # cov = np.cov(Z.T)
+    # copula_model = multivariate_normal(mean=mean, cov=cov)
 
-    # Sample new joint gaussian points
-    samples = copula_model.rvs(size=1000)  # shape (1000, 2)
-    z_alpha_new, z_k_new = samples[:, 0], samples[:, 1]
+    # # Sample new joint gaussian points
+    # samples = copula_model.rvs(size=1000)  # shape (1000, 2)
+    # z_alpha_new, z_k_new = samples[:, 0], samples[:, 1]
 
-    # Convert Gaussian samples to uniform
-    u_alpha_new = norm.cdf(z_alpha_new)
-    u_k_new = norm.cdf(z_k_new)
+    # # Convert Gaussian samples to uniform
+    # u_alpha_new = norm.cdf(z_alpha_new)
+    # u_k_new = norm.cdf(z_k_new)
 
-    # Map back
-    alpha_new = inverse_empirical_cdf(alphas, u_alpha_new)
-    k_new = inverse_empirical_cdf(ks, u_k_new)
-    plot_alpha_k(alphas, ks, newdata=[alpha_new, k_new])
+    # # Map back
+    # alpha_new = inverse_empirical_cdf(alphas, u_alpha_new)
+    # k_new = inverse_empirical_cdf(ks, u_k_new)
+    # plot_alpha_k(alphas, ks, newdata=[alpha_new, k_new])
 
-    plot_pdf_in_gaussian_space(z_alpha, z_k, mean, cov)
-    estimate_pdf_in_alpha_k_space(alphas, ks, mean, cov)
+    # plot_pdf_in_gaussian_space(z_alpha, z_k, mean, cov)
+    # estimate_pdf_in_alpha_k_space(alphas, ks, mean, cov)
     # plot_marginal_histogram(alphas, data2=alpha_new, label="alpha")
     # plot_marginal_histogram(ks, data2=k_new, label="k")
     # # plot_marginal_histogram(alpha_new, label="new_alpha_samples")
@@ -97,10 +97,10 @@ def main():
     # qq_plot(ks, k_new, "k")
     # plot_alpha_k(alpha_new, k_new, pdf=copula_model)
 
-    strengths = map_to_strength(alphas, ks)
-    # generic_scatter(strengths[0], strengths[1], xlab=r'$\sigma_{cs}$', ylab=r'$\sigma_{ts}$', title='data_in_stress')
-    new_strengths = map_to_strength(alpha_new, k_new)
-    generic_scatter(strengths[0], strengths[1], newdata=new_strengths, xlab=r'$\sigma_{cs}$', ylab=r'$\sigma_{ts}$', title='Uniaxial Strengths')
+    # strengths = map_to_strength(alphas, ks)
+    # # generic_scatter(strengths[0], strengths[1], xlab=r'$\sigma_{cs}$', ylab=r'$\sigma_{ts}$', title='data_in_stress')
+    # new_strengths = map_to_strength(alpha_new, k_new)
+    # generic_scatter(strengths[0], strengths[1], newdata=new_strengths, xlab=r'$\sigma_{cs}$', ylab=r'$\sigma_{ts}$', title='Uniaxial Strengths')
 
 
 def inverse_empirical_cdf(original_data, u_vals):
@@ -397,7 +397,7 @@ def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, ti
 
     # Cycle through colors for each seed
     # colors = cm.binary(np.linspace(0, 1, len(surfaces)))  # hsv for rainbow
-    colors = ['gray'] * len(surfaces)
+    colors = ['black'] * len(surfaces)
     if mean is not None:
         surfaces = list(surfaces)
         surfaces.append(MadeSurface(mean[0], mean[1]))  # plot the mean if we want
@@ -417,21 +417,23 @@ def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, ti
         F = sqrtJ2 + alpha * i1 - k
 
         # Plot contour
-        ax.contour(sig1, sig2, F, levels=[0], colors=[color], linewidths=1.5)
+        ax.contour(sig1, sig2, F, levels=[0], colors=[color], linewidths=1.5, alpha=0.05)
         if showlabels:
             ax.plot([], [], color=color, label=f"Seed {int(surface.seed)}")
 
     ax.plot([-50, 130], [0, 0], color='black')
     ax.plot([0, 0], [-50, 130], color='black')
 
+    ax.tick_params(axis='both', labelsize=15)
+
     ax.set_xlim(-15, 100)
     ax.set_ylim(-15, 100)
-    ax.set_xlabel(r"$\sigma_1$")
-    ax.set_ylabel(r"$\sigma_2$")
+    ax.set_xlabel(r"$\sigma_1$", fontsize=18)
+    ax.set_ylabel(r"$\sigma_2$", fontsize=18)
     if title:
         ax.set_title(title)
     else:
-        ax.set_title("DP Surfaces Overlayed by Random Seed")
+        ax.set_title("DP Surfaces Overlayed by Random Seed", fontsize=20)
     if showlabels:
         ax.legend()
     if title:
