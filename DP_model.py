@@ -273,8 +273,8 @@ class Surface(BaseSurface):
         plt.plot([-50, 130], [0, 0], color='black')
         plt.plot([0, 0], [-50, 130], color='black')
 
-        plt.xlabel(r"$\sigma_1$", fontsize=18)
-        plt.ylabel(r"$\sigma_2$", fontsize=18)
+        plt.xlabel(r"$\sigma_1$ (GPa)", fontsize=18)
+        plt.ylabel(r"$\sigma_2$ (GPa)", fontsize=18)
 
         plt.xlim(-15, 100)
         plt.ylim(-15, 100)
@@ -282,7 +282,7 @@ class Surface(BaseSurface):
         plt.xticks(fontsize=15)
         plt.yticks(fontsize=15)
 
-        plt.title(f"Fit Drucker-Prager Surface (Seed {int(self.seed)})", fontsize=20)
+        plt.title(f"Fit Drucker-Prager Surface", fontsize=20)
         plt.legend(fontsize=15)
         plt.tight_layout()
 

@@ -147,7 +147,7 @@ ggplot(grid, aes(x = alpha, y = k, fill = density)) +
   geom_point(data = original_df, aes(x = alpha, y = k),
              color = "white", size = 0.5, alpha = 0.35, inherit.aes = FALSE) +
   scale_fill_viridis_c() +
-  labs(title = "True Joint PDF from Copula + Marginals") +
+  labs(title = "True Joint PDF from Copula + Marginals", x = "α", y = "k") +
   coord_cartesian(xlim = c(-0.25, 0.25), ylim = c(min(k) - 5, max(k) + 5)) +
   theme_bw(base_size = 22)
 
@@ -197,8 +197,8 @@ ggplot(strength_grid, aes(x = ts, y = cs, fill = density)) +
   scale_y_continuous(breaks = round(seq(20, 130, by = 20), 30)) +
   scale_fill_viridis_c() +
   labs(title = "Joint PDF in Strength Space",
-       x = "Tensile Strength",
-       y = "Compressive Strength") +
+       x = "Tensile Strength (GPa)",
+       y = "Compressive Strength (GPa)") +
   coord_cartesian(xlim = c(20, 130), ylim = c(20, 130)) +
   theme_bw(base_size = 22)
 

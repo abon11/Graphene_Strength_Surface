@@ -428,8 +428,8 @@ def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, ti
 
     ax.set_xlim(-15, 100)
     ax.set_ylim(-15, 100)
-    ax.set_xlabel(r"$\sigma_1$", fontsize=18)
-    ax.set_ylabel(r"$\sigma_2$", fontsize=18)
+    ax.set_xlabel(r"$\sigma_1$ (GPa)", fontsize=18)
+    ax.set_ylabel(r"$\sigma_2$ (GPa)", fontsize=18)
     if title:
         ax.set_title(title)
     else:

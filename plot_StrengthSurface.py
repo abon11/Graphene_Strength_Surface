@@ -279,8 +279,8 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
     if pristine_data is not None and not pristine_data.empty:
         plt.scatter(pristine_data["Strength_1"], pristine_data["Strength_2"], c='black', alpha=0.7, label='Pristine')
         plt.scatter(pristine_data["Strength_2"], pristine_data["Strength_1"], c='black', alpha=0.7)
-    plt.xlabel(r'$\sigma_1$', fontsize=18)
-    plt.ylabel(r'$\sigma_2$', fontsize=18)
+    plt.xlabel(r'$\sigma_1$ (GPa)', fontsize=18)
+    plt.ylabel(r'$\sigma_2$ (GPa)', fontsize=18)
 
     plt.plot([-50, 130], [0, 0], color='black')
     plt.plot([0, 0], [-50, 130], color='black')
@@ -291,7 +291,7 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
     plt.xlim(-15, 130)
     plt.ylim(-15, 130)
     plt.title(title, fontsize=20)
-    plt.title("Molecular Strength Surfaces 0f 0.5% SV Graphene", fontsize=20)
+    plt.title("Molecular Strength Surfaces of 0.5% SV Graphene", fontsize=20)
 
     plt.legend(fontsize=15)
 
