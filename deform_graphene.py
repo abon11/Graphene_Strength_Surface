@@ -301,7 +301,7 @@ class Simulation:
         if not os.path.exists(self.main_csv) or os.path.getsize(self.main_csv) == 0:
             if self.angle_testing:
                 df = pd.DataFrame(columns=['Simulation ID', 'Strain Rate x', 'Strain Rate y', 'Strain Rate xy', 
-                                        'Sigma_x', 'Sigma_y', 'Sigma_xy', 'Sigma_1', 'Sigma_2', 'Theta'])
+                                        'Sigma_x', 'Sigma_y', 'Sigma_xy', 'Sigma_1', 'Sigma_2', 'Theta', 'Sigma_Ratio'])
             else:
                 df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
@@ -324,8 +324,9 @@ class Simulation:
     def append_maincsv(self):
         if self.angle_testing:
             new_row = pd.DataFrame({'Simulation ID':[self.simulation_id], 'Strain Rate x': [self.x_erate], 'Strain Rate y': [self.y_erate], 'Strain Rate xy': [self.xy_erate],
-                                    'Sigma_x': [self.stress_tensor[-1, 0]], 'Sigma_y': [self.stress_tensor[-1, 1]], 'Sigma_xy': [self.stress_tensor[-1, 4]],
-                                    'Sigma_1': [self.principal_stresses[-1, 0]], 'Sigma_2': [self.principal_stresses[-1, 1]], 'Theta': [self.principal_angles[-1]]})
+                                    'Sigma_x': [self.stress_tensor[-1, 0]], 'Sigma_y': [self.stress_tensor[-1, 1]], 'Sigma_xy': [self.stress_tensor[-1, 3]],
+                                    'Sigma_1': [self.principal_stresses[-1, 0]], 'Sigma_2': [self.principal_stresses[-1, 1]], 'Theta': [self.principal_angles[-1]],
+                                    'Sigma_Ratio': [self.principal_stresses[-1, 1] / self.principal_stresses[-1, 0]]})
         else:
             new_row = pd.DataFrame({'Simulation ID':[self.simulation_id], 'Num Atoms x': [self.sheet.x_atoms], 'Num Atoms y': [self.sheet.y_atoms], 
                                 'Strength_1': [self.strength[0]], 'Strength_2': [self.strength[1]], 'Strength_3': [self.strength[2]],
