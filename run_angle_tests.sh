@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Configuration
-MAX_JOBS_IN_FLIGHT=25
-TOTAL_SIMS=40000
+MAX_JOBS_IN_FLIGHT=5
+TOTAL_SIMS=5
 SLURM_SCRIPT="./run_one.sh"  # must exist
-CORES_PER_JOB=12
+CORES_PER_JOB=16
 
 
 SHEET_PATH="${SHEET_PATH:-/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/data_files/data.60_60_rel1}"
