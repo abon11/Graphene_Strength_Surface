@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=16
+#SBATCH --ntasks=14
 #SBATCH --job-name=one_sim_%j
 #SBATCH --partition=scavenger
 #SBATCH --mem-per-cpu=2GB
