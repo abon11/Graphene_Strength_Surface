@@ -6,8 +6,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 def main():
-    # folder = f'{local_config.DATA_DIR}/rotation_tests'
-    folder = f'{local_config.DATA_DIR}/defected_data'
+    folder = f'{local_config.DATA_DIR}/rotation_tests'
+    # folder = f'{local_config.DATA_DIR}/defected_data'
 
     csv_file = f"{folder}/all_simulations.csv"
     
@@ -15,15 +15,15 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defect Type": "SV",
-        "Defect Percentage": 0.5,
-        # "Defect Random Seed": 1,
-        "Theta": 0
+        # "Defect Type": "SV",
+        # "Defect Percentage": 0.5,
+        # # "Defect Random Seed": 1,
+        "Theta": 30
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6)
-        "Defect Random Seed": (1, 1000)
+        # "Defect Random Seed": (1, 1000)
         # "Theta": (0, 90)
         # "Simulation ID": (2575, 3000)
     }
@@ -291,31 +291,31 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
     plt.xlim(-15, 130)
     plt.ylim(-15, 130)
     plt.title(title, fontsize=20)
-    plt.title("Molecular Strength Surfaces of 0.5% SV Graphene", fontsize=20)
+    # plt.title("Molecular Strength Surfaces of 0.5% SV Graphene", fontsize=20)
 
-    plt.legend(fontsize=15)
+    # plt.legend(fontsize=15)
 
-    # # create legend
-    # if value_to_color:
-    #     handles = []
-    #     labels = []
-    #     for val, color in value_to_color.items():
-    #         # Format value cleanly: no decimal if not needed
-    #         if isinstance(val, float) and val.is_integer():
-    #             val_str = str(int(val))
-    #         else:
-    #             val_str = str(val)
-    #         handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8))
-    #         labels.append(val_str)
+    # create legend
+    if value_to_color:
+        handles = []
+        labels = []
+        for val, color in value_to_color.items():
+            # Format value cleanly: no decimal if not needed
+            if isinstance(val, float) and val.is_integer():
+                val_str = str(int(val))
+            else:
+                val_str = str(val)
+            handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8))
+            labels.append(val_str)
 
-    #     # Add pristine legend entry
-    #     if pristine_data is not None and not pristine_data.empty:
-    #         handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=8))
-    #         labels.append("Pristine")
+        # Add pristine legend entry
+        if pristine_data is not None and not pristine_data.empty:
+            handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=8))
+            labels.append("Pristine")
 
-    #     legend_title = color_by_field if color_by_field else "Legend"
-    #     if legend:
-    #         plt.legend(handles, labels, title=legend_title, loc='best', frameon=True)
+        legend_title = color_by_field if color_by_field else "Legend"
+        if legend:
+            plt.legend(handles, labels, title=legend_title, loc='best', frameon=True, fontsize=15)
 
     fname = f"{folder}/plots/SS_{clean_title(title)}"
     plt.tight_layout()
