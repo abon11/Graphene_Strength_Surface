@@ -6,22 +6,23 @@ import local_config
 def main():
 
     # ========== USER INTERFACE ==========
-    folder = f'{local_config.DATA_DIR}/defected_data'
+    folder = f'{local_config.DATA_DIR}/angle_testing'
     csv_file = f"{folder}/all_simulations.csv"
 
     exact_filters = {
-        "Num Atoms x": 60,
-        "Num Atoms y": 60,
-        "Defect Type": "SV",  # will match NaN or "None"
-        "Defect Percentage": 0.5,
-        # "Defect Random Seed": 3,
-        "Theta": 0
+        # "Num Atoms x": 60,
+        # "Num Atoms y": 60,
+        # "Defect Type": "SV",  # will match NaN or "None"
+        # "Defect Percentage": 0.5,
+        # # "Defect Random Seed": 3,
+        # "Theta": 0
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        "Defect Random Seed": (963, 963)
+        # "Defect Random Seed": (963, 963)
         # "Theta": (0, 90),
+        "Sigma_1": (4, 20)
     }
 
     or_filters = {

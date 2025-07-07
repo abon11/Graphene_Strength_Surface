@@ -147,9 +147,16 @@ ggplot(grid, aes(x = alpha, y = k, fill = density)) +
   geom_point(data = original_df, aes(x = alpha, y = k),
              color = "white", size = 0.5, alpha = 0.35, inherit.aes = FALSE) +
   scale_fill_viridis_c() +
-  labs(title = "True Joint PDF from Copula + Marginals", x = "α", y = "k") +
+  labs(title = "Empirical Joint PDF with Samples", x = "α", y = "k") +
   coord_cartesian(xlim = c(-0.25, 0.25), ylim = c(min(k) - 5, max(k) + 5)) +
-  theme_bw(base_size = 22)
+  theme_bw(base_size = 22) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = c(0.82, 0.32),
+    legend.justification = c(0, 1),
+    legend.background = element_rect(fill = "white"),
+    legend.key = element_rect(fill = NA)
+  )
 
 
 ts_vals <- seq(10, 140, length.out = 300)
@@ -181,26 +188,18 @@ ggplot(strength_grid, aes(x = ts, y = cs, fill = density)) +
   scale_x_continuous(breaks = round(seq(20, 130, by = 20), 30)) +
   scale_y_continuous(breaks = round(seq(20, 130, by = 20), 30)) +
   scale_fill_viridis_c() +
-  labs(title = "Joint PDF in Strength Space",
+  labs(title = "Empirical Joint PDF in Strength Space",
        x = "Tensile strength (ts)",
        y = "Compressive strength (cs)") +
   coord_cartesian(xlim = c(20, 130), ylim = c(20, 130)) +
-  theme_bw(base_size = 22)
-
-
-
-ggplot(strength_grid, aes(x = ts, y = cs, fill = density)) +
-  geom_tile() +
-  geom_point(data = original_df, aes(x = ts, y = cs),
-             color = "white", size = 0.5, alpha = 0.35, inherit.aes = FALSE) +
-  scale_x_continuous(breaks = round(seq(20, 130, by = 20), 30)) +
-  scale_y_continuous(breaks = round(seq(20, 130, by = 20), 30)) +
-  scale_fill_viridis_c() +
-  labs(title = "Joint PDF in Strength Space",
-       x = "Tensile Strength (GPa)",
-       y = "Compressive Strength (GPa)") +
-  coord_cartesian(xlim = c(20, 130), ylim = c(20, 130)) +
-  theme_bw(base_size = 22)
+  theme_bw(base_size = 22) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = c(.82, 0.32),
+    legend.justification = c(0, 1),
+    legend.background = element_rect(fill = "white"),
+    legend.key = element_rect(fill = NA)
+  )
 
 
 
@@ -244,17 +243,30 @@ beta_pdf_vals <- dbeta(alpha_unit_vals, a, b) / (upper - lower)
 alpha_pdf_df <- data.frame(alpha = alpha_vals, pdf = beta_pdf_vals)
 
 ggplot() +
-  geom_histogram(data = original_df, aes(x = alpha, y = ..density..),
-                 bins = 200, fill = "skyblue", alpha = 0.5) +
-  geom_line(data = alpha_pdf_df, aes(x = alpha, y = pdf),
-            color = "black", size = 1) +
+  # KDE as line, no area, with proper legend
+  stat_density(data = original_df, aes(x = alpha, color = "KDE of Data"),
+               geom = "line", position = "identity", size = 1) +
+  # Analytical PDF as line
+  geom_line(data = alpha_pdf_df, aes(x = alpha, y = pdf, color = "Analytical PDF"),
+            size = 1) +
+  # Assign your colors
+  scale_color_manual(values = c("KDE of Data" = "skyblue", "Analytical PDF" = "navyblue")) +
   labs(
-    title = "True Marginal PDF vs. Data for α",
+    title = "Empirical Marginal PDF vs. KDE of Data for α",
     x = "α",
-    y = "Density"
+    y = "Density",
+    color = ""
   ) +
   coord_cartesian(xlim = c(-0.15, 0.15)) +
-  theme_bw(base_size = 22)
+  theme_bw(base_size = 22) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = c(0.65, 0.99),
+    legend.justification = c(0, 1),
+    legend.background = element_rect(fill = NA),
+    legend.key = element_rect(fill = NA)
+  ) +
+  guides(colour = guide_legend(override.aes = list(size = 10)))
 
 
 
@@ -278,3 +290,30 @@ ggplot() +
     y = "Density",
   ) +
   theme_bw(base_size = 22)
+
+
+ggplot() +
+  # KDE as line
+  stat_density(data = original_df, aes(x = k, color = "KDE of Data"),
+               geom = "line", position = "identity", size = 1) +
+  # Analytical PDF as line (using correct data frame)
+  geom_line(data = k_pdf_df, aes(x = k, y = pdf, color = "Analytical PDF"),
+            size = 1) +
+  # Color mapping
+  scale_color_manual(values = c("KDE of Data" = "pink", "Analytical PDF" = "maroon")) +
+  labs(
+    title = "Empirical Marginal PDF vs. KDE of Data for k",
+    x = "k",
+    y = "Density",
+    color = ""
+  ) +
+  # coord_cartesian(xlim = c(-0.15, 0.15)) +
+  theme_bw(base_size = 22) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = c(0.65, 0.99),
+    legend.justification = c(0, 1),
+    legend.background = element_rect(fill = NA),
+    legend.key = element_rect(fill = NA)
+  ) +
+  guides(colour = guide_legend(override.aes = list(size = 10)))

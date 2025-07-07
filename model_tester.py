@@ -8,7 +8,7 @@ import pickle
 import matplotlib.pyplot as plt
 import joblib
 
-target = 'sigmas'  # can be 'theta', 'ratio', or 'both'
+target = 'both'  # can be 'theta', 'ratio', or 'both'
 mod = 'nn'  # can be 'nn' or 'sr'
 
 # if target != 'both' and target != 'theta' and target != 'ratio':
@@ -18,7 +18,8 @@ mod = 'nn'  # can be 'nn' or 'sr'
 
 os.environ["NUM_THREADS"] = "8"
 
-df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
+# df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
+df = pd.read_csv("filtered.csv")
 
 # could do try/except here for more robustness in the future
 model = joblib.load(f"outputs/{mod}_{target}.pkl")

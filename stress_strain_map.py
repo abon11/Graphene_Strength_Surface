@@ -11,7 +11,7 @@ import os
 import pickle
 import joblib
 
-target = 'sigmas'  # can be 'theta', 'ratio', or 'both'
+target = 'both'  # can be 'theta', 'ratio', 'sigmas', or 'both'
 mod = 'nn'  # can be 'nn', 'gb, or 'sr'
 
 # if target != 'both' and target != 'theta' and target != 'ratio':
@@ -24,7 +24,8 @@ if mod != 'nn' and mod != 'sr' and mod != 'gb':
 
 os.environ["NUM_THREADS"] = "8"
 
-df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
+# df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
+df = pd.read_csv("filtered.csv")
 
 if mod == 'sr':
     model = PySRRegressor(
