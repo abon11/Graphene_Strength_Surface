@@ -115,7 +115,7 @@ class Simulation:
         - makeplots (bool): User specifies whether or not they want plots of stress vs time generated and saved (default False)
         - detailed_data (bool): User specifies whether or not they want to save the detailed timestep data (default False)
         - fracture_window (int): Tunable parameter that says how much stress drop (GPa) is necessary to detect fracture (to eliminate noise). 10 GPa is default
-        - theta (float): Angle of max principal stress (for storage only)
+        - theta (float): Perscribed angle of max principal stress (for storage only, to compare with actual)
         - storage_path (str): filepath to where we want to store the data
         - accept_dupes (bool): Don't kill the simulation if we find a duplicate
         - angle_testing (bool): Execute simulation and data storage for the angle testing dataset - to generate erate_x, y, xy map to sigma_1, 2, theta. 
@@ -169,11 +169,8 @@ class Simulation:
 
         stress_tensor, pressure_tensor, step_vector, strain_tensor = self.run_simulation()
 
-        if angle_testing:
-            # principal directions is a vector of the angle of the dominant loading direction
-            principal_stresses, self.principal_angles = self.compute_principal_StressStrain(stress_tensor, return_theta=True)
-        else:
-            principal_stresses = self.compute_principal_StressStrain(stress_tensor)
+        # principal_angles is a list of the actual angle of dominant loading direction for each timestep
+        principal_stresses, self.principal_angles = self.compute_principal_StressStrain(stress_tensor, return_theta=True)
             
         principalAxes_strain = self.compute_principal_StressStrain(strain_tensor)
 
@@ -305,8 +302,9 @@ class Simulation:
             else:
                 df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
-                                       'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Fracture Time', 'Max Sim Length', 
-                                       'Output Timesteps', 'Fracture Window', 'Theta', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 
+                                       'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Strength x', 'Strength y', 'Strength z', 
+                                       'Strength xy', 'Strength xz', 'Strength yz', 'Fracture Time', 'Max Sim Length', 'Output Timesteps', 
+                                       'Fracture Window', 'Theta Requested', 'Theta', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 
                                        'Simulation Time', 'Threads'])
             
             df.to_csv(self.main_csv, index=False)
@@ -333,10 +331,13 @@ class Simulation:
                                 'CritStrain_1': [self.crit_strain[0]], 'CritStrain_2': [self.crit_strain[1]], 'CritStrain_3': [self.crit_strain[2]],
                                 'Strain Rate x': [self.x_erate], 'Strain Rate y': [self.y_erate], 'Strain Rate z': [self.z_erate],
                                 'Strain Rate xy': [self.xy_erate], 'Strain Rate xz': [self.xz_erate], 'Strain Rate yz': [self.yz_erate],
+                                'Strength x': [self.stress_tensor[self.fracture_time, 0]], 'Strength y': [self.stress_tensor[self.fracture_time, 1]],
+                                'Strength z': [self.stress_tensor[self.fracture_time, 2]], 'Strength xy': [self.stress_tensor[self.fracture_time, 3]],
+                                'Strength xz': [self.stress_tensor[self.fracture_time, 4]], 'Strength yz': [self.stress_tensor[self.fracture_time, 5]],
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
-                                'Fracture Window': [self.fracture_window], 'Theta': [self.theta], 'Defect Type': [self.defect_type], 
-                                'Defect Percentage': [self.defect_perc], 'Defect Random Seed': [self.defect_random_seed], 'Simulation Time': [self.sim_duration],
-                                'Threads': [self.num_procs]})
+                                'Fracture Window': [self.fracture_window], 'Theta Requested': [self.theta], 'Theta': [self.principal_angles[-1]], 
+                                'Defect Type': [self.defect_type], 'Defect Percentage': [self.defect_perc], 'Defect Random Seed': [self.defect_random_seed], 
+                                'Simulation Time': [self.sim_duration], 'Threads': [self.num_procs]})
         new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
 
     def save_detailed_data(self):
@@ -348,6 +349,7 @@ class Simulation:
                            'Stress_xy': self.stress_tensor[:, 3], 'Stress_xz': self.stress_tensor[:, 4], 'Stress_yz': self.stress_tensor[:, 5],
                            'Strain_xx': self.strain_tensor[:, 0], 'Strain_yy': self.strain_tensor[:, 1], 'Strain_zz': self.strain_tensor[:, 2], 
                            'Strain_xy': self.strain_tensor[:, 3], 'Strain_xz': self.strain_tensor[:, 4], 'Strain_yz': self.strain_tensor[:, 5],
+                           'Theta': self.principal_angles[:],
                            'Pressure_x': self.pressure_tensor[:, 0], 'Pressure_y': self.pressure_tensor[:, 1], 'Pressure_z': self.pressure_tensor[:, 2]})
         
         # now we the old filenames to the now retrieved simulation id's
