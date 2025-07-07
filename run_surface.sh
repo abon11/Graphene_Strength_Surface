@@ -26,20 +26,26 @@ echo "Starting sheet with: SHEET_PATH=$SHEET_PATH, X_ATOMS=$X_ATOMS, Y_ATOMS=$Y_
 
 
 rotate_rates() {
-    python3 - <<END
-import numpy as np
-theta = np.deg2rad($THETA)
-cos2, sin2, sincos = np.cos(theta)**2, np.sin(theta)**2, np.sin(theta)*np.cos(theta)
+    RATIOS=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9)
+    local theta_int=$(printf "%.0f" "$THETA")
 
-erate_1 = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
-erate_2 = [0, 0.001, 0.0009, 0.0008, 0.0007, 0.0006, 0.0005, 0.0004, 0.0003, 0.0002, 0.0001]
-
-for e1, e2 in zip(erate_1, erate_2):
-    x  = e1 * cos2 + e2 * sin2
-    y  = e2 * cos2 + e1 * sin2
-    xy = (e1 - e2) * sincos
-    print(f"{x} {y} {xy}")
-END
+    for ratio in "${RATIOS[@]}"; do
+        if [[ "$theta_int" == "0" ]]; then
+            x=0.001
+            y=$(awk -v r="$ratio" 'BEGIN { printf "%.4f\n", r * 0.001 }')
+            xy=0.0
+            echo "$x $y $xy"
+        elif [[ "$theta_int" == "90" ]]; then
+            y=0.001
+            x=$(awk -v r="$ratio" 'BEGIN { printf "%.4f\n", r * 0.001 }')
+            xy=0.0
+            echo "$x $y $xy"
+        else
+            # Call the Python inverse model script for general theta
+            strain=$(python3 inverse_strain.py --ratio "$ratio" --theta "$THETA")
+            echo "$strain"
+        fi
+    done
 }
 
 # Read rotated strain rates
