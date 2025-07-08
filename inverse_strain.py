@@ -45,8 +45,8 @@ def find_optimal_strain(model_info, target, target_max_strain=0.001):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ratio", type=int, required=True, default=0)
-    parser.add_argument("--theta", type=str, default=45)
+    parser.add_argument("--ratio", type=float, required=True, default=0)
+    parser.add_argument("--theta", type=float, default=45)
     return parser.parse_args()
 
 

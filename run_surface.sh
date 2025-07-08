@@ -3,7 +3,7 @@
 # Configuration
 MAX_JOBS_IN_FLIGHT="${MAX_JOBS_IN_FLIGHT:-10}"
 SLURM_SCRIPT="./run_one.sh"  # must exist
-CORES_PER_JOB=12
+CORES_PER_JOB=14
 
 SHEET_PATH="${SHEET_PATH:-/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/data_files/data.60_60_rel1}"
 X_ATOMS="${X_ATOMS:-60}"
@@ -71,6 +71,6 @@ for strain in "${STRAIN_LIST[@]}"; do
         sleep 29
     done
 
-    echo "Submitting job: Seed=$DEFECT_RANDOM_SEED x=$x_erate y=$y_erate xy=$xy_erate"
+    echo "Submitting job: Theta=$THETA x=$x_erate y=$y_erate xy=$xy_erate"
     submit_job "$x_erate" "$y_erate" "$xy_erate"
 done
