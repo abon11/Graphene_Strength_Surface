@@ -15,10 +15,10 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        # "Defect Type": "SV",
+        "Defect Type": "None",
         # "Defect Percentage": 0.5,
         # # "Defect Random Seed": 1,
-        "Theta": 30
+        # "Theta": 30
     }
 
     range_filters = {
@@ -33,8 +33,8 @@ def main():
         # "Theta": [0, 60]
     }
 
-    color_by_field = None
-    show_pristine = True
+    color_by_field = "Theta Requested"
+    show_pristine = False
 
     # Load, filter, and plot
     df = load_data(csv_file)
@@ -274,8 +274,8 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
         colors = ['blue'] * len(df)
 
     plt.figure(figsize=(8, 8))
-    plt.scatter(df["Strength_1"], df["Strength_2"], c=colors, alpha=0.05, label='Defective')
-    plt.scatter(df["Strength_2"], df["Strength_1"], c=colors, alpha=0.05)
+    plt.scatter(df["Strength_1"], df["Strength_2"], c=colors, alpha=0.8, label='Defective')
+    plt.scatter(df["Strength_2"], df["Strength_1"], c=colors, alpha=0.8)
     if pristine_data is not None and not pristine_data.empty:
         plt.scatter(pristine_data["Strength_1"], pristine_data["Strength_2"], c='black', alpha=0.7, label='Pristine')
         plt.scatter(pristine_data["Strength_2"], pristine_data["Strength_1"], c='black', alpha=0.7)

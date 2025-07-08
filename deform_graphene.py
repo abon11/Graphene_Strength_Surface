@@ -612,6 +612,7 @@ class Simulation:
                 theta_deg = np.degrees(np.arctan2(v[1], v[0])) % 180
                 # if theta_deg >= 90:
                 #     theta_deg -= 90
+                theta_deg = min(theta_deg, 180 - theta_deg)
                 thetas[i] = theta_deg
         
         if return_theta:
