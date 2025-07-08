@@ -338,7 +338,7 @@ class Simulation:
                                 'Strength xz': [self.stress_tensor[int(self.fracture_time / self.thermo), 4]],
                                 'Strength yz': [self.stress_tensor[int(self.fracture_time / self.thermo), 5]],
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
-                                'Fracture Window': [self.fracture_window], 'Theta Requested': [self.theta], 'Theta': [self.principal_angles[-1]], 
+                                'Fracture Window': [self.fracture_window], 'Theta Requested': [self.theta], 'Theta': [self.principal_angles[int(self.fracture_time / self.thermo)]], 
                                 'Defect Type': [self.defect_type], 'Defect Percentage': [self.defect_perc], 'Defect Random Seed': [self.defect_random_seed], 
                                 'Simulation Time': [self.sim_duration], 'Threads': [self.num_procs]})
         new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
