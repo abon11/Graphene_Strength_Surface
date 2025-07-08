@@ -8,7 +8,7 @@ import pickle
 import matplotlib.pyplot as plt
 import joblib
 
-target = 'both'  # can be 'theta', 'ratio', or 'both'
+target = 'sigmas'  # can be 'theta', 'ratio', or 'both'
 mod = 'nn'  # can be 'nn' or 'sr'
 
 # if target != 'both' and target != 'theta' and target != 'ratio':
