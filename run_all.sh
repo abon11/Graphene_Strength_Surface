@@ -75,6 +75,6 @@ for i in $(seq "$START_THETA" 10 90); do
             fi
         fi
 
-        sleep 60  # Wait before checking again
+        sleep 90  # Wait before checking again
     done
 done
