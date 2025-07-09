@@ -16,16 +16,16 @@ from matplotlib.patches import Ellipse
 
 
 def main():
-    folder = f'{local_config.DATA_DIR}/defected_data'
+    folder = f'{local_config.DATA_DIR}/rotation_tests'
     csv_file = f"{folder}/all_simulations.csv"
 
     exact_filters = {
         "Num Atoms x": 60,
-        "Num Atoms y": 60,
-        "Defect Type": "SV",
-        "Defect Percentage": 0.5,
-        "Theta": 0,
-        "Defect Random Seed": 54
+        "Num Atoms y": 60
+        # "Defect Type": "SV",
+        # "Defect Percentage": 0.5,
+        # "Theta": 0,
+        # "Defect Random Seed": 54
     }
 
     range_filters = {
@@ -40,15 +40,17 @@ def main():
     }
 
     df = pd.read_csv(csv_file)
+    df = duplicate_biaxial_rows(df)
+    df.to_csv('test.csv', index=False)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, dupe_thetas=False)
-    
+    interest_value = 'Theta Requested'
+
     # Group by defect seed
-    grouped = filtered_df.groupby("Defect Random Seed")
+    grouped = filtered_df.groupby(interest_value)
 
     surfaces = []
     alphas = []
     ks = []
-    # ps = []
 
     individual_plots = True
 
@@ -61,20 +63,18 @@ def main():
     rmse = []
     loss = []
 
-    for seed, group_df in grouped:
+    for instance, group_df in grouped:
         # Create a list of DataPoints for this seed
         datapoints = [DataPoint(row) for _, row in group_df.iterrows()]
 
         # Create Surface and fit Drucker-Prager
-        surface = Surface(datapoints)  # changed from just surface
+        surface = Surface(datapoints, interest_value)  # changed from just surface
         surface.fit_drucker_prager()
 
-        # Optionally store the seed for tracking
-        surface.seed = seed
-        print(f"Fit surface for seed {int(seed)}.")
+        print(f"Fit surface for {interest_value} {int(surface.instance)}.")
 
         stats = surface.compute_loss_statistics()
-        print(f"Seed {int(surface.seed)}: alpha = {surface.alpha:.4f}, k = {surface.k:.4f}... RMSE: {stats["rmse"]:.4f}, Max Residual: {stats["max_residual"]:.4f}, Total Loss: {stats["total_loss"]:.4f}.")
+        print(f"{interest_value} {int(surface.instance)}: alpha = {surface.alpha:.4f}, k = {surface.k:.4f}... RMSE: {stats["rmse"]:.4f}, Max Residual: {stats["max_residual"]:.4f}, Total Loss: {stats["total_loss"]:.4f}.")
         if stats["rmse"] is not np.nan:
             rmse.append(stats["rmse"])
             loss.append(stats["total_loss"])
@@ -82,9 +82,8 @@ def main():
         surfaces.append(surface)
         alphas.append(surface.alpha)
         ks.append(surface.k)
-        # ps.append(surface.p)
 
-        rows.append({"Seed": surface.seed, "alpha": surface.alpha, "k": surface.k})
+        rows.append({f"{interest_value}": surface.instance, "alpha": surface.alpha, "k": surface.k})
 
         if individual_plots:
             surface.plot_surface_fit()
@@ -94,7 +93,32 @@ def main():
         print(f"Final average total loss over {len(loss)} samples: {np.sum(loss) / len(loss)}")
 
     df_params = pd.DataFrame(rows)
-    df_params.to_csv("drucker_prager_params1000.csv", index=False)
+    df_params.to_csv("drucker_prager_params_thetas.csv", index=False)
+
+
+def duplicate_biaxial_rows(df):
+    # Identify perfectly biaxial tension cases (ratio == 1.0 and maybe sigma_xy ≈ 0)
+    is_biaxial = (df["Theta Requested"] == -1)
+
+    # Get all unique theta values present in the dataset (for binning)
+    all_thetas = df["Theta Requested"].unique()
+    all_thetas = np.sort(all_thetas)
+
+    # Extract the biaxial rows
+    biaxial_rows = df[is_biaxial]
+
+    # For each theta, duplicate the biaxial row and assign that theta
+    new_rows = []
+    for theta in all_thetas:
+        if theta != -1:
+            for _, row in biaxial_rows.iterrows():
+                new_row = row.copy()
+                new_row["Theta Requested"] = theta
+                new_rows.append(new_row)
+
+    df = df[df["Theta Requested"] != -1]  # remove the -1 so we don't plot it
+    # Append duplicated rows to dataframe
+    return pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
 
 
 class BaseSurface:    
@@ -126,10 +150,11 @@ class BaseSurface:
 
 
 class MadeSurface(BaseSurface):
-    def __init__(self, alpha, k, seed=None):
+    def __init__(self, alpha, k, interest_value=None, instance=None):
         self.alpha = alpha
         self.k = k
-        self.seed = seed
+        self.interest_value = interest_value
+        self.instance = instance
 
 
 class DataPoint:
@@ -152,7 +177,7 @@ class DataPoint:
     
 
 class Surface(BaseSurface):
-    def __init__(self, points):
+    def __init__(self, points, interest_value):
         """
         This class defines a single strength surface and can fit a Drucker-Prager model to it
         
@@ -160,21 +185,23 @@ class Surface(BaseSurface):
         """
 
         self.points = points
-        self.seed = self.check_seed()
+        self.interest_value = interest_value
+        self.instance = self.check_instance()
         self.alpha = None
         self.k = None
         self.fit_result = None
 
-    def check_seed(self):
+    def check_instance(self):
         """
         Check to make sure all of our random seeds match up, returns the seed if it does match
+        -- expanded this to cover all "interest values", such as thetas, etc
         """
 
-        seed = self.points[0].df["Defect Random Seed"]
+        val = self.points[0].df[self.interest_value]
         for p in self.points:
-            if p.df["Defect Random Seed"] != seed:
+            if p.df[self.interest_value] != val:
                 raise ValueError("Random Seeds do not match up in this surface!")
-        return seed
+        return val
 
     def loss(self, params):
         """
@@ -241,6 +268,15 @@ class Surface(BaseSurface):
         # Set plot range around your data
         sig1_vals = [dp.df["Strength_1"] for dp in self.points]
         sig2_vals = [dp.df["Strength_2"] for dp in self.points]
+        theta_vals = [dp.df["Theta"] for dp in self.points]
+        thetareq_vals = [dp.df["Theta Requested"] for dp in self.points]
+        # dist = np.abs(np.array(theta_vals) - np.array(thetareq_vals))
+        dist = [
+            0 if dp.df["Strain Rate x"] == dp.df["Strain Rate y"]
+            else abs(dp.df["Theta"] - dp.df["Theta Requested"])
+            for dp in self.points
+        ]
+
         min_sig, max_sig = min(sig1_vals + sig2_vals), max(sig1_vals + sig2_vals)
         grid = np.linspace(min_sig * 1.1, max_sig * 1.1, resolution)
 
@@ -267,26 +303,34 @@ class Surface(BaseSurface):
         plt.plot([], [], color="red", label="DP surface")  # for legend (cs.collections is not working)
 
         # Plot data points
-        plt.scatter(sig1_vals, sig2_vals, color="blue", label="MD failure points")
-        plt.scatter(sig2_vals, sig1_vals, color="blue")
+        # plt.scatter(sig1_vals, sig2_vals, color="blue", label="MD failure points")
+        # plt.scatter(sig2_vals, sig1_vals, color="blue")
+        # Plot both sets, but assign the first one to a handle
+        sc = plt.scatter(sig1_vals, sig2_vals, c=dist, label="MD failure points", cmap='cool', vmin=0, vmax=13)
+        plt.scatter(sig2_vals, sig1_vals, c=dist, cmap='cool', vmin=0, vmax=13)
 
+        # Attach colorbar to the first scatter
+        plt.colorbar(sc, label="Theta Error")
+        
         plt.plot([-50, 130], [0, 0], color='black')
         plt.plot([0, 0], [-50, 130], color='black')
 
         plt.xlabel(r"$\sigma_1$ (GPa)", fontsize=18)
         plt.ylabel(r"$\sigma_2$ (GPa)", fontsize=18)
 
-        plt.xlim(-15, 100)
-        plt.ylim(-15, 100)
+        # plt.xlim(-15, 100)
+        # plt.ylim(-15, 100)
+        plt.xlim(-15, 130)
+        plt.ylim(-15, 130)
 
         plt.xticks(fontsize=15)
         plt.yticks(fontsize=15)
 
-        plt.title(f"Fit Drucker-Prager Surface", fontsize=20)
+        plt.title(f"Fit Drucker-Prager Surface, theta={self.instance}", fontsize=20)
         plt.legend(fontsize=15)
         plt.tight_layout()
 
-        plt.savefig(f'{local_config.DATA_DIR}/defected_data/plots/DP_fitted_{int(self.seed)}.png')
+        plt.savefig(f'{local_config.DATA_DIR}/rotation_tests/plots/DP_fitted_{int(self.instance)}.png')
         plt.close()
 
 

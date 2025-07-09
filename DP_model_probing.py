@@ -21,21 +21,25 @@ def main():
     plot_together = True
 
     # read the DP models from the csv
-    df_params = pd.read_csv("drucker_prager_params.csv")
+    df_params = pd.read_csv("drucker_prager_params_thetas.csv")
     alphas = df_params["alpha"].values
     ks = df_params["k"].values
-    seeds = df_params["Seed"].values
+    seeds = df_params["Theta Requested"].values
 
     # turn them into Surface objects for convenience (and plot if we want)
     surfaces = []
     for a, k, seed in zip(alphas, ks, seeds):
-        surface = MadeSurface(a, k, seed=seed)
+        surface = MadeSurface(a, k, interest_value="Theta", instance=seed)
         if not plot_together:
             plot_surface_fit(surface)
 
         surfaces.append(surface)
     if plot_together:
         plot_all_surfaces(surfaces)
+
+    plot_all_surfaces([surfaces[3], surfaces[9]], showlabels=True, title="30 and 90 degrees")
+
+    
 
     # sns.histplot(alphas, kde=True, stat="density")
     # # sns.kdeplot(alphas, bw_adjust=0.5, label="KDE")
@@ -388,7 +392,7 @@ def generic_scatter(x1, x2, newdata=None, xlab='', ylab='', title=''):
 
 def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, title=None):
     # Set global grid range
-    grid = np.linspace(-10, 100, resolution)
+    grid = np.linspace(-10, 130, resolution)
 
     sig1, sig2 = np.meshgrid(grid, grid)
     sig3 = np.zeros_like(sig1)
@@ -396,8 +400,8 @@ def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, ti
     fig, ax = plt.subplots(figsize=(8, 8))
 
     # Cycle through colors for each seed
-    # colors = cm.binary(np.linspace(0, 1, len(surfaces)))  # hsv for rainbow
-    colors = ['black'] * len(surfaces)
+    colors = cm.Set1(np.linspace(0, 1, len(surfaces)))  # hsv for rainbow
+    # colors = ['black'] * len(surfaces)
     if mean is not None:
         surfaces = list(surfaces)
         surfaces.append(MadeSurface(mean[0], mean[1]))  # plot the mean if we want
@@ -417,21 +421,24 @@ def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, ti
         F = sqrtJ2 + alpha * i1 - k
 
         # Plot contour
-        ax.contour(sig1, sig2, F, levels=[0], colors=[color], linewidths=1.5, alpha=0.05)
+        ax.contour(sig1, sig2, F, levels=[0], colors=[color], linewidths=2, alpha=1)
         if showlabels:
-            ax.plot([], [], color=color, label=f"Seed {int(surface.seed)}")
+            ax.plot([], [], color=color, label=f"{surface.interest_value} {int(surface.instance)}")
 
     ax.plot([-50, 130], [0, 0], color='black')
     ax.plot([0, 0], [-50, 130], color='black')
 
     ax.tick_params(axis='both', labelsize=15)
 
-    ax.set_xlim(-15, 100)
-    ax.set_ylim(-15, 100)
+    # ax.set_xlim(-15, 100)
+    # ax.set_ylim(-15, 100)
+    ax.set_xlim(-15, 130)
+    ax.set_ylim(-15, 130)
+
     ax.set_xlabel(r"$\sigma_1$ (GPa)", fontsize=18)
     ax.set_ylabel(r"$\sigma_2$ (GPa)", fontsize=18)
     if title:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=20)
     else:
         ax.set_title("DP Surfaces Overlayed by Random Seed", fontsize=20)
     if showlabels:
@@ -441,7 +448,7 @@ def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, ti
     if title:
         plt.savefig(title)
     else:
-        plt.savefig(f'{local_config.DATA_DIR}/defected_data/plots/DP_overlay_all_seeds.png')
+        plt.savefig(f'{local_config.DATA_DIR}/rotation_tests/plots/DP_overlay_all_seeds.png')
     plt.close()
 
 
