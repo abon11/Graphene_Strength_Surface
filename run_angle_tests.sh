@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-MAX_JOBS_IN_FLIGHT=28
+MAX_JOBS_IN_FLIGHT=25
 TOTAL_SIMS=40000
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=14
@@ -13,7 +13,7 @@ Y_ATOMS="${Y_ATOMS:-60}"
 DEFECT_TYPE="${DEFECT_TYPE:-None}"
 DEFECT_PERC="${DEFECT_PERC:-0}"
 DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-1}"
-SIM_LENGTH="${SIM_LENGTH:-20000}"
+SIM_LENGTH="${SIM_LENGTH:-120000}"
 ACCEPT_DUPES="${ACCEPT_DUPES:-false}"
 TIMESTEP="${TIMESTEP:-0.0005}"
 THERMO="${THERMO:-1000}"
@@ -32,19 +32,26 @@ rand_float() {
 }
 
 rand_erates() {
-    for _ in {1..3}; do
+    for i in {1..3}; do
         seed=$(od -An -N2 -i /dev/random | tr -d ' ')
-        awk -v seed=$seed 'BEGIN {
+        awk -v seed=$seed -v idx=$i 'BEGIN {
             srand(seed)
             r = rand()
             num = rand() * 0.001
+
+            # Clip near-zero and near-one
             if (num > 0.00099) {
-                printf "0.001 "
+                num = 0.001
             } else if (num < 0.00001) {
-                printf "0.0 "
-            } else {
-                printf "%.6f ", num
+                num = 0.0
             }
+
+            # For i = 3, make it negative with 50% chance
+            if (idx == 3 && rand() < 0.5) {
+                num = -num
+            }
+
+            printf "%.6f ", num
         }'
     done
     echo
