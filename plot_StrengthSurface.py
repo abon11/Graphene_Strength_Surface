@@ -40,6 +40,7 @@ def main():
     df = load_data(csv_file)
 
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
+    filtered_df = duplicate_biaxial_rows(filtered_df)
 
     base_title = create_title(exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
 
@@ -48,8 +49,8 @@ def main():
     else:
         pristine_df = None
 
-    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
-    # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
+    # plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
+    plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 
 def load_data(csv_file):
@@ -73,7 +74,7 @@ def get_pristine_subset(df, exact_filters=None, range_filters=None, or_filters=N
     return filter_data(pristine_df, exact_filters=exact_clean, range_filters=range_clean, or_filters=or_clean)
 
 
-def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, dupe_thetas=True):
+def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, dupe_thetas=False):
     """
     Filter df on exact, range, OR filters *and* make phantom copies
     of any isotropic points (Strain Rate x == Strain Rate y)
@@ -170,8 +171,41 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, dup
         aniso_df = filtered[aniso_mask]
 
     # Union iso_phantoms + aniso_df
-    result = pd.concat([iso_phantom_df, aniso_df], ignore_index=True)
+    filtered = pd.concat([iso_phantom_df, aniso_df], ignore_index=True)
+    result = flip_strengths(filtered)
     return result
+
+
+def flip_strengths(df):
+    # Create a flipped version of the DataFrame
+    flipped = df.copy()
+    flipped["Strength_1"], flipped["Strength_2"] = df["Strength_2"], df["Strength_1"]
+
+    # Combine original and flipped
+    df_doubled = pd.concat([df, flipped], ignore_index=True)
+    return df_doubled
+
+
+def duplicate_biaxial_rows(df):
+    # Identify perfectly biaxial tension cases (ratio == 1.0 and maybe sigma_xy ≈ 0)
+    is_biaxial = (df["Theta Requested"] == -1)
+
+    # Extract the biaxial rows
+    biaxial_rows = df[is_biaxial]
+
+    # For each theta, duplicate the biaxial row and assign that theta
+    new_rows = []
+    for theta in range(0, 91, 10):
+        if theta != -1:
+            for _, row in biaxial_rows.iterrows():
+                new_row = row.copy()
+                new_row["Theta Requested"] = theta
+                new_row["Theta"] = theta
+                new_rows.append(new_row)
+
+    df = df[df["Theta Requested"] != -1]  # remove the -1 so we don't plot it
+    # Append duplicated rows to dataframe
+    return pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
 
 
 def extract_field_string(field_name, exact_filters=None, range_filters=None, or_filters=None, suffix=""):
@@ -275,10 +309,10 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
 
     plt.figure(figsize=(8, 8))
     plt.scatter(df["Strength_1"], df["Strength_2"], c=colors, alpha=0.8, label='Defective')
-    plt.scatter(df["Strength_2"], df["Strength_1"], c=colors, alpha=0.8)
+    # plt.scatter(df["Strength_2"], df["Strength_1"], c=colors, alpha=0.8)
     if pristine_data is not None and not pristine_data.empty:
         plt.scatter(pristine_data["Strength_1"], pristine_data["Strength_2"], c='black', alpha=0.7, label='Pristine')
-        plt.scatter(pristine_data["Strength_2"], pristine_data["Strength_1"], c='black', alpha=0.7)
+        # plt.scatter(pristine_data["Strength_2"], pristine_data["Strength_1"], c='black', alpha=0.7)
     plt.xlabel(r'$\sigma_1$ (GPa)', fontsize=18)
     plt.ylabel(r'$\sigma_2$ (GPa)', fontsize=18)
 
@@ -325,66 +359,16 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
 
 
 def plot_strengths_3d(df, folder, title, color_by_field, pristine_data=None):
-    # wrap angle into [0,30] deg
-    raw = df["Theta"] % 60
-    wrapped = np.where(raw <= 30, raw, 60 - raw)
-    df = df.copy()
-    df["wrapped_angle"] = wrapped
-
-    # base scatter
     fig = px.scatter_3d(
         df,
         x="Strength_1",
         y="Strength_2",
-        z="wrapped_angle",
+        z="Theta",
         color=color_by_field if color_by_field in df.columns else None,
         title=title,
-        labels={"wrapped_angle": "Angle (deg)", "Strength_1": "σ₁", "Strength_2": "σ₂"},
+        labels={"Theta": "Angle (deg)", "Strength_1": "σ₁", "Strength_2": "σ₂"},
         opacity=0.7,
     )
-
-    fig.add_trace(
-        go.Scatter3d(
-            x=df["Strength_2"],
-            y=df["Strength_1"],
-            z=df["wrapped_angle"],
-            mode="markers",
-            marker=dict(
-                # if you used px color mapping, just copy the same colors:
-                color=fig.data[0].marker.color,
-                size=fig.data[0].marker.size
-            ),
-            name=f"{color_by_field}"
-        )
-    )
-
-    # add pristine as black markers
-    if pristine_data is not None and not pristine_data.empty:
-        p_raw = pristine_data["Theta"] % 60
-        p_wrap = np.where(p_raw <= 30, p_raw, 60 - p_raw)
-        pristine_data = pristine_data.copy()
-        pristine_data["wrapped_angle"] = p_wrap
-
-        fig.add_trace(
-            go.Scatter3d(
-                x=pristine_data["Strength_1"],
-                y=pristine_data["Strength_2"],
-                z=pristine_data["wrapped_angle"],
-                mode="markers",
-                marker=dict(color="black", size=4),
-                name="Pristine",
-            )
-        )
-        fig.add_trace(
-            go.Scatter3d(
-                x=pristine_data["Strength_2"],
-                y=pristine_data["Strength_1"],
-                z=pristine_data["wrapped_angle"],
-                mode="markers",
-                marker=dict(color="black", size=4),
-                name="Pristine",
-            )
-        )
 
     # write out a self‐contained HTML you can open in any browser
     html_path = f"{folder}/plots/3D_SS_{clean_title(title)}.html"

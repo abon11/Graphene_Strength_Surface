@@ -8,11 +8,8 @@ import local_config
 import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-from scipy.stats import pearsonr
-from scipy.stats import multivariate_normal
-from scipy.stats import chi2
-from matplotlib.patches import Ellipse
+import plotly.express as px
+import plotly.graph_objects as go
 
 
 def main():
@@ -39,11 +36,12 @@ def main():
         # "Theta": [0, 30, 60, 90]
     }
 
+    DP_3D = True
+
     df = pd.read_csv(csv_file)
     df = duplicate_biaxial_rows(df)
-    df.to_csv('test.csv', index=False)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, dupe_thetas=False)
-    interest_value = 'Theta Requested'
+    interest_value = 'Defect Percentage'
 
     # Group by defect seed
     grouped = filtered_df.groupby(interest_value)
@@ -68,13 +66,12 @@ def main():
         datapoints = [DataPoint(row) for _, row in group_df.iterrows()]
 
         # Create Surface and fit Drucker-Prager
-        surface = Surface(datapoints, interest_value)  # changed from just surface
+        surface = Surface(datapoints, interest_value, fit_full3D=DP_3D)  # changed from just surface
         surface.fit_drucker_prager()
 
-        print(f"Fit surface for {interest_value} {int(surface.instance)}.")
+        print(f"Fit surface for {interest_value} {int(instance)}.")
 
-        stats = surface.compute_loss_statistics()
-        print(f"{interest_value} {int(surface.instance)}: alpha = {surface.alpha:.4f}, k = {surface.k:.4f}... RMSE: {stats["rmse"]:.4f}, Max Residual: {stats["max_residual"]:.4f}, Total Loss: {stats["total_loss"]:.4f}.")
+        stats = surface.compute_loss_statistics(print_outputs=True)
         if stats["rmse"] is not np.nan:
             rmse.append(stats["rmse"])
             loss.append(stats["total_loss"])
@@ -83,37 +80,46 @@ def main():
         alphas.append(surface.alpha)
         ks.append(surface.k)
 
-        rows.append({f"{interest_value}": surface.instance, "alpha": surface.alpha, "k": surface.k})
-
-        if individual_plots:
-            surface.plot_surface_fit()
+        if DP_3D:
+            rows.append({f"{interest_value}": surface.instance, "a0": surface.alpha[0], "a1": surface.alpha[1], 
+                         "a2": surface.alpha[2], "a3": surface.alpha[3], "a4": surface.alpha[4], "k0": surface.k[0],
+                         "k1": surface.k[1],  "k2": surface.k[2],  "k3": surface.k[3], "k4": surface.k[4]})
+            if individual_plots:
+                surface.plot_3d_fit()
+        else:
+            rows.append({f"{interest_value}": surface.instance, "alpha": surface.alpha, "k": surface.k})
+            if individual_plots:
+                surface.plot_surface_fit()
 
     if len(rmse) > 0:
         print(f"Final average RMSE over {len(rmse)} samples: {np.sum(rmse) / len(rmse)}")
         print(f"Final average total loss over {len(loss)} samples: {np.sum(loss) / len(loss)}")
 
     df_params = pd.DataFrame(rows)
-    df_params.to_csv("drucker_prager_params_thetas.csv", index=False)
+    if DP_3D:
+        df_params.to_csv("drucker_prager_params_thetas3D.csv", index=False)
+    else:
+        df_params.to_csv("drucker_prager_params_new.csv", index=False)
 
 
 def duplicate_biaxial_rows(df):
     # Identify perfectly biaxial tension cases (ratio == 1.0 and maybe sigma_xy ≈ 0)
     is_biaxial = (df["Theta Requested"] == -1)
 
-    # Get all unique theta values present in the dataset (for binning)
-    all_thetas = df["Theta Requested"].unique()
-    all_thetas = np.sort(all_thetas)
+    # # Get all unique theta values present in the dataset (for binning)
+    # all_thetas = df["Theta Requested"].unique()
+    # all_thetas = np.sort(all_thetas)
 
     # Extract the biaxial rows
     biaxial_rows = df[is_biaxial]
 
     # For each theta, duplicate the biaxial row and assign that theta
     new_rows = []
-    for theta in all_thetas:
+    for theta in range(0, 91, 10):
         if theta != -1:
             for _, row in biaxial_rows.iterrows():
                 new_row = row.copy()
-                new_row["Theta Requested"] = theta
+                new_row["Theta"] = theta
                 new_rows.append(new_row)
 
     df = df[df["Theta Requested"] != -1]  # remove the -1 so we don't plot it
@@ -121,35 +127,7 @@ def duplicate_biaxial_rows(df):
     return pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
 
 
-class BaseSurface:    
-    def plot_loss_landscape(self, alpha_range=(-0.1, 0.1), k_range=(25, 50), res=100):
-
-        alphas = np.linspace(*alpha_range, res)
-        ks = np.linspace(*k_range, res)
-        A, K = np.meshgrid(alphas, ks)
-        Loss = np.zeros_like(A)
-
-        for i in range(res):
-            for j in range(res):
-                Loss[i, j] = self.loss([A[i, j], K[i, j]])
-
-        plt.figure(figsize=(8, 6))
-        cp = plt.contourf(A, K, Loss, levels=50, cmap='viridis')
-        plt.colorbar(cp, label='Loss')
-        plt.xlabel(r"$\alpha$")
-        plt.ylabel(r"$k$")
-        plt.title(f"Loss Landscape for Seed {self.seed}")
-
-        # Plot optimizer's best guess
-        if self.fit_result is not None:
-            a, k = self.fit_result.x
-            plt.plot(a, k, 'ro', label="Optimizer guess")
-            plt.legend()
-
-        plt.savefig(f"Loss_Landscape_{self.seed}.png")
-
-
-class MadeSurface(BaseSurface):
+class MadeSurface():
     def __init__(self, alpha, k, interest_value=None, instance=None):
         self.alpha = alpha
         self.k = k
@@ -176,8 +154,8 @@ class DataPoint:
         return i1, j2
     
 
-class Surface(BaseSurface):
-    def __init__(self, points, interest_value):
+class Surface():
+    def __init__(self, points, interest_value, fit_full3D=False):
         """
         This class defines a single strength surface and can fit a Drucker-Prager model to it
         
@@ -190,32 +168,68 @@ class Surface(BaseSurface):
         self.alpha = None
         self.k = None
         self.fit_result = None
+        self.fit_full3D = fit_full3D
 
     def check_instance(self):
         """
         Check to make sure all of our random seeds match up, returns the seed if it does match
         -- expanded this to cover all "interest values", such as thetas, etc
         """
+        df_list = []
 
         val = self.points[0].df[self.interest_value]
         for p in self.points:
             if p.df[self.interest_value] != val:
-                raise ValueError("Random Seeds do not match up in this surface!")
+                raise ValueError(f"{self.interest_value}'s do not match up in this surface!")
+            df_list.append(p.df.to_frame().T)
+
+        # Combine into a single DataFrame
+        self.full_df = pd.concat(df_list, ignore_index=False)
         return val
 
-    def loss(self, params):
+    def dp(self, point, params):
+        if self.fit_full3D:
+            theta = point.df["Theta"]
+            omega = 2 * np.pi * theta / 60
+
+            # First + second harmonics for alpha and k
+            alpha = (
+                params[0]
+                + params[1] * np.cos(omega)
+                + params[2] * np.sin(omega)
+                + params[3] * np.cos(2 * omega)
+                + params[4] * np.sin(2 * omega)
+            )
+            k = (
+                params[5]
+                + params[6] * np.cos(omega)
+                + params[7] * np.sin(omega)
+                + params[8] * np.cos(2 * omega)
+                + params[9] * np.sin(2 * omega)
+            )
+        else:
+            alpha = params[0]
+            k = params[1]
+
+        i1, j2 = point.calculate_invariants()
+        residual = np.sqrt(j2) + alpha * i1 - k
+        return residual
+
+    def loss(self, params, return_resid=False):
         """
         Loss function to minimize: sum of squared Drucker-Prager residuals.
 
         params: [alpha, k]
         """
-        alpha, k = params
         residuals = []
         for point in self.points:
-            i1, j2 = point.calculate_invariants()
-            residual = np.sqrt(j2) + alpha * i1 - k
-            residuals.append(residual ** 2)
-        return sum(residuals)
+            residual = self.dp(point, params)
+            residuals.append(residual)
+
+        if return_resid:
+            return residuals
+        else:
+            return sum(np.array(residuals)**2)
 
     def fit_drucker_prager(self):
         """
@@ -223,10 +237,22 @@ class Surface(BaseSurface):
         Stores the optimized values in self.alpha and self.k.
         """
         try:
-            result = minimize(self.loss, x0=[0.0, 1.0])
+            if self.fit_full3D:
+                # result = minimize(self.loss, x0=[0, 0, 0, 1, 0, 0], method="BFGS")
+                result = minimize(self.loss, x0=[0, 0, 0, 1, 0, 0, 0, 1, 0, 0], method="BFGS")
+            else:
+                result = minimize(self.loss, x0=[0.0, 1.0])
             self.fit_result = result 
             if result.success or "precision loss" in result.message:
-                self.alpha, self.k = result.x
+                if self.fit_full3D:
+                    # a0, a1, a2, b0, b1, b2 = result.x
+                    # self.alpha = [a0, a1, a2]
+                    # self.k = [b0, b1, b2]
+                    a0, a1, a2, a3, a4, b0, b1, b2, b3, b4 = result.x
+                    self.alpha = [a0, a1, a2, a3, a4]
+                    self.k = [b0, b1, b2, b3, b4]
+                else:
+                    self.alpha, self.k = result.x
             else:
                 raise RuntimeError(f"Minimization failed: {result.message}")
 
@@ -234,7 +260,7 @@ class Surface(BaseSurface):
             print(f"Warning: Seed {int(self.seed)} fit failed. {e}")
             self.alpha, self.k = np.nan, np.nan
 
-    def compute_loss_statistics(self):
+    def compute_loss_statistics(self, print_outputs=False):
         if self.alpha is np.nan or self.k is np.nan:
             return {
                 "total_loss": np.nan,
@@ -242,12 +268,10 @@ class Surface(BaseSurface):
                 "rmse": np.nan,
                 "max_residual": np.nan
             }
-        
-        residuals = []
-        for point in self.points:
-            i1, j2 = point.calculate_invariants()
-            r = np.sqrt(j2) + self.alpha * i1 - self.k
-            residuals.append(r)
+        if self.fit_full3D:
+            residuals = self.loss(self.alpha + self.k, return_resid=True)  # combine two lists
+        else:
+            residuals=self.loss([self.alpha, self.k], return_resid=True)
 
         residuals = np.array(residuals)
         n = len(residuals)
@@ -255,6 +279,15 @@ class Surface(BaseSurface):
         mse = total_loss / n
         rmse = np.sqrt(mse)
         max_residual = np.max(np.abs(residuals))
+
+        if print_outputs:
+            if self.fit_full3D:
+                print(f"{self.interest_value} {self.instance}:")
+                print(f"alpha = [{self.alpha[0]:.4f}, {self.alpha[1]:.4f}, {self.alpha[2]:.4f}, {self.alpha[3]:.4f}, {self.alpha[3]:.4f}]")
+                print(f"k = [{self.k[0]:.4f}, {self.k[1]:.4f}, {self.k[2]:.4f}, {self.k[3]:.4f}, {self.k[4]:.4f}]")
+                print(f"RMSE: {rmse:.4f}, Max Residual: {max_residual:.4f}, Total Loss: {total_loss:.4f}.")
+            else:
+                print(f"{self.interest_value} {int(self.instance)}: alpha = {self.alpha:.4f}, k = {self.k:.4f}... RMSE: {rmse:.4f}, Max Residual: {max_residual:.4f}, Total Loss: {total_loss:.4f}.")
 
         return {
             "total_loss": total_loss,
@@ -264,7 +297,6 @@ class Surface(BaseSurface):
         }
     
     def plot_surface_fit(self, resolution=1000):
-
         # Set plot range around your data
         sig1_vals = [dp.df["Strength_1"] for dp in self.points]
         sig2_vals = [dp.df["Strength_2"] for dp in self.points]
@@ -333,130 +365,102 @@ class Surface(BaseSurface):
         plt.savefig(f'{local_config.DATA_DIR}/rotation_tests/plots/DP_fitted_{int(self.instance)}.png')
         plt.close()
 
+    def plot_3d_fit(self, resolution=300):
+        sig1_vals = [dp.df["Strength_1"] for dp in self.points] + [dp.df["Strength_2"] for dp in self.points]
+        theta_vals = [dp.df["Theta"] for dp in self.points] + [dp.df["Theta"] for dp in self.points]
 
-class Surface3P(Surface):
-    def __init__(self, points):
-        """
-        This class defines a single strength surface and can fit a Drucker-Prager model to it
-        
-        points (list[DataPoint]): list of datapoints for the surface
-        """
+        min_sig, max_sig  = min(sig1_vals), max(sig1_vals)
+        sig_grid = np.linspace(min_sig, max_sig, resolution)
+        theta_vals = np.linspace(0, 90, resolution)
 
-        self.points = points
-        self.seed = self.check_seed()
-        self.alpha = None
-        self.k = None
-        self.p = None
-        self.fit_result = None
+        # Create 3D meshgrid (σ1, σ2, θ)
+        sig1, sig2, theta = np.meshgrid(sig_grid, sig_grid, theta_vals, indexing='ij')
+        sig3 = np.zeros_like(sig1)
 
-    def loss(self, params):
-        """
-        Loss function to minimize: sum of squared Drucker-Prager residuals.
-
-        params: [alpha, k, p]
-        """
-        alpha, k, p = params
-        residuals = []
-        for point in self.points:
-            i1, j2 = point.calculate_invariants()
-            residual = np.sqrt(j2) + alpha * i1 + p * i1 ** 2 - k
-            residuals.append(residual ** 2)
-        return sum(residuals)
-
-    def fit_drucker_prager(self):
-        """
-        Fit Drucker-Prager3 parameters (alpha, k, p) to the current surface by minimizing the least squares loss.
-        Stores the optimized values in self.alpha, self.k, and self.p.
-        """
-        try:
-            result = minimize(self.loss, x0=[0.0, 1.0, 0.5])
-            self.fit_result = result 
-            if result.success or "precision loss" in result.message:
-                self.alpha, self.k, self.p = result.x
-            else:
-                raise RuntimeError(f"Minimization failed: {result.message}")
-
-        except RuntimeError as e:
-            print(f"Warning: Seed {int(self.seed)} fit failed. {e}")
-            self.alpha, self.k, self.p = np.nan, np.nan, np.nan
-
-    def compute_loss_statistics(self):
-        if self.alpha is np.nan or self.k is np.nan or self.p is np.nan:
-            return {
-                "total_loss": np.nan,
-                "mse": np.nan,
-                "rmse": np.nan,
-                "max_residual": np.nan
-            }
-        
-        residuals = []
-        for point in self.points:
-            i1, j2 = point.calculate_invariants()
-            r = np.sqrt(j2) + self.alpha * i1 + self.p * i1 ** 2 - self.k
-            residuals.append(r)
-
-        residuals = np.array(residuals)
-        n = len(residuals)
-        total_loss = np.sum(residuals**2)
-        mse = total_loss / n
-        rmse = np.sqrt(mse)
-        max_residual = np.max(np.abs(residuals))
-
-        return {
-            "total_loss": total_loss,
-            "mse": mse,
-            "rmse": rmse,
-            "max_residual": max_residual
-        }
-    
-    def plot_surface_fit(self, resolution=1000):
-
-        # Set plot range around your data
-        sig1_vals = [dp.df["Strength_1"] for dp in self.points]
-        sig2_vals = [dp.df["Strength_2"] for dp in self.points]
-        min_sig, max_sig = min(sig1_vals + sig2_vals), max(sig1_vals + sig2_vals)
-        grid = np.linspace(min_sig * 1.1, max_sig * 1.1, resolution)
-
-        # Create sigma1, sigma2 grid
-        sig1, sig2 = np.meshgrid(grid, grid)
-        sig3 = np.zeros_like(sig1)  
-
-        # Compute I1 and sqrt(J2)
+        # Invariants
         i1 = sig1 + sig2 + sig3
         mean_stress = i1 / 3
         dev_xx = sig1 - mean_stress
         dev_yy = sig2 - mean_stress
         dev_zz = sig3 - mean_stress
-
         j2 = 0.5 * (dev_xx**2 + dev_yy**2 + dev_zz**2)
 
-        # Evaluate DP function
-        F = np.sqrt(j2) + self.alpha * i1 + self.p * i1 ** 2 - self.k
+        # Alpha and k as functions of theta (example: quadratic fit)
+        theta_rad = np.deg2rad(theta)
+        # alpha_theta = self.alpha[0] + self.alpha[1]*np.cos(6*theta_rad) + self.alpha[2]*np.sin(6*theta_rad)
+        # k_theta = self.k[0] + self.k[1]*np.cos(6*theta_rad) + self.k[2]*np.sin(6*theta_rad)
+        omega = 2 * np.pi * theta / 60
+        alpha_theta = (
+            self.alpha[0]
+            + self.alpha[1] * np.cos(omega)
+            + self.alpha[2] * np.sin(omega)
+            + self.alpha[3] * np.cos(2 * omega)
+            + self.alpha[4] * np.sin(2 * omega)
+        )
+        k_theta = (
+            self.k[0]
+            + self.k[1] * np.cos(omega)
+            + self.k[2] * np.sin(omega)
+            + self.k[3] * np.cos(2 * omega)
+            + self.k[4] * np.sin(2 * omega)
+        )
 
-        plt.figure(figsize=(8, 8))
+        # Evaluate Drucker-Prager F = √J₂ + α(θ)·I₁ - k(θ)
+        F = np.sqrt(j2) + alpha_theta * i1 - k_theta
 
-        # Plot contour where f = 0 (the strength boundary)
-        plt.contour(sig1, sig2, F, levels=[0], colors="red", linewidths=2)
-        plt.plot([], [], color="red", label="DP surface")  # for legend (cs.collections is not working)
+        # Threshold for where to plot the surface (surface band)
+        f_tol = 0.5  # change if surface too thick or thin
 
-        # Plot data points
-        plt.scatter(sig1_vals, sig2_vals, color="blue", label="MD failure points")
-        plt.scatter(sig2_vals, sig1_vals, color="blue")
+        # Mask for F ≈ 0
+        mask = np.abs(F) < f_tol
 
-        plt.plot([-50, 130], [0, 0], color='black')
-        plt.plot([0, 0], [-50, 130], color='black')
+        # Extract matching surface points
+        surface_x = sig1[mask].flatten()
+        surface_y = sig2[mask].flatten()
+        surface_theta = theta[mask].flatten()
 
-        plt.xlabel(r"$\sigma_1$")
-        plt.ylabel(r"$\sigma_2$")
+        color_vals = np.maximum(surface_x, surface_y)
 
-        plt.xlim(-15, 100)
-        plt.ylim(-15, 100)
+        fig = go.Figure()
 
-        plt.title(f"Fitted Drucker-Prager Surface (Seed {int(self.seed)})")
-        plt.legend()
+        fig.add_trace(
+            go.Scatter3d(
+                x=self.full_df["Strength_1"],
+                y=self.full_df["Strength_2"],
+                z=self.full_df["Theta"],
+                mode="markers",
+                marker=dict(color="black", size=3),
+                name="Data Points"
+            )
+        )
 
-        plt.savefig(f'{local_config.DATA_DIR}/defected_data/plots/DP3_fitted_{int(self.seed)}.png')
-        plt.close()
+        # Add the Drucker–Prager surface (where F ≈ 0)
+        fig.add_trace(
+            go.Scatter3d(
+                x=surface_x,
+                y=surface_y,
+                z=surface_theta,
+                mode="markers",
+                marker=dict(
+                    size=2,
+                    # color="red",
+                    color=color_vals,
+                    colorscale="RdBu",
+                    opacity=0.2,
+                    colorbar=dict(title="max(σ₁, σ₂)")
+                ),
+                name="DP Surface"
+            )
+        )
+
+        fig.update_layout(title=f"Strength Surface at Different Angles", coloraxis_colorbar=dict(x=-5))
+
+        # Save plot
+        folder = f"{local_config.DATA_DIR}/rotation_tests"
+        html_path = f"{folder}/plots/3D_SS_FULL.html"
+        fig.write_html(html_path, include_plotlyjs="cdn")
+        print(f"Interactive 3D plot saved to {html_path}")
+
 
 if __name__ == "__main__":
     main()
