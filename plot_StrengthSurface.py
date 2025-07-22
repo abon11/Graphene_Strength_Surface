@@ -33,7 +33,7 @@ def main():
         # "Theta": [0, 60]
     }
 
-    color_by_field = "Theta Requested"
+    color_by_field = "Theta"
     show_pristine = False
 
     # Load, filter, and plot
@@ -365,10 +365,26 @@ def plot_strengths_3d(df, folder, title, color_by_field, pristine_data=None):
         y="Strength_2",
         z="Theta",
         color=color_by_field if color_by_field in df.columns else None,
-        title=title,
+        title="Strength Surface by Dominant Principal Direction Angle",
         labels={"Theta": "Angle (deg)", "Strength_1": "σ₁", "Strength_2": "σ₂"},
-        opacity=0.7,
+        opacity=0.8,
+        color_continuous_scale="Bluered",
     )
+
+    fig.update_layout(
+        scene=dict(
+            xaxis_title_font=dict(size=35),
+            yaxis_title_font=dict(size=35),
+            zaxis_title_font=dict(size=35),
+            xaxis=dict(tickfont=dict(size=18)),
+            yaxis=dict(tickfont=dict(size=18)),
+            zaxis=dict(tickfont=dict(size=18)),
+        ),
+        title_font=dict(size=40)
+    )
+
+    fig.update_coloraxes(colorbar_title_font=dict(size=35), colorbar_tickfont=dict(size=26))
+
 
     # write out a self‐contained HTML you can open in any browser
     html_path = f"{folder}/plots/3D_SS_{clean_title(title)}.html"
