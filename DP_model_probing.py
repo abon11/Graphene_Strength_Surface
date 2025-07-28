@@ -5,31 +5,42 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from DP_model import MadeSurface
+import plotly.express as px
+import plotly.graph_objects as go
 
 
 def main():
     plot_together = True
+    DP_3D = True
 
     # read the DP models from the csv
     # df_params = pd.read_csv("drucker_prager_params_thetas.csv")
-    df_params = pd.read_csv("drucker_prager_params.csv")
+    df_params = pd.read_csv("dp_params_3D_SV.csv")
 
-    alphas = df_params["alpha"].values
-    ks = df_params["k"].values
-    instances = df_params["Seed"].values
+    if DP_3D:
+        alphas = df_params[["a0", "a1", "a2", "a3", "a4"]].to_numpy()
+        ks = df_params[["k0", "k1", "k2", "k3", "k4"]].to_numpy()
+    else: 
+        alphas = df_params["alpha"].values
+        ks = df_params["k"].values
+    
+    instances = df_params["Defect Random Seed"].values
 
     # turn them into Surface objects for convenience (and plot if we want)
     surfaces = []
     for a, k, instance in zip(alphas, ks, instances):
-        surface = MadeSurface(a, k, interest_value="Seed", instance=instance)
+        surface = MadeSurface(a, k, interest_value="Defect Random Seed", instance=instance)
         if not plot_together:
             plot_surface_fit(surface)
 
         surfaces.append(surface)
 
     if plot_together:
-        plot_all_surfaces(surfaces)
-
+        if DP_3D:
+            plot_3d_surface(surfaces)
+        else:
+            plot_all_surfaces(surfaces)
+        
     # plot_all_surfaces([surfaces[0], surfaces[3]], showlabels=True, title="Anisotropy of Graphene Strength")
 
 
@@ -152,6 +163,105 @@ def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, ti
     else:
         plt.savefig(f'{local_config.DATA_DIR}/rotation_tests/plots/DP_overlay_all_seeds.png')
     plt.close()
+
+
+def plot_3d_surface(surfaces, resolution=150):
+    sig_grid = np.linspace(-15, 130, resolution)
+    theta_vals = np.linspace(0, 30, resolution)
+
+    # Create 3D meshgrid (σ1, σ2, θ)
+    sig1, sig2, theta = np.meshgrid(sig_grid, sig_grid, theta_vals, indexing='ij')
+    sig3 = np.zeros_like(sig1)
+
+    # Invariants
+    i1 = sig1 + sig2 + sig3
+    mean_stress = i1 / 3
+    dev_xx = sig1 - mean_stress
+    dev_yy = sig2 - mean_stress
+    dev_zz = sig3 - mean_stress
+    j2 = 0.5 * (dev_xx**2 + dev_yy**2 + dev_zz**2)
+
+    fig = go.Figure()
+
+    for surf in surfaces:
+        omega = 2 * np.pi * theta / 60
+        alpha_theta = (
+            surf.alpha[0]
+            + surf.alpha[1] * np.cos(omega)
+            + surf.alpha[2] * np.sin(omega)
+            + surf.alpha[3] * np.cos(2 * omega)
+            + surf.alpha[4] * np.sin(2 * omega)
+        )
+        k_theta = (
+            surf.k[0]
+            + surf.k[1] * np.cos(omega)
+            + surf.k[2] * np.sin(omega)
+            + surf.k[3] * np.cos(2 * omega)
+            + surf.k[4] * np.sin(2 * omega)
+        )
+
+        # Evaluate Drucker-Prager F = √J₂ + α(θ)·I₁ - k(θ)
+        F = np.sqrt(j2) + alpha_theta * i1 - k_theta
+
+        # Threshold for where to plot the surface (surface band)
+        f_tol = 0.5  # change if surface too thick or thin
+
+        # Mask for F ≈ 0
+        mask = np.abs(F) < f_tol
+
+        # Extract matching surface points
+        surface_x = sig1[mask].flatten()
+        surface_y = sig2[mask].flatten()
+        surface_theta = theta[mask].flatten()
+
+        # color_vals = np.maximum(surface_x, surface_y)
+        color_vals = surf.instance
+
+        # fig.add_trace(
+        #     go.Scatter3d(
+        #         x=surf.full_df["Strength_1"],
+        #         y=self.full_df["Strength_2"],
+        #         z=self.full_df["Theta"],
+        #         mode="markers",
+        #         marker=dict(color="black", size=3),
+        #         name="Data Points"
+        #     )
+        # )
+
+        # Add the Drucker–Prager surface (where F ≈ 0)
+        fig.add_trace(
+            go.Scatter3d(
+                x=surface_x,
+                y=surface_y,
+                z=surface_theta,
+                mode="markers",
+                marker=dict(
+                    size=2,
+                    # color="red",
+                    color=color_vals,
+                    colorscale="ice",
+                    opacity=0.2,
+                    # showscale=((surf.instance == 0)),
+                    colorbar=dict(title="max(σ₁, σ₂)", x=-0.2) if surf.instance == 0 else None
+                ),
+                name=f"DP Surface {surf.instance}"
+            )
+        )
+
+    fig.update_layout(
+        title=f"Strength Surface at Different Angles", 
+        coloraxis_colorbar=dict(x=-5),
+        scene=dict(xaxis_title="σ₁", yaxis_title="σ₂", zaxis_title="Angle (deg)", 
+                    xaxis_title_font=dict(size=35), yaxis_title_font=dict(size=35), zaxis_title_font=dict(size=35), 
+                    xaxis=dict(tickfont=dict(size=18)), yaxis=dict(tickfont=dict(size=18)), zaxis=dict(tickfont=dict(size=18))),
+
+        scene_camera=dict(eye=dict(x=2, y=0.5, z=1.5))
+    )
+    # Save plot
+    folder = f"{local_config.DATA_DIR}/rotation_tests"
+    html_path = f"{folder}/plots/3D_SS_FULL_SV.html"
+    fig.write_html(html_path, include_plotlyjs="cdn")
+    print(f"Interactive 3D plot saved to {html_path}")
 
 
 # maps alphas and ks to tensile and compressive strength

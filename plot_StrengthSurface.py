@@ -15,22 +15,22 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defect Type": "None",
-        # "Defect Percentage": 0.5,
-        # # "Defect Random Seed": 1,
+        "Defect Type": "SV",
+        "Defect Percentage": 0.5,
+        "Defect Random Seed": 8,
         # "Theta": 30
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6)
-        # "Defect Random Seed": (1, 1000)
-        # "Theta": (0, 90)
+        # "Defect Random Seed": (0, 5)
+        # "Theta": (0, 30)
         # "Simulation ID": (2575, 3000)
     }
 
     or_filters = {
         # "Defect Type": ["SV", "DV"]
-        # "Theta": [0, 60]
+        # "Theta Requested": [20, 40, 80]
     }
 
     color_by_field = "Theta"
@@ -261,6 +261,11 @@ def create_title(exact_filters=None, range_filters=None, or_filters=None):
     theta_str = extract_field_string("Theta", exact_filters, range_filters, or_filters, suffix="deg")
     if theta_str:
         title_parts.append(theta_str)
+
+    # Handle Theta Requested
+    thetareq_str = extract_field_string("Theta Requested", exact_filters, range_filters, or_filters, suffix="deg")
+    if thetareq_str:
+        title_parts.append(thetareq_str)
 
     # Join all parts
     return ", ".join(title_parts)

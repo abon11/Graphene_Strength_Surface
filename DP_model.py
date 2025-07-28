@@ -18,8 +18,8 @@ def main():
 
     exact_filters = {
         "Num Atoms x": 60,
-        "Num Atoms y": 60
-        # "Defect Type": "SV",
+        "Num Atoms y": 60,
+        "Defect Type": "SV",
         # "Defect Percentage": 0.5,
         # "Theta": 0,
         # "Defect Random Seed": 54
@@ -28,7 +28,7 @@ def main():
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
         # "Defect Random Seed": (1, 1000)
-        # "Theta": (0, 90),
+        "Theta Requested": (0, 30),
     }
 
     or_filters = {
@@ -41,7 +41,7 @@ def main():
     df = pd.read_csv(csv_file)
     df = duplicate_biaxial_rows(df)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, dupe_thetas=False)
-    interest_value = 'Defect Percentage'
+    interest_value = 'Defect Random Seed'
 
     # Group by defect seed
     grouped = filtered_df.groupby(interest_value)
@@ -50,7 +50,7 @@ def main():
     alphas = []
     ks = []
 
-    individual_plots = True
+    individual_plots = False
 
     if ((len(grouped) >= 10) and (individual_plots == True)):
         inp = input(f"Warning! Set to save {len(grouped)} plots. Was this intentional? Type 'n' to quit. ")
@@ -97,7 +97,7 @@ def main():
 
     df_params = pd.DataFrame(rows)
     if DP_3D:
-        df_params.to_csv("drucker_prager_params_thetas3D.csv", index=False)
+        df_params.to_csv("dp_params_3D_SV.csv", index=False)
     else:
         df_params.to_csv("drucker_prager_params_new.csv", index=False)
 
@@ -365,107 +365,6 @@ class Surface():
         plt.savefig(f'{local_config.DATA_DIR}/rotation_tests/plots/DP_fitted_{int(self.instance)}.png')
         plt.close()
 
-    # def plot_3d_fit(self, resolution=300):
-    #     sig1_vals = [dp.df["Strength_1"] for dp in self.points] + [dp.df["Strength_2"] for dp in self.points]
-    #     theta_vals = [dp.df["Theta"] for dp in self.points] + [dp.df["Theta"] for dp in self.points]
-
-    #     min_sig, max_sig  = min(sig1_vals), max(sig1_vals)
-    #     sig_grid = np.linspace(min_sig, max_sig, resolution)
-    #     theta_vals = np.linspace(0, 90, resolution)
-
-    #     # Create 3D meshgrid (σ1, σ2, θ)
-    #     sig1, sig2, theta = np.meshgrid(sig_grid, sig_grid, theta_vals, indexing='ij')
-    #     sig3 = np.zeros_like(sig1)
-
-    #     # Invariants
-    #     i1 = sig1 + sig2 + sig3
-    #     mean_stress = i1 / 3
-    #     dev_xx = sig1 - mean_stress
-    #     dev_yy = sig2 - mean_stress
-    #     dev_zz = sig3 - mean_stress
-    #     j2 = 0.5 * (dev_xx**2 + dev_yy**2 + dev_zz**2)
-
-    #     # alpha_theta = self.alpha[0] + self.alpha[1]*np.cos(6*theta_rad) + self.alpha[2]*np.sin(6*theta_rad)
-    #     # k_theta = self.k[0] + self.k[1]*np.cos(6*theta_rad) + self.k[2]*np.sin(6*theta_rad)
-    #     omega = 2 * np.pi * theta / 60
-    #     alpha_theta = (
-    #         self.alpha[0]
-    #         + self.alpha[1] * np.cos(omega)
-    #         + self.alpha[2] * np.sin(omega)
-    #         + self.alpha[3] * np.cos(2 * omega)
-    #         + self.alpha[4] * np.sin(2 * omega)
-    #     )
-    #     k_theta = (
-    #         self.k[0]
-    #         + self.k[1] * np.cos(omega)
-    #         + self.k[2] * np.sin(omega)
-    #         + self.k[3] * np.cos(2 * omega)
-    #         + self.k[4] * np.sin(2 * omega)
-    #     )
-
-    #     # Evaluate Drucker-Prager F = √J₂ + α(θ)·I₁ - k(θ)
-    #     F = np.sqrt(j2) + alpha_theta * i1 - k_theta
-
-    #     # Threshold for where to plot the surface (surface band)
-    #     f_tol = 0.5  # change if surface too thick or thin
-
-    #     # Mask for F ≈ 0
-    #     mask = np.abs(F) < f_tol
-
-    #     # Extract matching surface points
-    #     surface_x = sig1[mask].flatten()
-    #     surface_y = sig2[mask].flatten()
-    #     surface_theta = theta[mask].flatten()
-
-    #     color_vals = np.maximum(surface_x, surface_y)
-
-    #     fig = go.Figure()
-
-    #     fig.add_trace(
-    #         go.Scatter3d(
-    #             x=self.full_df["Strength_1"],
-    #             y=self.full_df["Strength_2"],
-    #             z=self.full_df["Theta"],
-    #             mode="markers",
-    #             marker=dict(color="black", size=3),
-    #             name="Data Points"
-    #         )
-    #     )
-
-    #     # Add the Drucker–Prager surface (where F ≈ 0)
-    #     fig.add_trace(
-    #         go.Scatter3d(
-    #             x=surface_x,
-    #             y=surface_y,
-    #             z=surface_theta,
-    #             mode="markers",
-    #             marker=dict(
-    #                 size=2,
-    #                 # color="red",
-    #                 color=color_vals,
-    #                 colorscale="ice",
-    #                 opacity=0.2,
-    #                 colorbar=dict(title="max(σ₁, σ₂)", x=-0.2)
-    #             ),
-    #             name="DP Surface"
-    #         )
-    #     )
-
-    #     fig.update_layout(
-    #         title=f"Strength Surface at Different Angles", 
-    #         coloraxis_colorbar=dict(x=-5),
-    #         scene=dict(xaxis_title="σ₁", yaxis_title="σ₂", zaxis_title="Angle (deg)", 
-    #                    xaxis_title_font=dict(size=35), yaxis_title_font=dict(size=35), zaxis_title_font=dict(size=35), 
-    #                    xaxis=dict(tickfont=dict(size=18)), yaxis=dict(tickfont=dict(size=18)), zaxis=dict(tickfont=dict(size=18))),
-
-    #         scene_camera=dict(eye=dict(x=2, y=0.5, z=1.5))
-    #     )
-    #     # Save plot
-    #     folder = f"{local_config.DATA_DIR}/rotation_tests"
-    #     html_path = f"{folder}/plots/3D_SS_FULL.html"
-    #     fig.write_html(html_path, include_plotlyjs="cdn")
-    #     print(f"Interactive 3D plot saved to {html_path}")
-
     def plot_3d_fit(self, resolution=300):
         sig1_vals = [dp.df["Strength_1"] for dp in self.points] + [dp.df["Strength_2"] for dp in self.points]
         theta_vals = [dp.df["Theta"] for dp in self.points] + [dp.df["Theta"] for dp in self.points]
@@ -520,47 +419,53 @@ class Surface():
 
         color_vals = np.maximum(surface_x, surface_y)
 
+        fig = go.Figure()
 
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
-
-        # Plot data points
-        ax.scatter(
-            self.full_df["Strength_1"],
-            self.full_df["Strength_2"],
-            self.full_df["Theta"],
-            color='black',
-            s=10,
-            label="Data Points"
+        fig.add_trace(
+            go.Scatter3d(
+                x=self.full_df["Strength_1"],
+                y=self.full_df["Strength_2"],
+                z=self.full_df["Theta"],
+                mode="markers",
+                marker=dict(color="black", size=3),
+                name="Data Points"
+            )
         )
 
-        # Plot DP surface points
-        sc = ax.scatter(
-            surface_x,
-            surface_y,
-            surface_theta,
-            c=color_vals,
-            cmap='Reds',
-            s=2,
-            alpha=0.3,
-            label="DP Surface"
+        # Add the Drucker–Prager surface (where F ≈ 0)
+        fig.add_trace(
+            go.Scatter3d(
+                x=surface_x,
+                y=surface_y,
+                z=surface_theta,
+                mode="markers",
+                marker=dict(
+                    size=2,
+                    # color="red",
+                    color=color_vals,
+                    colorscale="ice",
+                    opacity=0.2,
+                    colorbar=dict(title="max(σ₁, σ₂)", x=-0.2)
+                ),
+                name="DP Surface"
+            )
         )
-        fig.colorbar(sc, ax=ax, shrink=0.5, pad=0.1, label="max(σ₁, σ₂)")
 
-        # Set axis labels
-        ax.set_xlabel(r"$\sigma_1$", fontsize=14)
-        ax.set_ylabel(r"$\sigma_2$", fontsize=14)
-        ax.set_zlabel(r"Angle (deg)", fontsize=14)
+        fig.update_layout(
+            title=f"Strength Surface at Different Angles", 
+            coloraxis_colorbar=dict(x=-5),
+            scene=dict(xaxis_title="σ₁", yaxis_title="σ₂", zaxis_title="Angle (deg)", 
+                       xaxis_title_font=dict(size=35), yaxis_title_font=dict(size=35), zaxis_title_font=dict(size=35), 
+                       xaxis=dict(tickfont=dict(size=18)), yaxis=dict(tickfont=dict(size=18)), zaxis=dict(tickfont=dict(size=18))),
 
-        # Set orthographic projection
-        ax.set_proj_type('ortho')
+            scene_camera=dict(eye=dict(x=2, y=0.5, z=1.5))
+        )
+        # Save plot
+        folder = f"{local_config.DATA_DIR}/rotation_tests"
+        html_path = f"{folder}/plots/3D_SS_FULL.html"
+        fig.write_html(html_path, include_plotlyjs="cdn")
+        print(f"Interactive 3D plot saved to {html_path}")
 
-        # Set viewing angle — adjust as desired for cabinet look
-        ax.view_init(elev=20, azim=-60)
-
-        ax.legend()
-        plt.tight_layout()
-        # plt.savefig("ORTHOTEST.png", dpi=300, bbox_inches='tight')
 
 
 if __name__ == "__main__":
