@@ -74,7 +74,7 @@ def get_pristine_subset(df, exact_filters=None, range_filters=None, or_filters=N
     return filter_data(pristine_df, exact_filters=exact_clean, range_filters=range_clean, or_filters=or_clean)
 
 
-def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, dupe_thetas=False):
+def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, dupe_thetas=False, flip_strengths=True):
     """
     Filter df on exact, range, OR filters *and* make phantom copies
     of any isotropic points (Strain Rate x == Strain Rate y)
@@ -172,11 +172,12 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, dup
 
     # Union iso_phantoms + aniso_df
     filtered = pd.concat([iso_phantom_df, aniso_df], ignore_index=True)
-    result = flip_strengths(filtered)
-    return result
+    if flip_strengths:
+        filtered = flip_strength_vals(filtered)
+    return filtered
 
 
-def flip_strengths(df):
+def flip_strength_vals(df):
     # Create a flipped version of the DataFrame
     flipped = df.copy()
     flipped["Strength_1"], flipped["Strength_2"] = df["Strength_2"], df["Strength_1"]

@@ -13,3 +13,4 @@ local_config.*
 *.pkl
 *.bak
 *.txt
+*.log

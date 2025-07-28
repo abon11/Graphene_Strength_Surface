@@ -50,15 +50,16 @@ send_email_notification() {
 
 export STORAGE_PATH="/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/rotation_tests"
 export DEFECT_PERC=0.5
-export DEFECT_RANDOM_SEED=0
+export DEFECT_RANDOM_SEED=3
 export DEFECT_TYPE="SV"
-export THETA=0
+export THETA=90
 export DETAILED_DATA="False"
 
-export START_THETA=0
+bash ./run_surface.sh &
+
 
 # do 5 seeds up to 90 degrees for a sanity check
-for j in $(seq 0 1 5); do
+for j in $(seq 4 1 5); do
     export DEFECT_RANDOM_SEED="$j"
     send_email_notification "$DEFECT_RANDOM_SEED"
     for i in $(seq 0 10 90); do
@@ -71,9 +72,10 @@ for j in $(seq 0 1 5); do
                 current_jobs_post_wait=$(count_jobs)
 
                 if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
-                    echo "SUBMITTING THETA $i"
+                    echo "SUBMITTING SEED $j THETA $i"
                     export THETA="$i"
                     bash ./run_surface.sh &
+                    sleep 240
                     break  # move to next i
                 fi
             fi
@@ -97,9 +99,10 @@ for j in $(seq 0 1 5); do
                 current_jobs_post_wait=$(count_jobs)
 
                 if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
-                    echo "SUBMITTING THETA $i"
+                    echo "SUBMITTING SEED $j THETA $i"
                     export THETA="$i"
                     bash ./run_surface.sh &
+                    sleep 240
                     break  # move to next i
                 fi
             fi
@@ -123,9 +126,10 @@ for j in $(seq 6 1 30); do
                 current_jobs_post_wait=$(count_jobs)
 
                 if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
-                    echo "SUBMITTING THETA $i"
+                    echo "SUBMITTING SEED $j THETA $i"
                     export THETA="$i"
                     bash ./run_surface.sh &
+                    sleep 240
                     break  # move to next i
                 fi
             fi

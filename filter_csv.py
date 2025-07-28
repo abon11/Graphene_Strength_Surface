@@ -6,23 +6,25 @@ import local_config
 def main():
 
     # ========== USER INTERFACE ==========
-    folder = f'{local_config.DATA_DIR}/angle_testing'
+    folder = f'{local_config.DATA_DIR}/rotation_tests'
     csv_file = f"{folder}/all_simulations.csv"
 
     exact_filters = {
-        # "Num Atoms x": 60,
-        # "Num Atoms y": 60,
-        # "Defect Type": "SV",  # will match NaN or "None"
-        # "Defect Percentage": 0.5,
-        # # "Defect Random Seed": 3,
-        # "Theta": 0
+        "Num Atoms x": 60,
+        "Num Atoms y": 60,
+        "Defect Type": "SV",  # will match NaN or "None"
+        "Defect Percentage": 0.5,
+        "Defect Random Seed": 3,
+        # "Theta Requested": 0
+        # "Strain Rate x": 0.001,
+        # "Strain Rate y": 0.001
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        # "Defect Random Seed": (963, 963)
-        # "Theta": (0, 90),
-        "Sigma_1": (4, 20)
+        # "Defect Random Seed": (0, 10)
+        "Theta Requested": (90, 90),
+        # "Sigma_1": (4, 20)
     }
 
     or_filters = {
@@ -31,7 +33,7 @@ def main():
     }
     # ====================================
     df = pd.read_csv(csv_file)
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, dupe_thetas=False)
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, dupe_thetas=False, flip_strengths=False)
     
     print(f"Filtered {len(filtered_df)} rows from {len(df)} total.")
     filtered_df.to_csv("filtered.csv", index=False)
