@@ -25,7 +25,7 @@ export MAX_JOBS_IN_FLIGHT=25
 export STORAGE_PATH="/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/rotation_tests"
 export DEFECT_PERC=0.5
 export DEFECT_TYPE="SV"
-export THETA=90
+export THETA=0
 export DETAILED_DATA="False"
 
 count_jobs() {
@@ -45,6 +45,6 @@ for j in $(seq 0 1 30); do
         sleep 29
     done
 
-    echo "Submitting biaxial job: Seed=$DEFECT_RANDOM_SEED
+    echo "Submitting biaxial job: Seed=$DEFECT_RANDOM_SEED"
     submit_job
 done
