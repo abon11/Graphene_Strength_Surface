@@ -40,7 +40,7 @@ def main():
 
     df = pd.read_csv(csv_file)
     df = duplicate_biaxial_rows(df)
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, dupe_thetas=False)
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
     interest_value = 'Defect Random Seed'
 
     # Group by defect seed
@@ -61,6 +61,8 @@ def main():
     rmse = []
     loss = []
 
+    fig = go.Figure()
+
     for instance, group_df in grouped:
         # Create a list of DataPoints for this seed
         datapoints = [DataPoint(row) for _, row in group_df.iterrows()]
@@ -77,6 +79,7 @@ def main():
             loss.append(stats["total_loss"])
 
         surfaces.append(surface)
+        surface.plot_3d_fit(fig=fig) ##############
         alphas.append(surface.alpha)
         ks.append(surface.k)
 
@@ -102,9 +105,15 @@ def main():
         df_params.to_csv("drucker_prager_params_new.csv", index=False)
 
 
+    folder = f"{local_config.DATA_DIR}/rotation_tests"
+    html_path = f"{folder}/plots/3D_SS_FULL_test.html"
+    fig.write_html(html_path, include_plotlyjs="cdn")
+    print(f"Interactive 3D plot saved to {html_path}")
+
+
 def duplicate_biaxial_rows(df):
     # Identify perfectly biaxial tension cases (ratio == 1.0 and maybe sigma_xy ≈ 0)
-    is_biaxial = (df["Theta Requested"] == -1)
+    is_biaxial = ((df["Theta Requested"] == -1) | (df["Strain Rate x"] == df["Strain Rate y"]))
 
     # # Get all unique theta values present in the dataset (for binning)
     # all_thetas = df["Theta Requested"].unique()
@@ -115,11 +124,12 @@ def duplicate_biaxial_rows(df):
 
     # For each theta, duplicate the biaxial row and assign that theta
     new_rows = []
-    for theta in range(0, 91, 10):
+    for theta in range(0, 31, 5):
         if theta != -1:
             for _, row in biaxial_rows.iterrows():
                 new_row = row.copy()
                 new_row["Theta"] = theta
+                new_row["Theta Requested"] = theta
                 new_rows.append(new_row)
 
     df = df[df["Theta Requested"] != -1]  # remove the -1 so we don't plot it
@@ -365,13 +375,17 @@ class Surface():
         plt.savefig(f'{local_config.DATA_DIR}/rotation_tests/plots/DP_fitted_{int(self.instance)}.png')
         plt.close()
 
-    def plot_3d_fit(self, resolution=300):
+    def plot_3d_fit(self, fig=None, resolution=110):
+        wasfig = True
+        if fig is None:
+            wasfig = False
+        
         sig1_vals = [dp.df["Strength_1"] for dp in self.points] + [dp.df["Strength_2"] for dp in self.points]
         theta_vals = [dp.df["Theta"] for dp in self.points] + [dp.df["Theta"] for dp in self.points]
 
         min_sig, max_sig  = min(sig1_vals), max(sig1_vals)
         sig_grid = np.linspace(min_sig, max_sig, resolution)
-        theta_vals = np.linspace(0, 90, resolution)
+        theta_vals = np.linspace(0, 30, resolution)
 
         # Create 3D meshgrid (σ1, σ2, θ)
         sig1, sig2, theta = np.meshgrid(sig_grid, sig_grid, theta_vals, indexing='ij')
@@ -419,7 +433,8 @@ class Surface():
 
         color_vals = np.maximum(surface_x, surface_y)
 
-        fig = go.Figure()
+        if fig is None:
+            fig = go.Figure()
 
         fig.add_trace(
             go.Scatter3d(
@@ -428,7 +443,7 @@ class Surface():
                 z=self.full_df["Theta"],
                 mode="markers",
                 marker=dict(color="black", size=3),
-                name="Data Points"
+                name=f"Data Points - {self.instance}"
             )
         )
 
@@ -445,9 +460,9 @@ class Surface():
                     color=color_vals,
                     colorscale="ice",
                     opacity=0.2,
-                    colorbar=dict(title="max(σ₁, σ₂)", x=-0.2)
+                    # colorbar=dict(title="max(σ₁, σ₂)", x=-0.2)
                 ),
-                name="DP Surface"
+                name=f"DP Surface {self.instance}"
             )
         )
 
@@ -460,11 +475,13 @@ class Surface():
 
             scene_camera=dict(eye=dict(x=2, y=0.5, z=1.5))
         )
-        # Save plot
-        folder = f"{local_config.DATA_DIR}/rotation_tests"
-        html_path = f"{folder}/plots/3D_SS_FULL.html"
-        fig.write_html(html_path, include_plotlyjs="cdn")
-        print(f"Interactive 3D plot saved to {html_path}")
+
+        if not wasfig:
+            # Save plot
+            folder = f"{local_config.DATA_DIR}/rotation_tests"
+            html_path = f"{folder}/plots/3D_SS_FULL.html"
+            fig.write_html(html_path, include_plotlyjs="cdn")
+            print(f"Interactive 3D plot saved to {html_path}")
 
 
 
