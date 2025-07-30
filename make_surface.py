@@ -16,8 +16,7 @@ def parse_args():
     parser.add_argument("--sheet_path", type=str, default=f"{local_config.DATA_DIR}/data_files/data.60_60_rel1")
     parser.add_argument("--x_atoms", type=int, default=60)
     parser.add_argument("--y_atoms", type=int, default=60)
-    parser.add_argument("--defect_type", type=str, default="None")
-    parser.add_argument("--defect_perc", type=float, default=0)
+    parser.add_argument("--defects", type=str, default="None")
     parser.add_argument("--defect_random_seed", type=int, default=42)
     parser.add_argument("--sim_length", type=int, default=10000000)
     parser.add_argument("--timestep", type=float, default=0.0005)
@@ -42,8 +41,7 @@ def build_job_command(base_args, x_erate, y_erate, xy_erate, cores):
         "--sheet_path", base_args.sheet_path,
         "--x_atoms", str(base_args.x_atoms),
         "--y_atoms", str(base_args.y_atoms),
-        "--defect_type", base_args.defect_type,
-        "--defect_perc", str(base_args.defect_perc),
+        "--defects", base_args.defects,
         "--defect_random_seed", str(base_args.defect_random_seed),
         "--sim_length", str(base_args.sim_length),
         "--timestep", str(base_args.timestep),
