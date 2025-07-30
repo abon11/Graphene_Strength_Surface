@@ -12,22 +12,21 @@ nprocs=$1
 sheet_path=$2
 x_atoms=$3
 y_atoms=$4
-defect_type=$5
-defect_perc=$6
-defect_seed=$7
-sim_length=$8
-timestep=$9
-thermo=${10}
-makeplots=${11}
-detailed_data=${12}
-theta=${13}
-fracture_window=${14}
-storage_path=${15}
-accept_dupes=${16}
-angle_testing=${17}
-x_erate=${18}
-y_erate=${19}
-xy_erate=${20}
+defects=$5
+defect_seed=$6
+sim_length=$7
+timestep=$8
+thermo=$9
+makeplots=${10}
+detailed_data=${11}
+theta=${12}
+fracture_window=${13}
+storage_path=${14}
+accept_dupes=${15}
+angle_testing=${16}
+x_erate=${17}
+y_erate=${18}
+xy_erate=${19}
 
 
 echo "Running one_sim with: x="$x_erate" y="$y_erate" xy="$xy_erate" on $nprocs procs"
@@ -36,8 +35,7 @@ mpiexec -n "$nprocs" python3 one_sim.py \
     --sheet_path "$sheet_path" \
     --x_atoms "$x_atoms" \
     --y_atoms "$y_atoms" \
-    --defect_type "$defect_type" \
-    --defect_perc "$defect_perc" \
+    --defects "$defects" \
     --defect_random_seed "$defect_seed" \
     --sim_length "$sim_length" \
     --timestep "$timestep" \
