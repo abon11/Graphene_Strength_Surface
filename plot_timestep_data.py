@@ -4,24 +4,93 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+import local_config
+from filter_csv import filter_data
 
 
 def main():
-    folder = '/data1/avb25/graphene_sim_data/defected_data'
-    # Specify columns to plot
+    # ========== USER INTERFACE ==========
+
     x_column = "Strain_1"
     y_column = "PrincipalStress_1"
     label_col = "Strain Rate x"
 
-    # csv_files = generate_csv_list(1, 9)  # generate list of csvs to plot data you want
-    # csv_files.insert(0, "simulation_data/sim00001_fulldata.csv")
+    folder = f'{local_config.DATA_DIR}/rotation_tests'
+    csv_file = f"{folder}/all_simulations.csv"
 
-    all_sims = "simulation_data/deform_data/all_simulations.csv"
-    # Call the plotting function
-    plot_detailed_data([f'{folder}/sim00400/dump.csv'], x_column, y_column, all_sims, label_col, output_file=f"{folder}combined_StressStrain.png")
+    exact_filters = {
+        # "Num Atoms x": 60,
+        # "Num Atoms y": 60,
+        # "Defect Type": "SV",  # will match NaN or "None"
+        # "Defect Percentage": 0.5,
+        # "Defect Random Seed": 3,
+        # "Theta Requested": 0
+        # "Strain Rate x": 0.001,
+        # "Strain Rate y": 0.001
+    }
 
-    # Call the function to plot
-    # plot_allsims_data(all_sims, list(range(1, 10)), 'Strain Rate x', 'Strength_1', output_file=f"{folder}strength_vs_StrainRate.png")
+    range_filters = {
+        # "Defect Percentage": (0.4, 0.6),
+        "Simulation ID": (2688, 2695)
+    }
+
+    or_filters = {
+        # "Defect Type": ["SV", "DV"],
+    }
+    # ====================================
+    df = pd.read_csv(csv_file)
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
+   
+    # plot_detailed_data([f'{folder}/sim00400/dump.csv'], x_column, y_column, all_sims, label_col, output_file=f"{folder}combined_StressStrain.png")
+
+    # plot_allsims_data(all_sims, list(range(2663, 2681)), 'Strain Rate x', 'Strength_1', output_file=f"{folder}strength_vs_StrainRate.png")
+
+    plot_many_detailed(filtered_df, x_column, y_column, folder)
+
+
+def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim"):
+    """
+    For each row in `df`, loads simulation results from {folder}/sim{SIMID}/sim{SIMID}.csv,
+    and plots (x_col, y_col) on the same matplotlib Axes.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame with a 'Simulation ID' column.
+        x_col (str): Column name to use for x-axis from sim CSV.
+        y_col (str): Column name to use for y-axis from sim CSV.
+        folder (str): Root folder containing simulation subfolders.
+        color (str or list, optional): Color or list of colors to cycle through.
+        label_prefix (str): Prefix for line labels in the legend.
+    """
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    for idx, row in df.iterrows():
+        sim_id = str(row["Simulation ID"]).zfill(5)
+        sim_path = os.path.join(folder, f"sim{sim_id}", f"sim{sim_id}.csv")
+
+        if not os.path.isfile(sim_path):
+            print(f"[Warning] File not found: {sim_path}")
+            continue
+
+        try:
+            sim_df = pd.read_csv(sim_path)
+            ax.plot(
+                sim_df[x_col],
+                sim_df[y_col],
+                label=f"{label_prefix}{sim_id}",
+                color=None if color is None else color[idx % len(color)]
+            )
+        except Exception as e:
+            print(f"[Error] Failed to plot sim{sim_id}: {e}")
+    
+    ax.set_xlabel("Strain")
+    ax.set_ylabel("Stress")
+    ax.set_title("Stress vs strain for 25 defect seeds (0.5% SV)")
+    ax.legend()
+    filename = f"{folder}/plots/stress_strain_DV.png"
+    fig.savefig(filename)
+    print(f"Plot saved to {filename}")
+    
 
 
 def plot_detailed_data(csv_files, x_column, y_column, lookup_file, label_column, output_file=None):
