@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 import local_config
 import plotly.express as px
 import plotly.graph_objects as go
+from filter_csv import filter_data
 
 def main():
+    # ========== USER INTERFACE ==========
     folder = f'{local_config.DATA_DIR}/rotation_tests'
     # folder = f'{local_config.DATA_DIR}/defected_data'
 
@@ -15,9 +17,9 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defect Type": "SV",
-        "Defect Percentage": 0.5,
-        "Defect Random Seed": 8,
+        "Defects": "None",
+        # "Defect Percentage": 0.5,
+        # "Defect Random Seed": 8,
         # "Theta": 30
     }
 
@@ -30,17 +32,16 @@ def main():
 
     or_filters = {
         # "Defect Type": ["SV", "DV"]
-        # "Theta Requested": [20, 40, 80]
+        "Theta Requested": [20, 40, 80]
     }
-
-    color_by_field = "Theta"
+    # ====================================
+    color_by_field = "Theta Requested"
     show_pristine = False
 
     # Load, filter, and plot
-    df = load_data(csv_file)
+    df = pd.read_csv(csv_file)
 
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
-    filtered_df = duplicate_biaxial_rows(filtered_df)
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, flip_strengths=True, duplic_freq=(0, 31, 5))
 
     base_title = create_title(exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
 
@@ -49,13 +50,8 @@ def main():
     else:
         pristine_df = None
 
-    # plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
-    plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
-
-
-def load_data(csv_file):
-    """Load the simulation data from CSV."""
-    return pd.read_csv(csv_file)
+    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
+    # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 
 def get_pristine_subset(df, exact_filters=None, range_filters=None, or_filters=None):
@@ -72,141 +68,6 @@ def get_pristine_subset(df, exact_filters=None, range_filters=None, or_filters=N
     or_clean    = {k: v for k, v in (or_filters or {}).items() if k not in exclude_keys}
 
     return filter_data(pristine_df, exact_filters=exact_clean, range_filters=range_clean, or_filters=or_clean)
-
-
-def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, dupe_thetas=False, flip_strengths=True):
-    """
-    Filter df on exact, range, OR filters *and* make phantom copies
-    of any isotropic points (Strain Rate x == Strain Rate y)
-    at *every* Theta value the user asked for.
-    """
-    # Copy and pull out Theta filters
-    filtered = df.copy()
-    theta_exact = None
-    theta_range = None
-    theta_or = None
-
-    if exact_filters and "Theta" in exact_filters:
-        theta_exact = exact_filters["Theta"]
-    if range_filters and "Theta" in range_filters:
-        theta_range = range_filters["Theta"]
-    if or_filters and "Theta" in or_filters:
-        theta_or = or_filters["Theta"]
-
-    # Build the clean dicts without Theta
-    exact_clean = {k: v for k, v in (exact_filters or {}).items() if k != "Theta"}
-    range_clean = {k: v for k, v in (range_filters or {}).items() if k != "Theta"}
-    or_clean = {k: v for k, v in (or_filters    or {}).items() if k != "Theta"}
-
-    # Apply non-Theta exact filters
-    for col, val in exact_clean.items():
-        if col == "Defect Type" and (val == "None" or val is None):
-            # Match rows where the value is "None" or NaN
-            mask = (filtered[col] == "None") | (filtered[col].isna())
-            filtered = filtered[mask]
-        else:
-            filtered = filtered[filtered[col] == val]
-
-    # Apply non-Theta range filters
-    for col, (mn, mx) in range_clean.items():
-        filtered = filtered[(filtered[col] >= mn) & (filtered[col] <= mx)]
-
-    # Apply non-Theta OR filters
-    for col, vals in or_clean.items():
-        if col == "Defect Type":
-            has_none = "None" in vals or None in vals
-            val_set = set(vals) - {"None", None}
-
-            mask = filtered[col].isin(val_set)
-            if has_none:
-                mask |= filtered[col].isna()
-            filtered = filtered[mask]
-        else:
-            filtered = filtered[filtered[col].isin(vals)]
-
-    # Separate iso vs aniso
-    iso_mask = (filtered["Strain Rate x"] == filtered["Strain Rate y"]) & (filtered["Strain Rate xy"] == 0)
-    aniso_mask = ~iso_mask
-
-    # Build theta_list from whatever filters the user gave, but only from the Theta values present in the current filtered set.
-    theta_list = []
-
-    if theta_exact is not None:
-        theta_list = [theta_exact]
-
-    elif theta_or is not None:
-        # only the exact ones they asked for (and that exist)
-        theta_list = list(filtered.loc[filtered["Theta"].isin(theta_or), "Theta"].unique())
-
-    elif theta_range is not None:
-        mn, mx = theta_range
-        # pull only the Theta values in [mn, mx] that are actually in filtered
-        theta_list = list(filtered.loc[(filtered["Theta"] >= mn) & (filtered["Theta"] <= mx),"Theta"].unique())
-
-    # Phantom-replicate iso rows
-    iso_df = filtered[iso_mask]
-
-    if dupe_thetas and theta_list:
-        # Replicate isotropic rows to each requested theta
-        phantoms = []
-        for th in theta_list:
-            tmp = iso_df.copy()
-            tmp["Theta"] = th
-            phantoms.append(tmp)
-        iso_phantom_df = pd.concat(phantoms, ignore_index=True) if phantoms else pd.DataFrame(columns=filtered.columns)
-    else:
-        # Either don't duplicate or no theta filtering — keep original
-        iso_phantom_df = iso_df.copy()
-
-    # Now select aniso rows by Theta filters
-    if theta_exact is not None:
-        aniso_df = filtered[aniso_mask & (filtered["Theta"] == theta_exact)]
-    elif theta_or is not None:
-        aniso_df = filtered[aniso_mask & filtered["Theta"].isin(theta_or)]
-    elif theta_range is not None:
-        mn, mx = theta_range
-        aniso_df = filtered[aniso_mask & (filtered["Theta"] >= mn) & (filtered["Theta"] <= mx)]
-    else:
-        # no Theta filtering at all
-        aniso_df = filtered[aniso_mask]
-
-    # Union iso_phantoms + aniso_df
-    filtered = pd.concat([iso_phantom_df, aniso_df], ignore_index=True)
-    if flip_strengths:
-        filtered = flip_strength_vals(filtered)
-    return filtered
-
-
-def flip_strength_vals(df):
-    # Create a flipped version of the DataFrame
-    flipped = df.copy()
-    flipped["Strength_1"], flipped["Strength_2"] = df["Strength_2"], df["Strength_1"]
-
-    # Combine original and flipped
-    df_doubled = pd.concat([df, flipped], ignore_index=True)
-    return df_doubled
-
-
-def duplicate_biaxial_rows(df):
-    # Identify perfectly biaxial tension cases (ratio == 1.0 and maybe sigma_xy ≈ 0)
-    is_biaxial = (df["Theta Requested"] == -1)
-
-    # Extract the biaxial rows
-    biaxial_rows = df[is_biaxial]
-
-    # For each theta, duplicate the biaxial row and assign that theta
-    new_rows = []
-    for theta in range(0, 91, 10):
-        if theta != -1:
-            for _, row in biaxial_rows.iterrows():
-                new_row = row.copy()
-                new_row["Theta Requested"] = theta
-                new_row["Theta"] = theta
-                new_rows.append(new_row)
-
-    df = df[df["Theta Requested"] != -1]  # remove the -1 so we don't plot it
-    # Append duplicated rows to dataframe
-    return pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
 
 
 def extract_field_string(field_name, exact_filters=None, range_filters=None, or_filters=None, suffix=""):

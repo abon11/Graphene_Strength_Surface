@@ -1,11 +1,8 @@
 import pandas as pd
-from plot_StrengthSurface import filter_data
 import local_config
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 from DP_model import MadeSurface
-import plotly.express as px
 import plotly.graph_objects as go
 
 

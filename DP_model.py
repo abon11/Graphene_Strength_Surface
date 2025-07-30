@@ -3,7 +3,7 @@ This fits the 2-parameter Drucker-Prager model to a set of strength surface data
 """
 
 import pandas as pd
-from plot_StrengthSurface import filter_data
+from filter_csv import filter_data
 import local_config
 import numpy as np
 from scipy.optimize import minimize
@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 
 
 def main():
+    # ========== USER INTERFACE ==========
     folder = f'{local_config.DATA_DIR}/rotation_tests'
     csv_file = f"{folder}/all_simulations.csv"
 
@@ -37,10 +38,9 @@ def main():
     }
 
     DP_3D = True
-
+    # ====================================
     df = pd.read_csv(csv_file)
-    df = duplicate_biaxial_rows(df)
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, duplic_freq=(0, 31, 5))
     interest_value = 'Defect Random Seed'
 
     # Group by defect seed
@@ -109,32 +109,6 @@ def main():
     html_path = f"{folder}/plots/3D_SS_FULL_test.html"
     fig.write_html(html_path, include_plotlyjs="cdn")
     print(f"Interactive 3D plot saved to {html_path}")
-
-
-def duplicate_biaxial_rows(df):
-    # Identify perfectly biaxial tension cases (ratio == 1.0 and maybe sigma_xy ≈ 0)
-    is_biaxial = ((df["Theta Requested"] == -1) | (df["Strain Rate x"] == df["Strain Rate y"]))
-
-    # # Get all unique theta values present in the dataset (for binning)
-    # all_thetas = df["Theta Requested"].unique()
-    # all_thetas = np.sort(all_thetas)
-
-    # Extract the biaxial rows
-    biaxial_rows = df[is_biaxial]
-
-    # For each theta, duplicate the biaxial row and assign that theta
-    new_rows = []
-    for theta in range(0, 31, 5):
-        if theta != -1:
-            for _, row in biaxial_rows.iterrows():
-                new_row = row.copy()
-                new_row["Theta"] = theta
-                new_row["Theta Requested"] = theta
-                new_rows.append(new_row)
-
-    df = df[df["Theta Requested"] != -1]  # remove the -1 so we don't plot it
-    # Append duplicated rows to dataframe
-    return pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
 
 
 class MadeSurface():
