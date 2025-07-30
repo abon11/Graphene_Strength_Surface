@@ -11,7 +11,7 @@ import time
 from filelock import FileLock
 import csv
 import sys
-
+import json
 import local_config 
 
 
@@ -93,7 +93,7 @@ class Simulation:
     def __init__(self, comm, rank, sheet, num_procs,
                  x_erate=0, y_erate=0, z_erate=0, xy_erate=0, xz_erate=0, yz_erate=0, 
                  sim_length=100000, timestep=0.0005, thermo=1000, 
-                 defect_type='None', defect_perc=0, defect_random_seed=42,
+                 defects="None", defect_random_seed=42,
                  makeplots=False, detailed_data=False, fracture_window=10, theta=0,
                  storage_path=f'{local_config.DATA_DIR}/defected_data', accept_dupes=False, angle_testing=False):
         """
@@ -109,8 +109,7 @@ class Simulation:
         - sim_length (int): Number of timesteps before simulation is killed (max timesteps) 
         - timestep (float): Size of one timestep in LAMMPS simulation (picoseconds)
         - thermo (int): Frequency of timesteps you output data (if thermo = 100, output every 100 timesteps)
-        - defect_type (str): What type of defect is in the sheet? SV=Single Vacancy, DV=Double Vacancy.
-        - defect_frac (float): Percentage of total atoms removed for single vacancy defects
+        - defects (str): JSON-like string in the form {"type": percentage}. ex: '{"SV": 0.5}'
         - defect_random_seed (int): Sets the random seed for the defect generation
         - makeplots (bool): User specifies whether or not they want plots of stress vs time generated and saved (default False)
         - detailed_data (bool): User specifies whether or not they want to save the detailed timestep data (default False)
@@ -133,8 +132,6 @@ class Simulation:
         self.sim_length = sim_length
         self.timestep = timestep
         self.thermo = thermo
-        self.defect_type = defect_type
-        self.defect_perc = defect_perc
         self.defect_random_seed = defect_random_seed
         self.makeplots = makeplots
         self.detailed_data = detailed_data
@@ -142,6 +139,7 @@ class Simulation:
         self.theta = theta
         self.storage_path = storage_path
         self.angle_testing = angle_testing
+        self.defects = self.parse_defect_string(defects)
 
         if not accept_dupes:
             self.check_duplicate()  # ensure that we haven't run this sim yet
@@ -159,11 +157,7 @@ class Simulation:
 
         self.setup_lammps()  # puts all needed variables in lammps and initializes file
 
-        if (defect_perc != 0):
-            self.introduce_defects()
-        else:
-            self.defect_type = "None"
-            self.defect_random_seed = None
+        self.introduce_defects()
 
         self.apply_fix_deform()
 
@@ -206,6 +200,45 @@ class Simulation:
                 # self.plot_stressTensor()
 
 
+    def parse_defect_string(self, defect_str):
+        """
+        Parses a JSON string representing defects and validates key/value types.
+
+        Parameters:
+            defect_str (str): JSON-formatted string, e.g. '{"SV": 0.5, "DV": 0.2}'
+
+        Returns:
+            dict[str, float]: Parsed and validated defect dictionary.
+
+        Raises:
+            ValueError: If JSON is invalid or structure does not match {str: float}
+        """
+
+        defect_str = defect_str.strip().upper()
+        if defect_str in ("NONE", "", "NULL"):
+            return {}
+
+        try:
+            defects = json.loads(defect_str)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON format: {e}")
+
+        if not isinstance(defects, dict):
+            raise ValueError("Defect input must be a JSON object (dictionary).")
+
+        for key, value in defects.items():
+            if not isinstance(key, str):
+                raise ValueError(f"Invalid key type: {key} (must be string)")
+            if not isinstance(value, (int, float)):
+                raise ValueError(f"Invalid value for '{key}': {value} (must be a number)")
+            if key != "SV" and key != "DV":
+                raise ValueError(f"Defect type must be either 'SV' or 'DV'. Received {key}")
+            if value > 100 or value < 0:
+                raise ValueError(f"Defect percentage must be between 0 and 100%. Received {value}")
+
+
+        return defects
+
     def check_duplicate(self):
         if self.rank != 0:
             return  # Only rank 0 should check
@@ -239,6 +272,15 @@ class Simulation:
                 ref = safe_int(row[col]) if isinstance(value, int) else safe_str(row[col])
                 return ref == value
 
+        def compare_dict(col, value_dict):
+            if col not in row or row[col] is None:
+                return True  # Column missing → ignore condition
+            try:
+                row_dict = json.loads(row[col])
+                return row_dict == value_dict  # direct dict comparison
+            except json.JSONDecodeError:
+                return False
+
         with open(csv_path, newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
@@ -254,8 +296,7 @@ class Simulation:
                     compare("Max Sim Length", self.sim_length, is_float=False) and
                     compare("Output Timesteps", self.thermo, is_float=False) and
                     compare("Fracture Window", self.fracture_window, is_float=False) and
-                    compare("Defect Type", safe_str(self.defect_type), is_float=False) and
-                    compare("Defect Percentage", self.defect_perc) and
+                    compare_dict("Defects", self.defects) and
                     compare("Defect Random Seed", self.defect_random_seed, is_float=False)
                 )
                 if match:
@@ -304,7 +345,7 @@ class Simulation:
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Strength x', 'Strength y', 'Strength z', 
                                        'Strength xy', 'Strength xz', 'Strength yz', 'Fracture Time', 'Max Sim Length', 'Output Timesteps', 
-                                       'Fracture Window', 'Theta Requested', 'Theta', 'Defect Type', 'Defect Percentage', 'Defect Random Seed', 
+                                       'Fracture Window', 'Theta Requested', 'Theta', 'Defects', 'Defect Random Seed', 
                                        'Simulation Time', 'Threads'])
             
             df.to_csv(self.main_csv, index=False)
@@ -339,7 +380,7 @@ class Simulation:
                                 'Strength yz': [self.stress_tensor[int(self.fracture_time / self.thermo), 5]],
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
                                 'Fracture Window': [self.fracture_window], 'Theta Requested': [self.theta], 'Theta': [self.principal_angles[int(self.fracture_time / self.thermo)]], 
-                                'Defect Type': [self.defect_type], 'Defect Percentage': [self.defect_perc], 'Defect Random Seed': [self.defect_random_seed], 
+                                'Defects': [json.dumps(self.defects)], 'Defect Random Seed': [self.defect_random_seed], 
                                 'Simulation Time': [self.sim_duration], 'Threads': [self.num_procs]})
         new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
 
@@ -674,24 +715,27 @@ class Simulation:
         stress_tensor_ax.grid()
         stress_tensor_fig.savefig(f'{self.simulation_directory}_tensor_vs_time.png')
 
-    # puts the defects into the sheet - currently just one defect hardcoded in
+    # puts the defects into the sheet - currently only functions for SV and DV
     def introduce_defects(self):
-        # this just deletes a sphere of radius 3 at (60, 30, 0)
-        # region_def = "region defects sphere 60 30 0 3"
-        # deleting = "delete_atoms region defects"
+        self.deleted_ids = np.array([], dtype=int)
 
-        # self.lmp.command(region_def)
-        # self.lmp.command(deleting)
-        if self.defect_type == 'SV':
-            delete_ids = self.pick_SV_atoms(self.defect_perc)
-            for atom in delete_ids:
-                self.lmp.command(f"group to_delete id {atom}")
-                self.lmp.command("delete_atoms group to_delete")
-        
-        # must add functionality for DV
+        for defect_type, defect_percentage in self.defects.items():
+            delete_ids = self.delete_atoms(defect_type, defect_percentage)
+            self.deleted_ids = np.concatenate([self.deleted_ids, delete_ids])
 
-    # Pick atoms to delete for single vacancies
-    def pick_SV_atoms(self, delete_percentage):
+        if self.deleted_ids.size > 0:
+            # Convert all IDs into a LAMMPS-compatible string
+            id_str = ' '.join(str(int(id)) for id in self.deleted_ids)
+
+            # Define the group once with all IDs and delete them at once
+            # we must delete at once or else lammps will reconfigure the atom id's
+            self.lmp.command(f"group to_delete id {id_str}")
+            self.lmp.command("delete_atoms group to_delete")
+
+        print("Removed all of these atoms:", self.deleted_ids)
+
+    # Pick atoms to delete for single/double vacancies
+    def delete_atoms(self, defect_type, delete_percentage):
         atom_positions = self.sheet.extract_atom_positions()
 
         total_atoms = len(atom_positions)
@@ -702,10 +746,93 @@ class Simulation:
 
         # Randomly choose atoms to delete
         np.random.seed(self.defect_random_seed)
-        delete_ids = np.random.choice(ids, n_delete, replace=False)
+        if defect_type == "SV":
+            filtered_ids = np.setdiff1d(ids, self.deleted_ids, assume_unique=True)  # ensure we don't pick already deleted ids
+            delete_ids = np.random.choice(filtered_ids, n_delete, replace=False)
+            self.deleted_ids = np.concatenate([self.deleted_ids, delete_ids])  # update so we keep track of what id's we deleted
+        
+        elif defect_type == "DV":
+            filtered_ids = np.setdiff1d(ids, self.deleted_ids, assume_unique=True)  # ensure we don't pick already deleted ids
+            original_ids = np.random.choice(filtered_ids, int(round(n_delete / 2)), replace=False)
+            self.deleted_ids = np.concatenate([self.deleted_ids, original_ids])  # update so we keep track of what id's we deleted
+            delete_ids = self.add_neighbors(original_ids)
+        
+        else:
+            raise ValueError(f"Unsupported defect type: '{defect_type}'")
 
         return delete_ids.astype(int)
+    
+    # chooses a random neighbor to delete alongside each random id
+    # returns the list of both the original and neighbor ids
+    def add_neighbors(self, ids):
+        extra_deletions = []
+        
+        for id in ids:
+            neighbors = self.find_neighbors(id)
 
+            filtered_neighbors = np.setdiff1d(neighbors, self.deleted_ids, assume_unique=True)  # ensure we don't pick a neighbor that is already deleted
+            
+            # ensure there is a valid neighbor to pick
+            if filtered_neighbors.size > 0:
+                chosen_neighbor = np.random.choice(filtered_neighbors, 1, replace=False)
+                extra_deletions.append(chosen_neighbor)
+                self.deleted_ids = np.concatenate([self.deleted_ids, chosen_neighbor])
+                
+            # if there was no valid neighbor, that means the neighbor was already removed so we just move on
+            else:
+                pass 
+        
+        flat_extras = np.concatenate(extra_deletions)
+
+        return np.concatenate([ids, flat_extras])
+
+    def find_neighbors(self, id):
+        neighbors = []
+        # get the id of the top atom
+        top_id = ((id + self.sheet.y_atoms - 1) // self.sheet.y_atoms) * self.sheet.y_atoms
+        block_num = top_id / self.sheet.y_atoms  # see where we are
+
+        # if we are an odd column
+        if (block_num % 2 == 1):
+            # as long as we are not on bottom edge, we can add id below us as a neighbor
+            if ((id - 1) % self.sheet.y_atoms) != 0:
+                neighbors.append(id - 1)
+
+            # as long as we are not on the top edge, we can add id above us as a neighbor
+            if (id % self.sheet.y_atoms) != 0:
+                neighbors.append(id + 1)
+
+            if (id % 2) == 0:
+                # since we are in an odd column, an even id means we are on the right
+                # check to ensure that we aren't fully on the right (no neighbor there)
+                if top_id != (self.sheet.y_atoms * self.sheet.x_atoms - self.sheet.y_atoms):
+                    neighbors.append(id + 3 * self.sheet.y_atoms)
+            
+            # if our id is odd, we will never be fully on boundary in a column, so we are good
+            if (id % 2) == 1:
+                    neighbors.append(id + self.sheet.y_atoms)
+
+        # if we are an even column
+        else:
+            # as long as we are not on bottom edge, we can add id below us as a neighbor
+            if ((id - 1) % self.sheet.y_atoms) != 0:
+                neighbors.append(id - 1)
+
+            # as long as we are not on the top edge, we can add id above us as a neighbor
+            if (id % self.sheet.y_atoms) != 0:
+                neighbors.append(id + 1)
+
+            if (id % 2) == 0:
+                # since we are in an even column, an even id means we are on the left
+                # check to ensure that we aren't fully on the left (no neighbor there)
+                if top_id != (2 * self.sheet.y_atoms):
+                    neighbors.append(id - 3 * self.sheet.y_atoms)
+                
+            # if our id is odd, we will never be fully on boundary in a column, so we are good
+            if (id % 2) == 1:
+                    neighbors.append(id - self.sheet.y_atoms)
+
+        return neighbors
 
 class Relaxation:
     def __init__(self, comm, rank, sheet):
