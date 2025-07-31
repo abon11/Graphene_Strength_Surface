@@ -214,6 +214,8 @@ class Simulation:
             ValueError: If JSON is invalid or structure does not match {str: float}
         """
 
+        print(defect_str)
+
         defect_str = defect_str.strip().upper()
         if defect_str in ("NONE", "", "NULL"):
             return {}
