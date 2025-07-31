@@ -57,34 +57,34 @@ export DETAILED_DATA="False"
 bash ./run_surface.sh &
 
 
-# do 5 seeds up to 90 degrees for a sanity check
-for j in $(seq 0 1 0); do
-    export DEFECT_RANDOM_SEED="$j"
-    send_email_notification "$DEFECT_RANDOM_SEED"
-    for i in $(seq 0 10 90); do
-        while true; do
-            current_jobs=$(count_jobs)
+# # do 5 seeds up to 90 degrees for a sanity check
+# for j in $(seq 0 1 0); do
+#     export DEFECT_RANDOM_SEED="$j"
+#     send_email_notification "$DEFECT_RANDOM_SEED"
+#     for i in $(seq 0 10 90); do
+#         while true; do
+#             current_jobs=$(count_jobs)
 
-            if (( current_jobs < MAX_JOBS_IN_FLIGHT )); then
-                # Wait a little, then re-check
-                sleep 60
-                current_jobs_post_wait=$(count_jobs)
+#             if (( current_jobs < MAX_JOBS_IN_FLIGHT )); then
+#                 # Wait a little, then re-check
+#                 sleep 60
+#                 current_jobs_post_wait=$(count_jobs)
 
-                if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
-                    echo "SUBMITTING SEED $j THETA $i"
-                    export THETA="$i"
-                    bash ./run_surface.sh &
-                    sleep 240
-                    break  # move to next i
-                fi
-            fi
+#                 if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
+#                     echo "SUBMITTING SEED $j THETA $i"
+#                     export THETA="$i"
+#                     bash ./run_surface.sh &
+#                     sleep 240
+#                     break  # move to next i
+#                 fi
+#             fi
 
-            sleep 100  # Wait before checking again
-        done
-    done
-done
+#             sleep 100  # Wait before checking again
+#         done
+#     done
+# done
 
-export DEFECTS="{\"DV\": 0.25, \"SV\":, 0.25}"
+export DEFECTS="{\"DV\": 0.25, \"SV\": 0.25}"
 for j in $(seq 0 1 0); do
     export DEFECT_RANDOM_SEED="$j"
     send_email_notification "$DEFECT_RANDOM_SEED"
