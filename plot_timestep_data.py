@@ -48,7 +48,7 @@ def main():
     plot_many_detailed(filtered_df, x_column, y_column, folder)
 
 
-def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim"):
+def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim", title=None):
     """
     For each row in `df`, loads simulation results from {folder}/sim{SIMID}/sim{SIMID}.csv,
     and plots (x_col, y_col) on the same matplotlib Axes.
@@ -85,8 +85,13 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim")
     
     ax.set_xlabel("Strain")
     ax.set_ylabel("Stress")
-    ax.set_title("Stress vs strain for 25 defect seeds (0.5% SV)")
+    if title is not None:
+        ax.set_title(title)
+    else: 
+        ax.set_title("Stress vs strain")
+        
     ax.legend()
+    fig.tight_layout()
     filename = f"{folder}/plots/stress_strain_DV.png"
     fig.savefig(filename)
     print(f"Plot saved to {filename}")
