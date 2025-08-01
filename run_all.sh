@@ -4,8 +4,6 @@ export MAX_JOBS_IN_FLIGHT=25
 # export START_SEED=101
 
 # # First batch
-# export DEFECT_TYPE="SV"
-# export DEFECT_PERC=2.0
 # export THETA=0
 
 # echo "SUBMITTING SEED $START_SEED"
@@ -50,7 +48,7 @@ send_email_notification() {
 
 export STORAGE_PATH="/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/rotation_tests"
 export DEFECT_RANDOM_SEED=0
-export DEFECTS="{\"DV\": 0.5}"
+# export DEFECTS="{\"DV\": 0.5}"
 export THETA=0
 export DETAILED_DATA="False"
 
@@ -85,9 +83,11 @@ bash ./run_surface.sh &
 # done
 
 export DEFECTS="{\"DV\": 0.25, \"SV\": 0.25}"
-for j in $(seq 0 1 0); do
+for j in $(seq 0 1 100); do
     export DEFECT_RANDOM_SEED="$j"
-    send_email_notification "$DEFECT_RANDOM_SEED"
+    if (( i % 20 == 0 )); then
+        send_email_notification "$j"
+    fi
     for i in $(seq 0 10 90); do
         while true; do
             current_jobs=$(count_jobs)
@@ -111,29 +111,31 @@ for j in $(seq 0 1 0); do
     done
 done
 
-# # then for the rest of the seeds keep it at 30 deg and do every 5
-# for j in $(seq 6 1 30); do
-#     export DEFECT_RANDOM_SEED="$j"
-#     send_email_notification "$DEFECT_RANDOM_SEED"
-#     for i in $(seq 0 5 30); do
-#         while true; do
-#             current_jobs=$(count_jobs)
+export DEFECTS="{\"DV\": 0.5}"
+for j in $(seq 0 1 100); do
+    export DEFECT_RANDOM_SEED="$j"
+    if (( i % 20 == 0 )); then
+        send_email_notification "$j"
+    fi
+    for i in $(seq 0 10 90); do
+        while true; do
+            current_jobs=$(count_jobs)
 
-#             if (( current_jobs < MAX_JOBS_IN_FLIGHT )); then
-#                 # Wait a little, then re-check
-#                 sleep 60
-#                 current_jobs_post_wait=$(count_jobs)
+            if (( current_jobs < MAX_JOBS_IN_FLIGHT )); then
+                # Wait a little, then re-check
+                sleep 60
+                current_jobs_post_wait=$(count_jobs)
 
-#                 if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
-#                     echo "SUBMITTING SEED $j THETA $i"
-#                     export THETA="$i"
-#                     bash ./run_surface.sh &
-#                     sleep 240
-#                     break  # move to next i
-#                 fi
-#             fi
+                if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
+                    echo "SUBMITTING SEED $j THETA $i"
+                    export THETA="$i"
+                    bash ./run_surface.sh &
+                    sleep 240
+                    break  # move to next i
+                fi
+            fi
 
-#             sleep 100  # Wait before checking again
-#         done
-#     done
-# done
+            sleep 100  # Wait before checking again
+        done
+    done
+done

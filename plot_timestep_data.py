@@ -31,7 +31,7 @@ def main():
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        "Simulation ID": (2688, 2695)
+        "Simulation ID": (2911, 2913)
     }
 
     or_filters = {
@@ -45,7 +45,7 @@ def main():
 
     # plot_allsims_data(all_sims, list(range(2663, 2681)), 'Strain Rate x', 'Strength_1', output_file=f"{folder}strength_vs_StrainRate.png")
 
-    plot_many_detailed(filtered_df, x_column, y_column, folder)
+    plot_many_detailed(filtered_df, x_column, y_column, folder, title="y-axis.png")
 
 
 def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim", title=None):
@@ -89,7 +89,7 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
         ax.set_title(title)
     else: 
         ax.set_title("Stress vs strain")
-        
+
     ax.legend()
     fig.tight_layout()
     filename = f"{folder}/plots/stress_strain_DV.png"
