@@ -1,87 +1,77 @@
 #!/bin/bash
+set -euo pipefail
+
+# ======== Config (used unless overridden below) ========
 export MAX_JOBS_IN_FLIGHT=25
+DEFAULT_STORAGE_PATH="/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/rotation_tests"
+DEFAULT_DETAILED_DATA="False"
+DEFAULT_STRAIN_TABLE="strain_table.csv"
+RUN_SCRIPT="./run_surface.sh"
+EMAIL="avb25@duke.edu"
 
-# export START_SEED=101
-
-# # First batch
-# export THETA=0
-
-# echo "SUBMITTING SEED $START_SEED"
-# export DEFECT_RANDOM_SEED="$START_SEED"
-# bash ./run_surface.sh &
-
+# ======== Functions ========
 
 count_jobs() {
     squeue -u "$USER" --noheader | awk '$3 ~ /^one_sim_/ {count++} END {print count+0}'
 }
 
 send_email_notification() {
-    echo "Seed $1 has been submitted" | mail -s "HPC Job Notification" avb25@duke.edu
+    echo "Seed $1 has been submitted" | mail -s "HPC Job Notification" "$EMAIL"
 }
 
+submit_job() {
+    local seed="$1"
+    local theta="$2"
+    local defects="$3"
 
-export STORAGE_PATH="/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/rotation_tests"
-export DEFECT_RANDOM_SEED=0
-# export DEFECTS="{\"DV\": 0.5}"
-export THETA=0
-export DETAILED_DATA="False"
-
-bash ./run_surface.sh &
-
-export DEFECTS="{\"DV\": 0.25, \"SV\": 0.25}"
-for j in $(seq 6 1 100); do
-    # export DEFECT_RANDOM_SEED="$j"
-    if (( j % 10 == 0 )); then
-        send_email_notification "$j"
-    fi
-    for i in $(seq 0 10 90); do
-        while true; do
-            current_jobs=$(count_jobs)
-
-            if (( current_jobs < MAX_JOBS_IN_FLIGHT )); then
-                # Wait a little, then re-check
+    while true; do
+        if (( $(count_jobs) < MAX_JOBS_IN_FLIGHT )); then
+            sleep 60
+            if (( $(count_jobs) < MAX_JOBS_IN_FLIGHT )); then
+                echo "SUBMITTING: SEED=$seed, THETA=$theta, DEFECTS=$defects"
+                DEFECT_RANDOM_SEED="$seed" \
+                THETA="$theta" \
+                DEFECTS="$defects" \
+                STORAGE_PATH="$DEFAULT_STORAGE_PATH" \
+                DETAILED_DATA="$DEFAULT_DETAILED_DATA" \
+                STRAIN_TABLE="$DEFAULT_STRAIN_TABLE" \
+                bash "$RUN_SCRIPT" &
                 sleep 60
-                current_jobs_post_wait=$(count_jobs)
-
-                if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
-                    echo "SUBMITTING SEED $j THETA $i"
-                    # export THETA="$i"
-                    THETA="$i" DEFECT_RANDOM_SEED="$j" bash ./run_surface.sh &
-                    sleep 100
-                    break  # move to next i
-                fi
+                break
             fi
+        fi
+        sleep 100
+    done
+}
 
-            sleep 100  # Wait before checking again
+launch_block() {
+    local defect_str="$1"
+    local start_seed="$2"
+    local end_seed="$3"
+    local notify_every="$4"
+
+    echo "Launching block: $defect_str"
+
+    for seed in $(seq "$start_seed" 1 "$end_seed"); do
+        (( seed % notify_every == 0 )) && send_email_notification "$seed"
+
+        for theta in $(seq 0 10 90); do
+            submit_job "$seed" "$theta" "$defect_str"
         done
     done
-done
+}
 
-export DEFECTS="{\"DV\": 0.5}"
-for j in $(seq 0 1 100); do
-    # export DEFECT_RANDOM_SEED="$j"
-    if (( j % 20 == 0 )); then
-        send_email_notification "$j"
-    fi
-    for i in $(seq 0 10 90); do
-        while true; do
-            current_jobs=$(count_jobs)
+# # ======== Optional: Initial Job with Different Defaults ========
+# DEFECT_RANDOM_SEED=6 THETA=90 DEFECTS="{\"DV\": 0.25, \"SV\": 0.25}" \
+# STORAGE_PATH="$DEFAULT_STORAGE_PATH" \
+# DETAILED_DATA="$DEFAULT_DETAILED_DATA" \
+# STRAIN_TABLE="$DEFAULT_STRAIN_TABLE" \
+# bash "$RUN_SCRIPT" &
 
-            if (( current_jobs < MAX_JOBS_IN_FLIGHT )); then
-                # Wait a little, then re-check
-                sleep 60
-                current_jobs_post_wait=$(count_jobs)
+# ======== Launch All Blocks ========
 
-                if (( current_jobs_post_wait < MAX_JOBS_IN_FLIGHT )); then
-                    echo "SUBMITTING SEED $j THETA $i"
-                    # export THETA="$i"
-                    THETA="$i" DEFECT_RANDOM_SEED="$j" bash ./run_surface.sh &
-                    sleep 100
-                    break  # move to next i
-                fi
-            fi
+# Mixed defects block
+launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 7 100 10
 
-            sleep 100  # Wait before checking again
-        done
-    done
-done
+# DV-only block
+launch_block "{\"DV\": 0.5}" 0 100 20
