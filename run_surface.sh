@@ -34,18 +34,27 @@ rotate_rates() {
             y=$(awk -v r="$ratio" 'BEGIN { printf "%.4f\n", r * 0.001 }')
             xy=0.0
             echo "$x $y $xy"
+
         elif [[ "$theta_int" == "90" ]]; then
             y=0.001
             x=$(awk -v r="$ratio" 'BEGIN { printf "%.4f\n", r * 0.001 }')
             xy=0.0
             echo "$x $y $xy"
+
         else
-            # Call the Python inverse model script for general theta
-            strain=$(python3 inverse_strain.py --ratio "$ratio" --theta "$THETA")
+            # Lookup in strain_table.csv
+            strain=$(awk -F',' -v r="$ratio" -v t="$theta_int" '$1 == r && $2 == t {print $3, $4, $5}' strain_table.csv)
+
+            if [[ -z "$strain" ]]; then
+                echo "Error: No strain found for ratio=$ratio, theta=$theta_int in strain_table.csv" >&2
+                exit 1
+            fi
+
             echo "$strain"
         fi
     done
 }
+
 
 # Read rotated strain rates
 mapfile -t STRAIN_LIST < <(rotate_rates)
