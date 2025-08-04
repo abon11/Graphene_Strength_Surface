@@ -45,7 +45,7 @@ def main():
 
     # plot_allsims_data(all_sims, list(range(2663, 2681)), 'Strain Rate x', 'Strength_1', output_file=f"{folder}strength_vs_StrainRate.png")
 
-    plot_many_detailed(filtered_df, x_column, y_column, folder, title="y-axis.png")
+    plot_many_detailed(filtered_df, x_column, y_column, folder, title="Zigzag")
 
 
 def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim", title=None):
@@ -86,13 +86,16 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
     ax.set_xlabel("Strain")
     ax.set_ylabel("Stress")
     if title is not None:
-        ax.set_title(title)
+        ax.set_title(f"Stress vs strain: {title}")
     else: 
         ax.set_title("Stress vs strain")
 
     ax.legend()
     fig.tight_layout()
-    filename = f"{folder}/plots/stress_strain_DV.png"
+    if title is not None:
+        filename = f"{folder}/plots/{title}.png"
+    else:
+        filename = f"{folder}/plots/stress_strain.png"
     fig.savefig(filename)
     print(f"Plot saved to {filename}")
     
