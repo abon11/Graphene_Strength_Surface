@@ -19,8 +19,9 @@ def main():
 
     # Optimization loop such that max strain rate is approx 0.001:
     pred = find_optimal_strain(model_info, target)
+
     # pred.print_results()
-    pred.output_results()  # prints for computer to read easier
+    pred.output_results(csv=True)  # prints for computer to read easier (showinputs for csv storage)
 
 
 def load_model(mod, targ):
@@ -147,8 +148,12 @@ class StrainPrediction:
         print(f"  Theta: {theta:.4f}")
 
     # prints results to make integration easy with bash scripts etc.
-    def output_results(self):
-        print(f"{self.strain_output[0]:.2e} {self.strain_output[1]:.2e} {self.strain_output[2]:.2e}")
+    def output_results(self, csv=False):
+        if csv:
+            print(f"{self.ratio:.1f},{self.theta:.0f},{self.strain_output[0]:.4e},{self.strain_output[1]:.4e},{self.strain_output[2]:.4e}")
+        
+        else:
+            print(f"{self.strain_output[0]:.4e} {self.strain_output[1]:.4e} {self.strain_output[2]:.4e}")
 
 
 if __name__ == "__main__":
