@@ -11,10 +11,9 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defects": "None",  # will match NaN or "None"
-        # "Defect Percentage": 0.5,
-        # "Defect Random Seed": 3,
-        # "Theta Requested": 0
+        "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
+        "Defect Random Seed": 6,
+        "Theta Requested": 70
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.001
     }
@@ -28,7 +27,7 @@ def main():
 
     or_filters = {
         # "Defect Type": ["SV", "DV"],
-        "Theta Requested": [0, 60]
+        # "Theta Requested": [0, 60]
     }
     # ====================================
     df = pd.read_csv(csv_file)

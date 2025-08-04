@@ -79,6 +79,6 @@ for strain in "${STRAIN_LIST[@]}"; do
         sleep 29
     done
 
-    echo "Submitting job: Theta=$THETA x=$x_erate y=$y_erate xy=$xy_erate"
+    echo "Submitting job: $DEFECTS Theta=$THETA x=$x_erate y=$y_erate xy=$xy_erate"
     submit_job "$x_erate" "$y_erate" "$xy_erate"
 done
