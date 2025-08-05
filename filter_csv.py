@@ -11,22 +11,22 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
-        "Defect Random Seed": 6,
-        "Theta Requested": 70
+        "Defects": "None"  # "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
+        # "Defect Random Seed": 0,
+        # "Theta Requested": 0,
         # "Strain Rate x": 0.001,
-        # "Strain Rate y": 0.001
+        # "Strain Rate y": 0.0
     }
 
     range_filters = {
-        # "Defect Percentage": (0.4, 0.6),
         # "Defect Random Seed": (0, 10)
         # "Theta Requested": (90, 90),
         # "Sigma_1": (4, 20)
+        "Theta": (24, 32)
     }
 
     or_filters = {
-        # "Defect Type": ["SV", "DV"],
+        # "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
         # "Theta Requested": [0, 60]
     }
     # ====================================

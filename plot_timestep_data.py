@@ -19,23 +19,22 @@ def main():
     csv_file = f"{folder}/all_simulations.csv"
 
     exact_filters = {
-        # "Num Atoms x": 60,
-        # "Num Atoms y": 60,
-        # "Defect Type": "SV",  # will match NaN or "None"
-        # "Defect Percentage": 0.5,
-        # "Defect Random Seed": 3,
-        # "Theta Requested": 0
+        "Num Atoms x": 60,
+        "Num Atoms y": 60,
+        # "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
+        "Defect Random Seed": 0,
+        "Theta Requested": 0,
         # "Strain Rate x": 0.001,
-        # "Strain Rate y": 0.001
+        "Strain Rate y": 0.0
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        "Simulation ID": (2911, 2913)
+        "Simulation ID": (2670, 2913)
     }
 
     or_filters = {
-        # "Defect Type": ["SV", "DV"],
+        "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
     }
     # ====================================
     df = pd.read_csv(csv_file)
@@ -45,10 +44,10 @@ def main():
 
     # plot_allsims_data(all_sims, list(range(2663, 2681)), 'Strain Rate x', 'Strength_1', output_file=f"{folder}strength_vs_StrainRate.png")
 
-    plot_many_detailed(filtered_df, x_column, y_column, folder, title="Zigzag")
+    plot_many_detailed(filtered_df, x_column, y_column, folder, title="Armchair", labelby="Defects")
 
 
-def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim", title=None):
+def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim", title=None, labelby=None):
     """
     For each row in `df`, loads simulation results from {folder}/sim{SIMID}/sim{SIMID}.csv,
     and plots (x_col, y_col) on the same matplotlib Axes.
@@ -74,26 +73,38 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
 
         try:
             sim_df = pd.read_csv(sim_path)
+
+            # Determine label
+            if labelby is not None and labelby in df.columns:
+                label_val = row[labelby]
+                lab = f"{labelby}: {str(label_val)}"
+            else:
+                lab = f"{label_prefix}{sim_id}"
+
             ax.plot(
                 sim_df[x_col],
                 sim_df[y_col],
-                label=f"{label_prefix}{sim_id}",
+                label=lab,
                 color=None if color is None else color[idx % len(color)]
             )
         except Exception as e:
             print(f"[Error] Failed to plot sim{sim_id}: {e}")
     
-    ax.set_xlabel("Strain")
-    ax.set_ylabel("Stress")
-    if title is not None:
-        ax.set_title(f"Stress vs strain: {title}")
-    else: 
-        ax.set_title("Stress vs strain")
+    ax.set_xlabel("Strain", fontsize=18)
+    ax.set_ylabel("Stress (GPa)", fontsize=18)
 
-    ax.legend()
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+
+    if title is not None:
+        ax.set_title(f"Stress vs strain: {title}", fontsize=20)
+    else: 
+        ax.set_title("Stress vs strain", fontsize=20)
+
+    ax.legend(fontsize=12)
     fig.tight_layout()
     if title is not None:
-        filename = f"{folder}/plots/{title}.png"
+        filename = f"{folder}/plots/sig_eps_{title}.png"
     else:
         filename = f"{folder}/plots/stress_strain.png"
     fig.savefig(filename)
