@@ -5,7 +5,7 @@
 #SBATCH --partition=scavenger
 #SBATCH --mem-per-cpu=2GB
 #SBATCH --output=/dev/null
-#SBATCH -o one_sim_%j.out
+# SBATCH -o one_sim_%j.out
 
 # Parse inputs
 nprocs=$1
