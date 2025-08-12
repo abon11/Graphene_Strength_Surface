@@ -41,6 +41,8 @@ def main():
     parser.add_argument("--angle_testing", type=str, required=True)  # bool
     parser.add_argument("--num_procs", type=int, required=True)
 
+    parser.add_argument("--repeat_sim", type=int, default=None)
+
 
     args = parser.parse_args()
 
@@ -52,7 +54,8 @@ def main():
                  sim_length=args.sim_length, timestep=args.timestep, thermo=args.thermo, 
                  defects=args.defects, defect_random_seed=args.defect_random_seed,
                  makeplots=str2bool(args.makeplots), detailed_data=str2bool(args.detailed_data), fracture_window=args.fracture_window, 
-                 theta=args.theta, storage_path=args.storage_path, accept_dupes=str2bool(args.accept_dupes), angle_testing=str2bool(args.angle_testing))
+                 theta=args.theta, storage_path=args.storage_path, accept_dupes=str2bool(args.accept_dupes), angle_testing=str2bool(args.angle_testing),
+                 repeat_sim=args.repeat_sim)
 
 
 def str2bool(s):

@@ -95,7 +95,8 @@ class Simulation:
                  sim_length=100000, timestep=0.0005, thermo=1000, 
                  defects="None", defect_random_seed=42,
                  makeplots=False, detailed_data=False, fracture_window=10, theta=0,
-                 storage_path=f'{local_config.DATA_DIR}/defected_data', accept_dupes=False, angle_testing=False):
+                 storage_path=f'{local_config.DATA_DIR}/defected_data', accept_dupes=False,
+                 angle_testing=False, repeat_sim=None):
         """
         Class to execute one simulation and store information about it.
         This essentially loads the specimen to failure.
@@ -118,30 +119,38 @@ class Simulation:
         - storage_path (str): filepath to where we want to store the data
         - accept_dupes (bool): Don't kill the simulation if we find a duplicate
         - angle_testing (bool): Execute simulation and data storage for the angle testing dataset - to generate erate_x, y, xy map to sigma_1, 2, theta. 
+        - repeat_sim (int): If not None, it will find and run the exact simulation you give it (simid) and save the detailed data (but will not duplicate large data)
         """
+
         self.comm = comm
         self.rank = rank
         self.sheet = sheet
         self.num_procs = num_procs
-        self.x_erate = x_erate
-        self.y_erate = y_erate
-        self.z_erate = z_erate
-        self.xy_erate = xy_erate
-        self.xz_erate = xz_erate
-        self.yz_erate = yz_erate
-        self.sim_length = sim_length
-        self.timestep = timestep
-        self.thermo = thermo
-        self.defect_random_seed = defect_random_seed
-        self.makeplots = makeplots
-        self.detailed_data = detailed_data
-        self.fracture_window = fracture_window
-        self.theta = theta
         self.storage_path = storage_path
+        self.timestep = timestep
+        self.makeplots = makeplots
         self.angle_testing = angle_testing
-        self.defects = self.parse_defect_string(defects)
+        self.repeat_sim = repeat_sim
 
-        if not accept_dupes:
+        if repeat_sim is None:
+            self.x_erate = x_erate
+            self.y_erate = y_erate
+            self.z_erate = z_erate
+            self.xy_erate = xy_erate
+            self.xz_erate = xz_erate
+            self.yz_erate = yz_erate
+            self.sim_length = sim_length
+            self.thermo = thermo
+            self.defect_random_seed = defect_random_seed
+            self.detailed_data = detailed_data
+            self.fracture_window = fracture_window
+            self.theta = theta
+            self.defects = self.parse_defect_string(defects)
+            self.accept_dupes = accept_dupes
+        else:
+            self.setup_identical_sim(repeat_sim)  # this sets x_erate, etc to the same as whatever it was in that particular simid.
+
+        if not self.accept_dupes:
             self.check_duplicate()  # ensure that we haven't run this sim yet
 
         self.starttime = time.perf_counter()  # start simulation timer
@@ -198,6 +207,42 @@ class Simulation:
                 self.plot_principalStress()
                 # self.plot_pressure()
                 # self.plot_stressTensor()
+
+
+    def setup_identical_sim(self, simid):
+        if self.rank != 0:
+            return  # Only rank 0 should check
+
+        csv_path = os.path.join(self.storage_path, "all_simulations.csv")
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError(f"Storage CSV {csv_path} does not exist.")
+            
+        df = pd.read_csv(csv_path)
+
+        if "Simulation ID" not in df.columns:
+            raise ValueError("CSV does not contain 'Simulation ID' column.")
+
+        matching_rows = df[df["Simulation ID"] == simid]
+
+        if matching_rows.empty:
+            raise ValueError(f"No row found in CSV with Simulation ID = {simid}")
+
+        sim_row = matching_rows.iloc[0].to_dict()
+
+        self.x_erate = sim_row["Strain Rate x"]
+        self.y_erate = sim_row["Strain Rate y"]
+        self.z_erate = sim_row["Strain Rate z"]
+        self.xy_erate = sim_row["Strain Rate xy"]
+        self.xz_erate = sim_row["Strain Rate xz"]
+        self.yz_erate = sim_row["Strain Rate yz"]
+        self.sim_length = sim_row["Max Sim Length"]
+        self.thermo = sim_row["Output Timesteps"]
+        self.defect_random_seed = sim_row["Defect Random Seed"]
+        self.detailed_data = True
+        self.fracture_window = sim_row["Fracture Window"]
+        self.theta = sim_row["Theta Requested"]
+        self.defects = self.parse_defect_string(sim_row["Defects"])
+        self.accept_dupes = True
 
 
     def parse_defect_string(self, defect_str):
@@ -316,8 +361,10 @@ class Simulation:
             self.initialize_maincsv()  # initialize csv file for data storage
 
             self.simulation_id = self.get_simid()  # returns string of simulation id (ex: '00001')
-
-            self.append_maincsv()  # append all data from the simulation to the csv file. 
+            
+            # save main data as long as we are not repeating a sim
+            if self.repeat_sim is None:    
+                self.append_maincsv()  # append all data from the simulation to the csv file. 
 
         if self.detailed_data:
             self.save_detailed_data()
@@ -326,14 +373,19 @@ class Simulation:
     # create the directory where we will be putting the detailed data for this simulation
     # note that the names here are the timestamp - this will update to the simid upon successful simulation run - if failed, will stay as timestamp
     def create_storage_directory(self):
-        if self.rank == 0:
-            timestamp_id = datetime.now().strftime("%Y%m%d%H%M%S%f")
-        else:
-            timestamp_id = None
+        if self.repeat_sim is None:
+            if self.rank == 0:
+                timestamp_id = datetime.now().strftime("%Y%m%d%H%M%S%f")
+            else:
+                timestamp_id = None
 
-        timestamp_id = self.comm.bcast(timestamp_id, root=0)  # must do this to sync ranks up
-        self.timestamp_id = timestamp_id
-        self.simulation_directory = f'{self.storage_path}/sim{self.timestamp_id}'
+            timestamp_id = self.comm.bcast(timestamp_id, root=0)  # must do this to sync ranks up
+            self.timestamp_id = timestamp_id
+            self.simulation_directory = f'{self.storage_path}/sim{self.timestamp_id}'
+        # if we are repeating a sim, just make the directory the simid from the start
+        else:
+            self.simulation_directory = f'{self.storage_path}/sim{self.repeat_sim}'
+        
         os.makedirs(self.simulation_directory, exist_ok=True)
 
     # if the file doesn't exits, create one. if it does exist we'll just append to the old one so we don't overwrite data
@@ -353,6 +405,8 @@ class Simulation:
             df.to_csv(self.main_csv, index=False)
 
     def get_simid(self):
+        if self.repeat_sim is not None:
+            return str(self.repeat_sim).zfill(5)
         if os.path.exists(self.main_csv) and os.path.getsize(self.main_csv) > 0:
             # Read the existing file and find the maximum simulation id
             df = pd.read_csv(self.main_csv)
