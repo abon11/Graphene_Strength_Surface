@@ -30,7 +30,7 @@ STORAGE_PATH="${STORAGE_PATH:-/hpc/home/avb25/Graphene_Strength_Surface/simulati
 submit_simulation() {
     local repeat_sim=$1
 
-    if [ -n "$OPTIONAL_VAR" ]; then
+    if [ -n "$repeat_sim" ]; then
         sbatch "$SLURM_SCRIPT" "$CORES_PER_JOB" "$SHEET_PATH" "$X_ATOMS" "$Y_ATOMS" "$DEFECTS" "$DEFECT_RANDOM_SEED" "$SIM_LENGTH" "$TIMESTEP" "$THERMO" "$MAKEPLOTS" "$DETAILED_DATA" "$THETA" "$FRACTURE_WINDOW" "$STORAGE_PATH" "$ACCEPT_DUPES" "$ANGLE_TESTING" "$x_erate" "$y_erate" "$xy_erate" "$repeat_sim"
         echo "REPEATING SIM $repeat_sim."
     else
@@ -40,4 +40,10 @@ submit_simulation() {
     fi
 }
 
-submit_simulation  # put sim_id number here if you want it to repeat a sim
+submit_simulation 2923
+submit_simulation 2935 # put sim_id number here if you want it to repeat a sim
+submit_simulation 2939
+submit_simulation 2940
+submit_simulation 2941
+submit_simulation 2950
+submit_simulation 2958
