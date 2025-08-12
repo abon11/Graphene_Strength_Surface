@@ -1,5 +1,6 @@
 """ Houses all of the logic for running one simulation """
 
+from mpi4py import MPI
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -210,24 +211,28 @@ class Simulation:
 
 
     def setup_identical_sim(self, simid):
-        if self.rank != 0:
-            return  # Only rank 0 should check
+        sim_row = None
+        
+        if self.rank == 0:
 
-        csv_path = os.path.join(self.storage_path, "all_simulations.csv")
-        if not os.path.exists(csv_path):
-            raise FileNotFoundError(f"Storage CSV {csv_path} does not exist.")
-            
-        df = pd.read_csv(csv_path)
+            csv_path = os.path.join(self.storage_path, "all_simulations.csv")
+            if not os.path.exists(csv_path):
+                raise FileNotFoundError(f"Storage CSV {csv_path} does not exist.")
+                
+            df = pd.read_csv(csv_path)
 
-        if "Simulation ID" not in df.columns:
-            raise ValueError("CSV does not contain 'Simulation ID' column.")
+            if "Simulation ID" not in df.columns:
+                raise ValueError("CSV does not contain 'Simulation ID' column.")
 
-        matching_rows = df[df["Simulation ID"] == simid]
+            matching_rows = df[df["Simulation ID"] == simid]
 
-        if matching_rows.empty:
-            raise ValueError(f"No row found in CSV with Simulation ID = {simid}")
+            if matching_rows.empty:
+                raise ValueError(f"No row found in CSV with Simulation ID = {simid}")
 
-        sim_row = matching_rows.iloc[0].to_dict()
+            sim_row = matching_rows.iloc[0].to_dict()
+        sim_row = MPI.COMM_WORLD.bcast(sim_row, root=0)
+
+        MPI.COMM_WORLD.Barrier()  # ensure all ranks wait for rank 0
 
         self.x_erate = sim_row["Strain Rate x"]
         self.y_erate = sim_row["Strain Rate y"]
@@ -384,7 +389,7 @@ class Simulation:
             self.simulation_directory = f'{self.storage_path}/sim{self.timestamp_id}'
         # if we are repeating a sim, just make the directory the simid from the start
         else:
-            self.simulation_directory = f'{self.storage_path}/sim{self.repeat_sim}'
+            self.simulation_directory = f'{self.storage_path}/sim{str(self.repeat_sim).zfill(5)}'
         
         os.makedirs(self.simulation_directory, exist_ok=True)
 
@@ -462,9 +467,10 @@ class Simulation:
 
         # rename dump files inside directory (if necessary)
         for fname in os.listdir(new_directory):
-            if self.timestamp_id in fname:
-                new_fname = fname.replace(self.timestamp_id, self.simulation_id)
-                os.rename(os.path.join(new_directory, fname), os.path.join(new_directory, new_fname))
+            if self.repeat_sim is None:
+                if self.timestamp_id in fname:
+                    new_fname = fname.replace(self.timestamp_id, self.simulation_id)
+                    os.rename(os.path.join(new_directory, fname), os.path.join(new_directory, new_fname))
 
 
         detailed_csv_file = f'{self.simulation_directory}/sim{self.simulation_id}.csv'
@@ -484,8 +490,11 @@ class Simulation:
         self.lmp.command(f"variable datafile string {self.sheet.datafile_name}")
 
         if self.detailed_data:
-            # make it with the timestamp id becasue we don't have simid yet
-            self.lmp.command(f"dump 1 all custom {self.thermo} {self.simulation_directory}/dump.sim{self.timestamp_id} id type x y z")
+            if self.repeat_sim is not None:
+                self.lmp.command(f"dump 1 all custom {self.thermo} {self.simulation_directory}/dump.sim{str(self.repeat_sim).zfill(5)} id type x y z")
+            else:
+                # make it with the timestamp id becasue we don't have simid yet
+                self.lmp.command(f"dump 1 all custom {self.thermo} {self.simulation_directory}/dump.sim{self.timestamp_id} id type x y z")
 
         self.lmp.file("in.deform_py")
 
