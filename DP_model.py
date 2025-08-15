@@ -20,28 +20,30 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defect Type": "SV",
+        "Defects": "None",
         # "Defect Percentage": 0.5,
-        # "Theta": 0,
+        # "Theta Requested": 0,
         # "Defect Random Seed": 54
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
         # "Defect Random Seed": (1, 1000)
-        "Theta Requested": (0, 30),
+        # "Theta Requested": (0, 30),
     }
 
     or_filters = {
         # "Defect Type": ["SV", "DV"],
-        # "Theta": [0, 30, 60, 90]
+        "Theta Requested": [0, 90]
     }
 
-    DP_3D = True
+    DP_3D = False
+    save_fits_to = "drucker_prager_params_TEST.csv"
     # ====================================
     df = pd.read_csv(csv_file)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, duplic_freq=(0, 31, 5))
-    interest_value = 'Defect Random Seed'
+    # interest_value = 'Defect Random Seed'
+    interest_value = "Theta Requested"
 
     # Group by defect seed
     grouped = filtered_df.groupby(interest_value)
@@ -61,7 +63,9 @@ def main():
     rmse = []
     loss = []
 
-    fig = go.Figure()
+    # fig = go.Figure()
+
+    fig, ax = plt.subplots(figsize=(8, 8))
 
     for instance, group_df in grouped:
         # Create a list of DataPoints for this seed
@@ -79,9 +83,14 @@ def main():
             loss.append(stats["total_loss"])
 
         surfaces.append(surface)
-        surface.plot_3d_fit(fig=fig) ##############
+        # surface.plot_3d_fit(fig=fig) ##############
         alphas.append(surface.alpha)
         ks.append(surface.k)
+
+        if instance == 0:
+            surface.plot_onto_ax(ax, 'red', 'Armchair')
+        else:
+            surface.plot_onto_ax(ax, 'blue', 'Zigzag')
 
         if DP_3D:
             rows.append({f"{interest_value}": surface.instance, "a0": surface.alpha[0], "a1": surface.alpha[1], 
@@ -99,16 +108,17 @@ def main():
         print(f"Final average total loss over {len(loss)} samples: {np.sum(loss) / len(loss)}")
 
     df_params = pd.DataFrame(rows)
-    if DP_3D:
-        df_params.to_csv("dp_params_3D_SV.csv", index=False)
-    else:
-        df_params.to_csv("drucker_prager_params_new.csv", index=False)
+    df_params.to_csv(save_fits_to, index=False)
 
 
     folder = f"{local_config.DATA_DIR}/rotation_tests"
-    html_path = f"{folder}/plots/3D_SS_FULL_test.html"
-    fig.write_html(html_path, include_plotlyjs="cdn")
-    print(f"Interactive 3D plot saved to {html_path}")
+    fullpath = f"{folder}/plots/aniso_pristine.png"
+    fig.tight_layout()
+    fig.savefig(fullpath)
+    print(f"Figure saved to {fullpath}")
+    # html_path = f"{folder}/plots/3D_SS_FULL_test.html"
+    # fig.write_html(html_path, include_plotlyjs="cdn")
+    # print(f"Interactive 3D plot saved to {html_path}")
 
 
 class MadeSurface():
@@ -280,19 +290,9 @@ class Surface():
             "max_residual": max_residual
         }
     
-    def plot_surface_fit(self, resolution=1000):
-        # Set plot range around your data
+    def get_vals_to_plot(self, resolution):
         sig1_vals = [dp.df["Strength_1"] for dp in self.points]
         sig2_vals = [dp.df["Strength_2"] for dp in self.points]
-        theta_vals = [dp.df["Theta"] for dp in self.points]
-        thetareq_vals = [dp.df["Theta Requested"] for dp in self.points]
-        # dist = np.abs(np.array(theta_vals) - np.array(thetareq_vals))
-        dist = [
-            0 if dp.df["Strain Rate x"] == dp.df["Strain Rate y"]
-            else abs(dp.df["Theta"] - dp.df["Theta Requested"])
-            for dp in self.points
-        ]
-
         min_sig, max_sig = min(sig1_vals + sig2_vals), max(sig1_vals + sig2_vals)
         grid = np.linspace(min_sig * 1.1, max_sig * 1.1, resolution)
 
@@ -311,6 +311,48 @@ class Surface():
 
         # Evaluate DP function
         F = np.sqrt(j2) + self.alpha * i1 - self.k
+        return sig1_vals, sig2_vals, sig1, sig2, F
+
+    def plot_onto_ax(self, ax, color, lab, resolution=1000):
+        sig1_vals, sig2_vals, sig1, sig2, F = self.get_vals_to_plot(resolution)
+        # Plot contour where f = 0 (the strength boundary)
+        ax.contour(sig1, sig2, F, levels=[0], colors=color, linewidths=2)
+        ax.plot([], [], color=color, label=f"DP surface - {lab}")  # for legend
+
+        # Plot data points
+        ax.scatter(sig1_vals, sig2_vals, c=color, label=f"MD failure points - {lab}")
+        ax.scatter(sig2_vals, sig1_vals, c=color)
+
+        ax.plot([-50, 130], [0, 0], color='black')
+        ax.plot([0, 0], [-50, 130], color='black')
+
+        ax.set_xlabel(r"$\sigma_1$ (GPa)", fontsize=18)
+        ax.set_ylabel(r"$\sigma_2$ (GPa)", fontsize=18)
+
+        ax.set_xlim(-15, 130)
+        ax.set_ylim(-15, 130)
+
+        ax.tick_params(axis='x', labelsize=15)
+        ax.tick_params(axis='y', labelsize=15)
+
+        ax.set_title(f"Fit Drucker-Prager Surface, Pristine", fontsize=20)
+
+        ax.legend(fontsize=15)
+    
+
+    def plot_surface_fit(self, resolution=1000):
+        # # Set plot range around your data
+
+        # theta_vals = [dp.df["Theta"] for dp in self.points]
+        # thetareq_vals = [dp.df["Theta Requested"] for dp in self.points]
+        # # dist = np.abs(np.array(theta_vals) - np.array(thetareq_vals))
+        # dist = [
+        #     0 if dp.df["Strain Rate x"] == dp.df["Strain Rate y"]
+        #     else abs(dp.df["Theta"] - dp.df["Theta Requested"])
+        #     for dp in self.points
+        # ]
+
+        sig1_vals, sig2_vals, sig1, sig2, F = self.get_vals_to_plot(resolution)
 
         plt.figure(figsize=(8, 8))
 
@@ -322,11 +364,14 @@ class Surface():
         # plt.scatter(sig1_vals, sig2_vals, color="blue", label="MD failure points")
         # plt.scatter(sig2_vals, sig1_vals, color="blue")
         # Plot both sets, but assign the first one to a handle
-        sc = plt.scatter(sig1_vals, sig2_vals, c=dist, label="MD failure points", cmap='cool', vmin=0, vmax=13)
-        plt.scatter(sig2_vals, sig1_vals, c=dist, cmap='cool', vmin=0, vmax=13)
+        # sc = plt.scatter(sig1_vals, sig2_vals, c=dist, label="MD failure points", cmap='cool', vmin=0, vmax=13)
+        # plt.scatter(sig2_vals, sig1_vals, c=dist, cmap='cool', vmin=0, vmax=13)
+
+        plt.scatter(sig1_vals, sig2_vals, c='blue', label="MD failure points")
+        plt.scatter(sig2_vals, sig1_vals, c='blue')
 
         # Attach colorbar to the first scatter
-        plt.colorbar(sc, label="Theta Error")
+        # plt.colorbar(sc, label="Theta Error")
         
         plt.plot([-50, 130], [0, 0], color='black')
         plt.plot([0, 0], [-50, 130], color='black')
@@ -342,7 +387,8 @@ class Surface():
         plt.xticks(fontsize=15)
         plt.yticks(fontsize=15)
 
-        plt.title(f"Fit Drucker-Prager Surface, theta={self.instance}", fontsize=20)
+        # plt.title(f"Fit Drucker-Prager Surface, theta={self.instance}", fontsize=20)
+        plt.title(f"Fit Drucker-Prager Surface, Armchair (Pristine)", fontsize=20)
         plt.legend(fontsize=15)
         plt.tight_layout()
 
