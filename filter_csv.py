@@ -11,9 +11,9 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defects": "None"  # "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
+        "Defects": "None",  # "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
         # "Defect Random Seed": 0,
-        # "Theta Requested": 0,
+        "Theta Requested": 90,
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.0
     }
@@ -22,7 +22,7 @@ def main():
         # "Defect Random Seed": (0, 10)
         # "Theta Requested": (90, 90),
         # "Sigma_1": (4, 20)
-        "Theta": (24, 32)
+        # "Theta": (24, 32)
     }
 
     or_filters = {

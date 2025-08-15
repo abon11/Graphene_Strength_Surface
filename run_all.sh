@@ -48,21 +48,22 @@ launch_block() {
     local defect_str="$1"
     local start_seed="$2"
     local end_seed="$3"
-    local notify_every="$4"
+    local start_theta="$4"
+    local notify_every="$5"
 
     echo "Launching block: $defect_str"
 
     for seed in $(seq "$start_seed" 1 "$end_seed"); do
         (( seed % notify_every == 0 )) && send_email_notification "$seed"
 
-        for theta in $(seq 0 10 90); do
+        for theta in $(seq "$start_theta" 10 90); do
             submit_job "$seed" "$theta" "$defect_str"
         done
     done
 }
 
 # # ======== Optional: Initial Job with Different Defaults ========
-# DEFECT_RANDOM_SEED=6 THETA=90 DEFECTS="{\"DV\": 0.25, \"SV\": 0.25}" \
+# DEFECT_RANDOM_SEED=97 THETA=60 DEFECTS="{\"DV\": 0.25, \"SV\": 0.25}" \
 # STORAGE_PATH="$DEFAULT_STORAGE_PATH" \
 # DETAILED_DATA="$DEFAULT_DETAILED_DATA" \
 # STRAIN_TABLE="$DEFAULT_STRAIN_TABLE" \
@@ -71,7 +72,9 @@ launch_block() {
 # ======== Launch All Blocks ========
 
 # Mixed defects block
-launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 7 100 10
+launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 97 97 60 1
+launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 98 100 0 1
+
 
 # DV-only block
-launch_block "{\"DV\": 0.5}" 0 100 20
+# launch_block "{\"DV\": 0.5}" 0 100 20
