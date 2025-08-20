@@ -21,7 +21,6 @@ def parse_args():
     parser.add_argument("--sim_length", type=int, default=10000000)
     parser.add_argument("--timestep", type=float, default=0.0005)
     parser.add_argument("--thermo", type=int, default=1000)
-    parser.add_argument("--makeplots", type=str, default="false")
     parser.add_argument("--detailed_data", type=str, default="false")
     parser.add_argument("--fracture_window", type=int, default=10)
     parser.add_argument("--storage_path", type=str, default=f"{local_config.DATA_DIR}/defected_data")
@@ -46,7 +45,6 @@ def build_job_command(base_args, x_erate, y_erate, xy_erate, cores):
         "--sim_length", str(base_args.sim_length),
         "--timestep", str(base_args.timestep),
         "--thermo", str(base_args.thermo),
-        "--makeplots", base_args.makeplots,
         "--detailed_data", base_args.detailed_data,
         "--fracture_window", str(base_args.fracture_window),
         "--theta", base_args.theta,

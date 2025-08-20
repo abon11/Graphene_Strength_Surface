@@ -17,17 +17,16 @@ defect_seed=$6
 sim_length=$7
 timestep=$8
 thermo=$9
-makeplots=${10}
-detailed_data=${11}
-theta=${12}
-fracture_window=${13}
-storage_path=${14}
-accept_dupes=${15}
-angle_testing=${16}
-x_erate=${17}
-y_erate=${18}
-xy_erate=${19}
-repeat_sim=${20}
+detailed_data=${10}
+theta=${11}
+fracture_window=${12}
+storage_path=${13}
+accept_dupes=${14}
+angle_testing=${15}
+x_erate=${16}
+y_erate=${17}
+xy_erate=${18}
+repeat_sim=${19}
 
 
 echo "Running one_sim with: x="$x_erate" y="$y_erate" xy="$xy_erate" on $nprocs procs"
@@ -42,7 +41,6 @@ if [ -n "$repeat_sim" ]; then
         --sim_length "$sim_length" \
         --timestep "$timestep" \
         --thermo "$thermo" \
-        --makeplots "$makeplots" \
         --detailed_data "$detailed_data" \
         --fracture_window "$fracture_window" \
         --storage_path "$storage_path" \
@@ -67,7 +65,6 @@ else
         --sim_length "$sim_length" \
         --timestep "$timestep" \
         --thermo "$thermo" \
-        --makeplots "$makeplots" \
         --detailed_data "$detailed_data" \
         --fracture_window "$fracture_window" \
         --storage_path "$storage_path" \

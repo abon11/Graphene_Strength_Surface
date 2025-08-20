@@ -78,6 +78,5 @@ launch_block() {
 
 
 # DV-only block
-# launch_block "{\"DV\": 0.5}" 58 80 0 10
-launch_block "{\"DV\": 0.5}" 73 73 70 1
+launch_block "{\"DV\": 0.5}" 74 94 0 5
 
