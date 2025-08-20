@@ -6,7 +6,7 @@ CORES_PER_JOB=14
 SHEET_PATH="${SHEET_PATH:-/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/data_files/data.60_60_rel1}"
 X_ATOMS="${X_ATOMS:-60}"
 Y_ATOMS="${Y_ATOMS:-60}"
-DEFECTS="${DEFECTS:-"None"}"
+DEFECTS="${DEFECTS:-"{\"SV\": 0.5}"}"
 DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-0}"
 SIM_LENGTH="${SIM_LENGTH:-10000000}"
 ACCEPT_DUPES="${ACCEPT_DUPES:-false}"
@@ -39,7 +39,9 @@ submit_job() {
 
 
 rotate_rates() {
-    RATIOS=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9)
+    # RATIOS=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9)
+    RATIOS=(0.0)  # only do uniaxial tension for now
+
     local theta_int=$(printf "%.0f" "$THETA")
 
     for ratio in "${RATIOS[@]}"; do
@@ -70,18 +72,21 @@ rotate_rates() {
 }
 
 
-for j in $(seq 0 1 90); do
-    export THETA="$j"
-    # Throttle to MAX_JOBS_IN_FLIGHT
-    while (( $(count_jobs) >= MAX_JOBS_IN_FLIGHT )); do
-        sleep 29
+for i in $(seq 0 1 10); do
+    export DEFECT_RANDOM_SEED="$i"
+    for j in $(seq 23 1 32); do
+        export THETA="$j"
+        # Throttle to MAX_JOBS_IN_FLIGHT
+        while (( $(count_jobs) >= MAX_JOBS_IN_FLIGHT )); do
+            sleep 29
+        done
+
+        # x_erate=0.001
+        # y_erate=0.0
+        # xy_erate=0.0
+        read x_erate y_erate xy_erate <<< "$(rotate_rates)"
+
+        echo "Submitting specific job: Seed=$DEFECT_RANDOM_SEED, x=$x_erate y=$y_erate xy=$xy_erate"
+        submit_job "$x_erate" "$y_erate" "$xy_erate"
     done
-
-    # x_erate=0.001
-    # y_erate=0.0
-    # xy_erate=0.0
-    read x_erate y_erate xy_erate <<< "$(rotate_rates)"
-
-    echo "Submitting specific job: Seed=$DEFECT_RANDOM_SEED, x=$x_erate y=$y_erate xy=$xy_erate"
-    submit_job "$x_erate" "$y_erate" "$xy_erate"
 done

@@ -1,3 +1,4 @@
+# This runs the short sims for the angle testing data generation
 #!/bin/bash
 
 # Configuration

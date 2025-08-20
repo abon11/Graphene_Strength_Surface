@@ -1,3 +1,4 @@
+# This runs super large batch sims
 #!/bin/bash
 set -euo pipefail
 
@@ -72,9 +73,11 @@ launch_block() {
 # ======== Launch All Blocks ========
 
 # Mixed defects block
-launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 97 97 60 1
-launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 98 100 0 1
+# launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 97 97 60 1
+# launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 98 100 0 1
 
 
 # DV-only block
-# launch_block "{\"DV\": 0.5}" 0 100 20
+# launch_block "{\"DV\": 0.5}" 58 80 0 10
+launch_block "{\"DV\": 0.5}" 73 73 70 1
+

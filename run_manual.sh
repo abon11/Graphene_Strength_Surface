@@ -1,3 +1,4 @@
+# Run one specific simulation manually
 #!/bin/bash
 
 # Configuration
