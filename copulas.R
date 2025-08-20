@@ -1,3 +1,5 @@
+# This does all of the copulas stuff for alpha and k in R.
+# NOTE: MUST CLEAN THIS FILE UP SIGNIFICANTLY ONCE SIMS ARE DONE
 
 library(readr)
 library(fitdistrplus)

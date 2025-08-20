@@ -1,4 +1,8 @@
-""" This script sucks but it sorta works """
+""" 
+This plots the detailed timestep data. It is sort of working with the filters, but not great.
+The function plot_many_detailed() is the best function in terms of actually working seamlessly
+This script sucks but it sorta works lol... will revisit if i need it again
+"""
 
 import pandas as pd
 import matplotlib.pyplot as plt

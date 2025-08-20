@@ -1,5 +1,10 @@
-import numpy as np
+'''
+This file creates a graphene sheet of whatever size specified in n_atoms_x and n_atoms_y.
+Note that your sheet should always be even x even, or else you will experience ficticious boundary effects.
+There is an option to also print the bonds (so you can see/use them in LAMMPS), but I don't really use them here.
+'''
 
+import numpy as np
 
 def main():
     # Lattice constants for graphene

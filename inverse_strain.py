@@ -1,3 +1,8 @@
+"""
+Given the stress-strain model and a desired stress ratio and theta, this employs the model to give
+a strain rate tensor that will keep us at the desired strain rates, while also giving that ratio and theta.
+"""
+
 import numpy as np
 import joblib
 from scipy.optimize import differential_evolution

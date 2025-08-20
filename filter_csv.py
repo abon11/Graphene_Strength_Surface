@@ -1,3 +1,8 @@
+"""
+This filters the all_simulations csv based on whatever fields you want (very helpful)
+The big function here, filter_data, is used in a bunch of other scripts
+"""
+
 import pandas as pd
 import local_config
 import json

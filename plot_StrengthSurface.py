@@ -1,3 +1,7 @@
+"""
+This plots a strength surface from the filters. Can do 2D or 3D
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt

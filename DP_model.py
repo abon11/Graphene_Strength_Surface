@@ -1,5 +1,6 @@
 """
 This fits the 2-parameter Drucker-Prager model to a set of strength surface data and stores the alpha, k, and seed in the csv
+It also is now expanded to fit alpha and k as functions of theta
 """
 
 import pandas as pd
