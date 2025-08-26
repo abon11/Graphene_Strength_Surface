@@ -5,7 +5,7 @@
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=14
 
-x_erate=0.0
+x_erate=0.001
 y_erate=0.001
 xy_erate=0
 
@@ -40,10 +40,66 @@ submit_simulation() {
     fi
 }
 
-submit_simulation 2923
-submit_simulation 2935 # put sim_id number here if you want it to repeat a sim
-submit_simulation 2939
-submit_simulation 2940
-submit_simulation 2941
-submit_simulation 2950
-submit_simulation 2958
+count_jobs() {
+    squeue -u "$USER" --noheader | awk '$3 ~ /^one_sim_/ {count++} END {print count+0}'
+}
+
+# submit_simulation 2923
+# submit_simulation 2935 # put sim_id number here if you want it to repeat a sim
+# submit_simulation 2939
+# submit_simulation 2940
+# submit_simulation 2941
+# submit_simulation 2950
+# submit_simulation 2958
+
+for seed in $(seq 0 1 100); do
+    export DEFECT_RANDOM_SEED="$seed"
+    while true; do
+        if (( $seed < 25 )); then
+            submit_simulation
+            break
+        fi
+
+        if (( $(count_jobs) < 25 )); then
+            sleep 20
+            if (( $(count_jobs) < 25 )); then
+                submit_simulation
+                sleep 30
+                break
+            fi
+        fi
+        sleep 60
+    done
+done
+
+export DEFECTS="{\"DV\": 0.25, \"SV\": 0.25}"
+for seed in $(seq 0 1 100); do
+    export DEFECT_RANDOM_SEED="$seed"
+    while true; do   
+        if (( $(count_jobs) < 25 )); then
+            sleep 20
+            if (( $(count_jobs) < 25 )); then
+                submit_simulation
+                sleep 30
+                break
+            fi
+        fi
+        sleep 60
+    done
+done
+
+export DEFECTS="{\"DV\": 0.5}"
+for seed in $(seq 0 1 100); do
+    export DEFECT_RANDOM_SEED="$seed"
+    while true; do   
+        if (( $(count_jobs) < 25 )); then
+            sleep 20
+            if (( $(count_jobs) < 25 )); then
+                submit_simulation
+                sleep 30
+                break
+            fi
+        fi
+        sleep 60
+    done
+done
