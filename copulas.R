@@ -66,9 +66,6 @@ k_samp <- qgamma(
 original_df <- data.frame(alpha = alpha, k = k, source = "original")
 sampled_df <- data.frame(alpha = alpha_samp, k = k_samp, source = "sampled")
 plot_df <- rbind(original_df, sampled_df)
-# clipped_alphas <- alpha_unit * (upper - lower) + lower
-# clipped_df <- data.frame(alpha = clipped_alphas, k = k, source = "original_clipped")
-# plot_clipped_df <- rbind(clipped_df, sampled_df)
 
 # turn alphas and ks into sigma_ts and sigma_cs (for visualization)
 cs <- (3 * k) / (sqrt(3) - 3 * alpha)
@@ -86,7 +83,7 @@ ggplot(str_df, aes(x = sigma_ts, y = sigma_cs, color = source)) +
   coord_cartesian(xlim = c(30, 130), ylim = c(30, 130)) +
   theme_bw(base_size = 22)
 
-# Plot joint scatter
+# Plot joint scatter (original and sampled)
 ggplot(plot_df, aes(x = alpha, y = k, color = source)) +
   geom_point(alpha = 0.6) +
   labs(
@@ -95,19 +92,8 @@ ggplot(plot_df, aes(x = alpha, y = k, color = source)) +
   ) +
   theme_minimal()
 
-# Plot marginal density of alpha
-ggplot(plot_df, aes(x = alpha, fill = source)) +
-  geom_density(alpha = 0.5) +
-  labs(title = "Alpha Marginal: Original vs. Sampled") +
-  theme_minimal()
 
-# Plot marginal density of k
-ggplot(plot_df, aes(x = k, fill = source)) +
-  geom_density(alpha = 0.5) +
-  labs(title = "k Marginal: Original vs. Sampled") +
-  theme_minimal()
-
-# This is for the full PDF
+# ====== Full PDF in alpha/k space ====== #
 # Generate density grid over domain
 alpha_vals <- seq(lower - 0.1, upper + 0.1, length.out = 1000)
 k_vals <- seq(-5, max(k) + 10, length.out = 1000)
@@ -160,7 +146,25 @@ ggplot(grid, aes(x = alpha, y = k, fill = density)) +
     legend.key = element_rect(fill = NA)
   )
 
+# Joint PDF with zero-density contour (alpha k space)
+ggplot(grid, aes(x = alpha, y = k)) +
+  geom_tile(aes(fill = density)) +
+  geom_point(data = original_df, aes(x = alpha, y = k),
+             color = "white", size = 0.5, alpha = 0.35, inherit.aes = FALSE) +
+  stat_contour(
+    aes(z = density), breaks = c(1e-15),
+    color = "red", linewidth = 1
+  ) +
+  scale_fill_viridis_c() +
+  labs(
+    title = "Joint PDF with Zero-Density Contour",
+    fill = "Density"
+  ) +
+  coord_cartesian(xlim = c(-0.25, 0.25), ylim = c(min(k) - 5, max(k) + 5)) +
+  theme_bw()
 
+# ====== Full PDF in Strength Space ====== #
+# all this is to setup the strength grid to plot the PDF in strength space
 ts_vals <- seq(10, 140, length.out = 300)
 cs_vals <- seq(10, 140, length.out = 300)
 # bs_vals <- seq(10, 140, length.out = 300)
@@ -183,6 +187,7 @@ c_uv <- dCopula(cbind(u1_grid, u2_grid), copula = cop_fitted)
 
 strength_grid$density <- c_uv * f_alpha * f_k
 
+# Plot the PDF in strength space
 ggplot(strength_grid, aes(x = ts, y = cs, fill = density)) +
   geom_tile() +
   geom_point(data = original_df, aes(x = ts, y = cs),
@@ -204,33 +209,7 @@ ggplot(strength_grid, aes(x = ts, y = cs, fill = density)) +
   )
 
 
-
-
-
-
-
-
-
-
-# Joint PDF with zero-density contour
-ggplot(grid, aes(x = alpha, y = k)) +
-  geom_tile(aes(fill = density)) +
-  geom_point(data = original_df, aes(x = alpha, y = k),
-             color = "white", size = 0.5, alpha = 0.35, inherit.aes = FALSE) +
-  stat_contour(
-    aes(z = density), breaks = c(1e-15),
-    color = "red", linewidth = 1
-  ) +
-  scale_fill_viridis_c() +
-  labs(
-    title = "Joint PDF with Zero-Density Contour",
-    fill = "Density"
-  ) +
-  coord_cartesian(xlim = c(-0.25, 0.25), ylim = c(min(k) - 5, max(k) + 5)) +
-  theme_bw()
-
-
-
+# ====== Marginal Distribution of Alpha ====== #
 # Extract beta parameters
 a <- fit_beta$estimate["shape1"]
 b <- fit_beta$estimate["shape2"]
@@ -244,6 +223,7 @@ beta_pdf_vals <- dbeta(alpha_unit_vals, a, b) / (upper - lower)
 
 alpha_pdf_df <- data.frame(alpha = alpha_vals, pdf = beta_pdf_vals)
 
+# Plot marginal density of alpha
 ggplot() +
   # KDE as line, no area, with proper legend
   stat_density(data = original_df, aes(x = alpha, color = "KDE of Data"),
@@ -271,6 +251,7 @@ ggplot() +
   guides(colour = guide_legend(override.aes = list(size = 10)))
 
 
+# ====== Marginal Distribution of k ====== #
 
 # Extract gamma parameters
 shape <- fit_gamma$estimate["shape"]
@@ -281,19 +262,8 @@ gamma_pdf_vals <- dgamma(k_vals, shape = shape, rate = rate)
 
 k_pdf_df <- data.frame(k = k_vals, pdf = gamma_pdf_vals)
 
-ggplot() +
-  geom_histogram(data = original_df, aes(x = k, y = ..density..),
-                 bins = 50, fill = "salmon", alpha = 0.5) +
-  geom_line(data = k_pdf_df, aes(x = k, y = pdf),
-            color = "black", size = 1) +
-  labs(
-    title = "True Marginal PDF vs. Data for k",
-    x = "k",
-    y = "Density",
-  ) +
-  theme_bw(base_size = 22)
 
-
+# Plot marginal density of k
 ggplot() +
   # KDE as line
   stat_density(data = original_df, aes(x = k, color = "KDE of Data"),
