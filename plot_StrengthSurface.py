@@ -21,10 +21,10 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        # "Defects": "None",
+        "Defects": '{"SV": 0.5}',
         # "Defect Percentage": 0.5,
-        "Defect Random Seed": 0,
-        # "Theta": 30
+        # "Defect Random Seed": 0,
+        "Theta Requested": 90
     }
 
     range_filters = {
@@ -35,8 +35,9 @@ def main():
     }
 
     or_filters = {
-        "Defects": ['{"SV": 0.5}', '{"DV": 0.5}'],
-        # "Theta Requested": [20, 40, 80]
+        # "Defects": ['{"SV": 0.5}', '{"DV": 0.5}', '{"SV": 0.25, "DV": 0.25}'],
+        # "Defect Random Seed": [0, 90]
+        # "Theta Requested": [0, 90]
     }
     # ====================================
     color_by_field = "Defects"
@@ -45,7 +46,8 @@ def main():
     # Load, filter, and plot
     df = pd.read_csv(csv_file)
 
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, flip_strengths=True, duplic_freq=(0, 91, 10))
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, 
+                              flip_strengths=True, duplic_freq=(0, 91, 10), only_uniaxial=False)
 
     base_title = create_title(exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
 
@@ -54,8 +56,8 @@ def main():
     else:
         pristine_df = None
 
-    # plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
-    plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
+    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True)
+    # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 
 def get_pristine_subset(df, exact_filters=None, range_filters=None, or_filters=None):
@@ -149,11 +151,11 @@ def clean_title(title):
     return title
 
 
-def assign_colors(df, color_by_field=None):
+def assign_colors(df, color_by_field=None, override=True):
     """Assign a color to each point based on the given field."""
     if color_by_field is None or color_by_field not in df.columns:
         return ['blue'] * len(df), {}
-
+    
     unique_values = sorted(df[color_by_field].dropna().unique())
     n_colors = len(unique_values)
 
@@ -164,6 +166,14 @@ def assign_colors(df, color_by_field=None):
 
     value_to_color = {val: colormap(i / max(n_colors - 1, 1)) for i, val in enumerate(unique_values)}
     colors = [value_to_color[val] for val in df[color_by_field]]
+
+    if override:
+        # Define the manual mapping here
+        manual_colors = ['blue', 'red', 'green']
+        value_to_color = {val: manual_colors[i % len(manual_colors)] for i, val in enumerate(unique_values)}
+        colors = [value_to_color[val] for val in df[color_by_field]]
+        return colors, value_to_color
+
     return colors, value_to_color
 
 
@@ -179,7 +189,7 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
         colors = ['blue'] * len(df)
 
     plt.figure(figsize=(8, 8))
-    plt.scatter(df["Strength_1"], df["Strength_2"], c=colors, alpha=0.8, label='Defective')
+    plt.scatter(df["Strength_1"], df["Strength_2"], c=colors, alpha=0.1, label='Defective')
     # plt.scatter(df["Strength_2"], df["Strength_1"], c=colors, alpha=0.8)
     if pristine_data is not None and not pristine_data.empty:
         plt.scatter(pristine_data["Strength_1"], pristine_data["Strength_2"], c='black', alpha=0.7, label='Pristine')
@@ -196,7 +206,7 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
     plt.xlim(-15, 130)
     plt.ylim(-15, 130)
     plt.title(title, fontsize=20)
-    # plt.title("Molecular Strength Surfaces of 0.5% SV Graphene", fontsize=20)
+    plt.title("MD Strength Surfaces - Zigzag", fontsize=20)
 
     # plt.legend(fontsize=15)
 
@@ -220,7 +230,7 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
 
         legend_title = color_by_field if color_by_field else "Legend"
         if legend:
-            plt.legend(handles, labels, title=legend_title, loc='best', frameon=True, fontsize=15)
+            plt.legend(handles, labels, title=legend_title, loc='best', frameon=True, fontsize=15, title_fontsize=17)
 
     fname = f"{folder}/plots/SS_{clean_title(title)}"
     plt.tight_layout()

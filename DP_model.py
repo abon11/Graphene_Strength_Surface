@@ -42,7 +42,7 @@ def main():
     save_fits_to = "drucker_prager_params_TEST.csv"
     # ====================================
     df = pd.read_csv(csv_file)
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, duplic_freq=(0, 31, 5))
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, flip_strengths=True, duplic_freq=(0, 91, 90))
     # interest_value = 'Defect Random Seed'
     interest_value = "Theta Requested"
 
@@ -321,8 +321,8 @@ class Surface():
         ax.plot([], [], color=color, label=f"DP surface - {lab}")  # for legend
 
         # Plot data points
-        ax.scatter(sig1_vals, sig2_vals, c=color, label=f"MD failure points - {lab}")
-        ax.scatter(sig2_vals, sig1_vals, c=color)
+        ax.scatter(sig1_vals, sig2_vals, c=color, label=f"MD failure points - {lab}", alpha=0.7)
+        # ax.scatter(sig2_vals, sig1_vals, c=color, alpha=0.7)
 
         ax.plot([-50, 130], [0, 0], color='black')
         ax.plot([0, 0], [-50, 130], color='black')

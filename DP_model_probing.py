@@ -13,11 +13,11 @@ import plotly.graph_objects as go
 
 def main():
     plot_together = True
-    DP_3D = True
+    DP_3D = False
 
     # read the DP models from the csv
-    # df_params = pd.read_csv("drucker_prager_params_thetas.csv")
-    df_params = pd.read_csv("dp_params_3D_SV.csv")
+    df_params = pd.read_csv("drucker_prager_params_thetas.csv")
+    # df_params = pd.read_csv("dp_params_3D_SV.csv")
 
     if DP_3D:
         alphas = df_params[["a0", "a1", "a2", "a3", "a4"]].to_numpy()
@@ -26,12 +26,12 @@ def main():
         alphas = df_params["alpha"].values
         ks = df_params["k"].values
     
-    instances = df_params["Defect Random Seed"].values
+    instances = df_params["Theta Requested"].values
 
     # turn them into Surface objects for convenience (and plot if we want)
     surfaces = []
     for a, k, instance in zip(alphas, ks, instances):
-        surface = MadeSurface(a, k, interest_value="Defect Random Seed", instance=instance)
+        surface = MadeSurface(a, k, interest_value="Theta Requested", instance=instance)
         if not plot_together:
             plot_surface_fit(surface)
 
@@ -43,7 +43,7 @@ def main():
         else:
             plot_all_surfaces(surfaces)
         
-    # plot_all_surfaces([surfaces[0], surfaces[3]], showlabels=True, title="Anisotropy of Graphene Strength")
+    plot_all_surfaces([surfaces[0], surfaces[3]], showlabels=True, title="Anisotropy of Graphene Strength")
 
 
 def plot_surface_fit(surface, resolution=1000):
@@ -110,8 +110,8 @@ def plot_all_surfaces(surfaces, resolution=1000, mean=None, showlabels=False, ti
 
     # Cycle through colors for each seed
     # colors = cm.Set1(np.linspace(0, 1, len(surfaces)))  # hsv for rainbow
-    # colors = ['red', 'blue']
-    colors = ['black'] * len(surfaces)
+    colors = ['red', 'blue']
+    # colors = ['black'] * len(surfaces)
     if mean is not None:
         surfaces = list(surfaces)
         surfaces.append(MadeSurface(mean[0], mean[1]))  # plot the mean if we want
