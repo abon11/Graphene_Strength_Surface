@@ -14,6 +14,7 @@ import csv
 import sys
 import json
 import local_config 
+from scipy.linalg import polar
 
 
 class GrapheneSheet:
@@ -174,7 +175,7 @@ class Simulation:
         self.apply_fix_deform()  # basically prepares the fix deform command
 
         # run the simulation for the specified time period (or until fracture). Stores useful information in these tensors.
-        stress_tensor, pressure_tensor, step_vector, strain_tensor = self.run_simulation()
+        stress_tensor, pressure_tensor, step_vector, strain_tensor, rotation_vector = self.run_simulation()
 
         # now we can get all of the principal information for stress and strain with this function
         # principal_angles is a list of the actual angle of dominant loading direction for each timestep
@@ -188,6 +189,7 @@ class Simulation:
         self.step_vector = step_vector  # vector of each thermo where data was collected
         self.principal_stresses = principal_stresses  # array of all three principal stress values at each outputted thermo
         self.principalAxes_strain = principalAxes_strain  # array of strain values along all three principal directions at each outputted thermo
+        self.rotation_vector = rotation_vector  # vector of the rotation of the lattice from deformation at each saved timestep
 
         # finally, once the sim is complete, we can get the exact point of fracture, the max strength, and the critical strain
         try:
@@ -509,7 +511,7 @@ class Simulation:
                                 'Strength yz': [self.stress_tensor[int(self.fracture_time / self.thermo), 5]],
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
                                 'Fracture Window': [self.fracture_window], 'Theta Requested': [self.theta], 'Theta': [self.principal_angles[int(self.fracture_time / self.thermo)]], 
-                                'Defects': [json.dumps(self.defects)], 'Defect Random Seed': [self.defect_random_seed], 
+                                'Rotation Angle': [self.rotation_vector[int(self.fracture_time / self.thermo)]], 'Defects': [json.dumps(self.defects)], 'Defect Random Seed': [self.defect_random_seed], 
                                 'Simulation Time': [self.sim_duration], 'Threads': [self.num_procs]})
         new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
 
@@ -528,7 +530,7 @@ class Simulation:
                            'Stress_xy': self.stress_tensor[:, 3], 'Stress_xz': self.stress_tensor[:, 4], 'Stress_yz': self.stress_tensor[:, 5],
                            'Strain_xx': self.strain_tensor[:, 0], 'Strain_yy': self.strain_tensor[:, 1], 'Strain_zz': self.strain_tensor[:, 2], 
                            'Strain_xy': self.strain_tensor[:, 3], 'Strain_xz': self.strain_tensor[:, 4], 'Strain_yz': self.strain_tensor[:, 5],
-                           'Theta': self.principal_angles[:],
+                           'Theta': self.principal_angles[:], 'Rotation Angle': self.rotation_vector[:],
                            'Pressure_x': self.pressure_tensor[:, 0], 'Pressure_y': self.pressure_tensor[:, 1], 'Pressure_z': self.pressure_tensor[:, 2]})
         
         # now we can rename the directories and filenames (because we have the actual simid)
@@ -634,6 +636,7 @@ class Simulation:
             - pressure_tensor (np.array[float]): array with every pressure tensor for each timestep
             - step_vector (np.array[int]): vector with each timestep at which data was taken and stored (matches indices with other tensors)
             - strain_tensor (np.array[float]): array with every strain tensor for each timestep
+            - rotation_vector (np.array[float]): vector with the rotation of the lattice for each timestep (from polar decomp of F)
         """
 
         # initialize output tensors
@@ -641,17 +644,20 @@ class Simulation:
         step_vector = np.zeros(int(self.sim_length/self.thermo + 1))
         pressure_tensor = np.zeros((int(self.sim_length/self.thermo + 1), 3))
         strain_tensor = np.zeros((int(self.sim_length/self.thermo + 1), 6))
+        rotation_vector = np.zeros(int(self.sim_length/self.thermo + 1))
 
         # initialize stress at time = 0
         self.lmp.command(f"run 0 pre yes post yes")
         stress_tensor[0] = self.extract_stress()
         pressure_tensor[0] = self.extract_pressure()
         strain_tensor[0] = self.compute_strain(0)
+        rotation_vector[0] = self.compute_rotation(strain_tensor[0])
 
         iters = 0
         # run and store for desired timesteps
         for step in range(0, self.sim_length, self.thermo):
-            iters, stress_tensor, step_vector, pressure_tensor, strain_tensor = self.run_step(step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor)
+            iters, stress_tensor, step_vector, pressure_tensor, strain_tensor, rotation_vector = self.run_step(
+                step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor, rotation_vector)
 
             # ensure that we are not accidentially applying compression (causing the sheet to buckle)
             # this is only a concern in angle_testing, because the applied strain tensors are randomized, so compression is possible.
@@ -668,17 +674,19 @@ class Simulation:
                     step += self.thermo  # update thermo (cuz we are no longer in the big loop)
                     if step == self.sim_length:
                         break
-                    iters, stress_tensor, step_vector, pressure_tensor, strain_tensor = self.run_step(step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor)
+                    iters, stress_tensor, step_vector, pressure_tensor, strain_tensor, rotation_vector = self.run_step(
+                        step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor, rotation_vector)
                     
                 stress_tensor = stress_tensor[:(iters+1)]
                 step_vector = step_vector[:(iters+1)]
                 pressure_tensor = pressure_tensor[:(iters+1)]
                 strain_tensor = strain_tensor[:(iters+1)]
+                rotation_vector = rotation_vector[:(iters+1)]
 
-                return stress_tensor, pressure_tensor, step_vector, strain_tensor
+                return stress_tensor, pressure_tensor, step_vector, strain_tensor, rotation_vector
 
         # if we never detected fracture, return the tensors anyway
-        return stress_tensor, pressure_tensor, step_vector, strain_tensor
+        return stress_tensor, pressure_tensor, step_vector, strain_tensor, rotation_vector
     
     def check_buckle(self, tol=3):
         """
@@ -736,7 +744,7 @@ class Simulation:
         'self.calculate_erateTimestep()' upon __init__. 
 
         Parameters:
-            - current_timestep (int): This is a timestep number (ex. timestep 200).
+            - current_timestep (int): This is a timestep number (ex. timestep 200) (basically whatever thermo it is).
 
         Returns:
             - np.array(float): Vector of length 6 representing the flattened strain tensor at that given timestep.
@@ -750,10 +758,10 @@ class Simulation:
         return np.array([x_strain, y_strain, z_strain, xy_strain, xz_strain, yz_strain])
     
     # helper function for run_simulation... runs one thermo
-    def run_step(self, step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor):
+    def run_step(self, step, iters, stress_tensor, step_vector, pressure_tensor, strain_tensor, rotation_vector):
         """
         - This is a helper function for 'self.run_simulation()'. 
-        - It essentially runs one thermo. This means, if the thermo is 500, it tells LAMMPS to run 500 \
+        - It essentially runs one thermo. This means, if the thermo is 500, it tells LAMMPS to run 500
         timesteps then report back to us with the results. 
 
         Parameters:
@@ -767,6 +775,7 @@ class Simulation:
             represents the pressure in the x, y, z directions for that timestep, and as we run steps we fill this out (it starts all zeros)
             - strain_tensor (np.array[float]): This is an array of width 6 and length of number of maximum thermos. Each row
             is the flattened strain tensor for that timestep, and as we run steps we fill this out (it starts all zeros)
+            - rotation_vector (np.array[float]): This is a vector that describes the rotation of the lattice (from deformation) at any given thermo
 
         Returns:
             - This returns every parameter it takes in (except for step), and it's job is to basically iterate these input parameters,
@@ -782,7 +791,8 @@ class Simulation:
         stress_tensor[iters] = stress
         pressure_tensor[iters] = pressure
         strain_tensor[iters] = strain
-        return iters, stress_tensor, step_vector, pressure_tensor, strain_tensor
+        rotation_vector[iters] = self.compute_rotation(strain)
+        return iters, stress_tensor, step_vector, pressure_tensor, strain_tensor, rotation_vector
     
     def get_strength_info(self, stress_index, principal_stresses):
         """
@@ -891,8 +901,6 @@ class Simulation:
                 
         return strength, fracture_timestep
     
-    # pass through length six vector that contains all stresses or strains in each direction, computes the eigvals so you have the principal stresses,
-    # or the strain along the principal axes, and returns - ordered from which direction experienced max stress (or strain) to min stress (or strain)
     def compute_principal_StressStrain(self, tensor, return_theta=False):
         """
         - This computes the principal values of the stress or strain tensor, regardless of what you give it for each timestep in the tensor
@@ -939,6 +947,31 @@ class Simulation:
 
         return principal_values
     
+    def compute_rotation(self, strain_tensor):
+        """
+        - This computes the rotation portion of the polar decomposition of the deformation gradient, which is important 
+        to obtain an accurate calculation of the angle of the state of stress with respect to the lattice. 
+        - It uses the prescribed strain rate tensor and the time to get F, then takes the polar decomp to get R.
+
+        Parameters:
+            - strain_tensor (np.array[float]): This is a flattened array of length 6 that represents the strain tensor for any given step.
+        
+        Returns:
+            - angle (float): This is the rotation of the lattice (in degrees) corresponding to the given strain tensor.
+        """
+
+        # Deformation gradient (engineering form)
+        F = np.array([[1 + strain_tensor[0], strain_tensor[3], strain_tensor[4]], 
+                      [0.0, 1 + strain_tensor[2], strain_tensor[5]], 
+                      [0.0, 0.0, 1 + strain_tensor[3]]], dtype=float)
+        
+        # Right polar: F = R @ U
+        R, U = polar(F, side='right')
+
+        # Lattice rotation angle (deg) from first column of R
+        angle = np.degrees(np.arctan2(R[1, 0], R[0, 0]))
+        return angle
+
 
     ############ END SIMULATION ENGINE ############
     ############ BEGIN DEFECT ADDITION ############
