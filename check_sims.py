@@ -10,11 +10,12 @@ import local_config
 def main():
     df = pd.read_csv(f"{local_config.DATA_DIR}/rotation_tests/all_simulations.csv")
     run_check(df, "{\"SV\": 0.5}", (0, 100, 1), (0, 90, 10))
+    run_check(df, "{\"SV\": 0.25, \"DV\": 0.25}", (0, 100, 1), (0, 90, 10))
+    run_check(df, "{\"DV\": 0.5}", (0, 100, 1), (0, 90, 10))
 
 
 def run_check(df, defects, seeds, thetas):
     """
-    - THIS DOES NOT CHECK BIAXIAL YET
     - The user puts inclusive ranges (because thats how it works for the filter already), however iterating
     in range of the tuple is exclusive, so the first thing we do here is generate a new tuple that has +1
     of the old tuple, making it inclusive for what the user put even when iterating
@@ -40,6 +41,13 @@ def run_check(df, defects, seeds, thetas):
                 if len(filtered_df) != 10:
                     problems += 1
                     print(f"{defects}, seed {seed}, theta {theta} has length of {len(filtered_df)}")
+
+        # Now specifically check the biaxial case (no theta restriction)
+        exact_filters = {"Defects": defects, "Defect Random Seed": seed, "Strain Rate x": 0.001, "Strain Rate y": 0.001, "Strain Rate xy": 0}
+        filtered_df = filter_data(df, exact_filters=exact_filters, remove_dupes=True)
+        if len(filtered_df) != 1:
+            problems += 1
+            print(f"{defects}, seed {seed} has no biaxial data.")
 
     if problems == 1:
         print(f"Ended the check of {defects}, {seeds}, {thetas} with 1 problem encountered.")
