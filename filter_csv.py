@@ -18,15 +18,16 @@ def main():
         "Num Atoms x": 60,
         "Num Atoms y": 60,
         # "Defects": "None",  # "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
-        "Defects": "{\"DV\": 0.5}",
-        "Defect Random Seed": 88,
-        "Theta Requested": 90,
+        "Defects": "{\"SV\": 0.5}",
+        # "Defect Random Seed": 88,
+        # "Theta Requested": 0,
         # "Strain Rate x": 0.001,
-        # "Strain Rate y": 0.0
+        # "Strain Rate y": 0.0,
+        # "Strain Rate xy": 0.0
     }
 
     range_filters = {
-        # "Defect Random Seed": (0, 10)
+        "Defect Random Seed": (0, 6)
         # "Theta Requested": (90, 90),
         # "Sigma_1": (4, 20)
         # "Theta": (24, 32)
@@ -34,7 +35,7 @@ def main():
 
     or_filters = {
         # "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
-        # "Theta Requested": [0, 60]
+        # "Theta Requested": [0, 90]
     }
 
     uniaxial = False
@@ -58,6 +59,9 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, fli
     Filter df on exact, range, OR filters and optionally flip strength directions.
     """
     filtered = df.copy()
+
+    if duplic_freq is not None:
+        filtered = duplicate_biaxial_rows(filtered, duplic_freq)
 
     # Apply exact filters
     for col, val in (exact_filters or {}).items():
@@ -106,8 +110,8 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, fli
     if flip_strengths:
         filtered = flip_strength_vals(filtered)
 
-    if duplic_freq is not None:
-        filtered = duplicate_biaxial_rows(filtered, duplic_freq)
+    # if duplic_freq is not None:
+    #     filtered = duplicate_biaxial_rows(filtered, duplic_freq)
     
     return filtered
 
