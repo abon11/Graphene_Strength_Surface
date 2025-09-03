@@ -270,7 +270,7 @@ class Simulation:
         self.yz_erate = sim_row["Strain Rate yz"]
         self.sim_length = sim_row["Max Sim Length"]
         self.thermo = sim_row["Output Timesteps"]
-        self.defect_random_seed = sim_row["Defect Random Seed"]
+        self.defect_random_seed = int(sim_row["Defect Random Seed"])
         self.detailed_data = True
         self.fracture_window = sim_row["Fracture Window"]
         self.theta = sim_row["Theta Requested"]
