@@ -19,15 +19,15 @@ def main():
         "Num Atoms y": 60,
         # "Defects": "None",  # "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
         "Defects": "{\"SV\": 0.5}",
-        # "Defect Random Seed": 88,
-        # "Theta Requested": 0,
+        "Defect Random Seed": 0,
+        "Theta Requested": 30,
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.0,
         # "Strain Rate xy": 0.0
     }
 
     range_filters = {
-        "Defect Random Seed": (0, 6)
+        # "Defect Random Seed": (0, 2)
         # "Theta Requested": (90, 90),
         # "Sigma_1": (4, 20)
         # "Theta": (24, 32)
@@ -43,7 +43,8 @@ def main():
     # ====================================
     
     df = pd.read_csv(csv_file)
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, only_uniaxial=uniaxial)
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters,
+                              only_uniaxial=uniaxial, remove_biaxial=True, remove_dupes=False)
     
     print(f"Filtered {len(filtered_df)} rows from {len(df)} total.")
     filtered_df.to_csv("filtered.csv", index=False)
@@ -54,11 +55,16 @@ def main():
 # filters the dataset to whatever exact, range, or or filters we want
 # when flip_strengths is true, it returns a dataset where every datapoint is duplicated but sig_1 is flipped with sig_2 
 # duplic_freq is a tuple meaning (start_theta, end_theta, how many to jump by) to duplicate biaxial tension across all thetas
-def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, flip_strengths=False, duplic_freq=None, only_uniaxial=False):
+def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, 
+                flip_strengths=False, duplic_freq=None, only_uniaxial=False,
+                remove_biaxial=False, remove_dupes=False):
     """
     Filter df on exact, range, OR filters and optionally flip strength directions.
     """
     filtered = df.copy()
+
+    if remove_biaxial:
+        filtered = drop_biaxial_rows(filtered)
 
     if duplic_freq is not None:
         filtered = duplicate_biaxial_rows(filtered, duplic_freq)
@@ -110,10 +116,16 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, fli
     if flip_strengths:
         filtered = flip_strength_vals(filtered)
 
-    # if duplic_freq is not None:
-    #     filtered = duplicate_biaxial_rows(filtered, duplic_freq)
+    if remove_dupes:
+        filtered = drop_duplicates(filtered)
     
     return filtered
+
+
+# Delete all biaxial rows from the df (important for the check_sims.py file)
+def drop_biaxial_rows(df):
+    mask = (df["Strain Rate x"] == df["Strain Rate y"]) & (df["Strain Rate xy"] == 0)
+    return df.loc[~mask].copy()
 
 def get_uniaxial_tension(df, threshold=0.2):
     """
@@ -176,6 +188,15 @@ def duplicate_biaxial_rows(df, duplication_frequency):
     df = df[df["Theta Requested"] != -1]  # remove the -1 so we don't plot it
     # Append duplicated rows to dataframe
     return pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
+
+def drop_duplicates(df):
+    """
+    This drops rows that are duplicates across all columns except 'Simulation ID',
+    keeping the row with the smallest simid in each group.
+    """
+    subset = [c for c in df.columns if c not in {"Simulation ID", "Simulation Time"}]
+    tmp = df.sort_values("Simulation ID", kind="mergesort")
+    return tmp.drop_duplicates(subset=subset, keep="first").copy()
 
 if __name__ == "__main__":
     main()
