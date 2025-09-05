@@ -13,10 +13,10 @@ SHEET_PATH="${SHEET_PATH:-/hpc/home/avb25/Graphene_Strength_Surface/simulation_d
 X_ATOMS="${X_ATOMS:-60}"
 Y_ATOMS="${Y_ATOMS:-60}"
 # DEFECTS="${DEFECTS:-"{\"SV\": 0.1, \"DV\": 0.2}"}"
-DEFECTS="${DEFECTS:-"{\"SV\": 0.5}"}"
+DEFECTS="${DEFECTS:-"{\"DV\": 0.5}"}"
 # DEFECTS="${DEFECTS:-"{\"DV\": 0.25, \"SV\": 0.25}"}"
 
-DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-0}"
+DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-54}"
 SIM_LENGTH="${SIM_LENGTH:-10000000}"
 ACCEPT_DUPES="${ACCEPT_DUPES:-false}"
 TIMESTEP="${TIMESTEP:-0.0005}"
@@ -44,62 +44,28 @@ count_jobs() {
     squeue -u "$USER" --noheader | awk '$3 ~ /^one_sim_/ {count++} END {print count+0}'
 }
 
-# submit_simulation 2923
 # submit_simulation 2935 # put sim_id number here if you want it to repeat a sim
-# submit_simulation 2939
-# submit_simulation 2940
-# submit_simulation 2941
-# submit_simulation 2950
-# submit_simulation 2958
 
-for seed in $(seq 0 1 100); do
-    export DEFECT_RANDOM_SEED="$seed"
-    while true; do
-        if (( $seed < 25 )); then
-            submit_simulation
-            break
-        fi
+submit_simulation
 
-        if (( $(count_jobs) < 25 )); then
-            sleep 20
-            if (( $(count_jobs) < 25 )); then
-                submit_simulation
-                sleep 30
-                break
-            fi
-        fi
-        sleep 60
-    done
-done
+# export DEFECTS="{\"SV\": 0.5}"
 
-export DEFECTS="{\"DV\": 0.25, \"SV\": 0.25}"
-for seed in $(seq 0 1 100); do
-    export DEFECT_RANDOM_SEED="$seed"
-    while true; do   
-        if (( $(count_jobs) < 25 )); then
-            sleep 20
-            if (( $(count_jobs) < 25 )); then
-                submit_simulation
-                sleep 30
-                break
-            fi
-        fi
-        sleep 60
-    done
-done
+# for seed in $(seq 0 1 30); do
+#     export DEFECT_RANDOM_SEED="$seed"
+#     while true; do
+#         if (( $seed < 25 )); then
+#             submit_simulation
+#             break
+#         fi
 
-export DEFECTS="{\"DV\": 0.5}"
-for seed in $(seq 0 1 100); do
-    export DEFECT_RANDOM_SEED="$seed"
-    while true; do   
-        if (( $(count_jobs) < 25 )); then
-            sleep 20
-            if (( $(count_jobs) < 25 )); then
-                submit_simulation
-                sleep 30
-                break
-            fi
-        fi
-        sleep 60
-    done
-done
+#         if (( $(count_jobs) < 25 )); then
+#             sleep 20
+#             if (( $(count_jobs) < 25 )); then
+#                 submit_simulation
+#                 sleep 30
+#                 break
+#             fi
+#         fi
+#         sleep 60
+#     done
+# done
