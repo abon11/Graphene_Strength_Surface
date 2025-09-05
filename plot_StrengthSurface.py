@@ -22,8 +22,8 @@ def main():
         "Num Atoms x": 60,
         "Num Atoms y": 60,
         "Defects": '{"DV": 0.5}',
-        "Defect Random Seed": 0,
-        "Theta Requested": 10
+        "Defect Random Seed": 77,
+        "Theta Requested": 80
     }
 
     range_filters = {
@@ -48,7 +48,7 @@ def main():
     # filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, 
     #                           flip_strengths=True, duplic_freq=(0, 91, 10), only_uniaxial=False)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, 
-                              flip_strengths=True, remove_biaxial=False, remove_dupes=True, duplic_freq=(0, 91, 10))
+                              flip_strengths=False, remove_biaxial=False, remove_dupes=True, duplic_freq=(0, 91, 10))
 
     base_title = create_title(exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
 
@@ -57,7 +57,7 @@ def main():
     else:
         pristine_df = None
 
-    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True, only_show=True)
+    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True, only_show=False)
     # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 

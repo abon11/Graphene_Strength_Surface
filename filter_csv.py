@@ -18,9 +18,9 @@ def main():
         "Num Atoms x": 60,
         "Num Atoms y": 60,
         # "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
-        "Defects": "{\"SV\": 0.5}",
-        "Defect Random Seed": 0,
-        "Theta Requested": 90,
+        "Defects": "{\"DV\": 0.5}",
+        "Defect Random Seed": 77,
+        "Theta Requested": 80,
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.001,
         # "Strain Rate xy": 0.0
@@ -44,7 +44,7 @@ def main():
     
     df = pd.read_csv(csv_file)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters,
-                              only_uniaxial=uniaxial, remove_biaxial=True, remove_dupes=True, duplic_freq=(0, 91, 10))
+                              only_uniaxial=uniaxial, remove_biaxial=False, remove_dupes=True, duplic_freq=(0, 91, 10))
     
     print(f"Filtered {len(filtered_df)} rows from {len(df)} total.")
     filtered_df.to_csv("filtered.csv", index=False)
