@@ -50,14 +50,15 @@ launch_block() {
     local start_seed="$2"
     local end_seed="$3"
     local start_theta="$4"
-    local notify_every="$5"
+    local end_theta="$5"
+    local notify_every="$6"
 
     echo "Launching block: $defect_str"
 
     for seed in $(seq "$start_seed" 1 "$end_seed"); do
         (( seed % notify_every == 0 )) && send_email_notification "$seed"
 
-        for theta in $(seq "$start_theta" 10 90); do
+        for theta in $(seq "$start_theta" 10 "$end_theta"); do
             submit_job "$seed" "$theta" "$defect_str"
         done
     done
@@ -77,6 +78,12 @@ launch_block() {
 # launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 98 100 0 1
 
 
-# DV-only block
-launch_block "{\"DV\": 0.5}" 90 100 0 5
-
+launch_block "{\"SV\": 0.5}" 4 4 50 90 1
+launch_block "{\"SV\": 0.5}" 5 5 0 90 1
+launch_block "{\"SV\": 0.5}" 6 30 0 0 10
+launch_block "{\"SV\": 0.5}" 33 33 10 40 1
+launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 43 43 90 90 1
+launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 44 44 0 0 1
+launch_block "{\"DV\": 0.5}" 54 54 20 20 1
+launch_block "{\"DV\": 0.5}" 77 77 80 90 1
+send_email_notification 100000
