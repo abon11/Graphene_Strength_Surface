@@ -498,20 +498,39 @@ class Simulation:
                                     'Sigma_1': [self.principal_stresses[-1, 0]], 'Sigma_2': [self.principal_stresses[-1, 1]], 'Theta': [self.principal_angles[-1]],
                                     'Sigma_Ratio': [self.principal_stresses[-1, 1] / self.principal_stresses[-1, 0]]})
         else:
+            try:
+                fracture_index = int(self.fracture_time / self.thermo)
+            except TypeError as e:
+                print(f"Warning: self.fracture_time = {self.fracture_time} and self.thermo = {self.thermo}.\n{e}")
+                fracture_index = None
+
+            # This picks from our array, but returns None if the index is None
+            def pick(arr, idx, col=None):
+                if idx is None:
+                    return None
+                try:
+                    if col is None:
+                        return arr[idx]
+                    else:
+                        return arr[idx, col]
+                except Exception as e:
+                    print(e)
+                    return None
+
             new_row = pd.DataFrame({'Simulation ID':[self.simulation_id], 'Num Atoms x': [self.sheet.x_atoms], 'Num Atoms y': [self.sheet.y_atoms], 
                                 'Strength_1': [self.strength[0]], 'Strength_2': [self.strength[1]], 'Strength_3': [self.strength[2]],
                                 'CritStrain_1': [self.crit_strain[0]], 'CritStrain_2': [self.crit_strain[1]], 'CritStrain_3': [self.crit_strain[2]],
                                 'Strain Rate x': [self.x_erate], 'Strain Rate y': [self.y_erate], 'Strain Rate z': [self.z_erate],
                                 'Strain Rate xy': [self.xy_erate], 'Strain Rate xz': [self.xz_erate], 'Strain Rate yz': [self.yz_erate],
-                                'Strength x': [self.stress_tensor[int(self.fracture_time / self.thermo), 0]],
-                                'Strength y': [self.stress_tensor[int(self.fracture_time / self.thermo), 1]],
-                                'Strength z': [self.stress_tensor[int(self.fracture_time / self.thermo), 2]],
-                                'Strength xy': [self.stress_tensor[int(self.fracture_time / self.thermo), 3]],
-                                'Strength xz': [self.stress_tensor[int(self.fracture_time / self.thermo), 4]],
-                                'Strength yz': [self.stress_tensor[int(self.fracture_time / self.thermo), 5]],
+                                'Strength x': [pick(self.stress_tensor, fracture_index, 0)],
+                                'Strength y': [pick(self.stress_tensor, fracture_index, 1)],
+                                'Strength z': [pick(self.stress_tensor, fracture_index, 2)],
+                                'Strength xy': [pick(self.stress_tensor, fracture_index, 3)],
+                                'Strength xz': [pick(self.stress_tensor, fracture_index, 4)],
+                                'Strength yz': [pick(self.stress_tensor, fracture_index, 5)],
                                 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
-                                'Fracture Window': [self.fracture_window], 'Theta Requested': [self.theta], 'Theta': [self.principal_angles[int(self.fracture_time / self.thermo)]], 
-                                'Rotation Angle': [self.rotation_vector[int(self.fracture_time / self.thermo)]], 'Defects': [json.dumps(self.defects)], 'Defect Random Seed': [self.defect_random_seed], 
+                                'Fracture Window': [self.fracture_window], 'Theta Requested': [self.theta], 'Theta': [pick(self.principal_angles, fracture_index)], 
+                                'Rotation Angle': [pick(self.rotation_vector, fracture_index)], 'Defects': [json.dumps(self.defects)], 'Defect Random Seed': [self.defect_random_seed], 
                                 'Simulation Time': [self.sim_duration], 'Threads': [self.num_procs]})
         new_row.to_csv(self.main_csv, mode="a", header=False, index=False)
 
@@ -832,7 +851,7 @@ class Simulation:
 
             # see if this "fracture" is high enough to be considered (or is it just noise?)
             # for fracture, the (peak - window) must be greater than the minimum point
-            if (np.max(principal_stresses[fracture_index]) - self.fracture_window < np.min(principal_stresses[:, 0][-10:])):
+            if (np.max(principal_stresses[fracture_index]) - self.fracture_window < np.min(principal_stresses[:, stress_index][-10:])):
                 strength = [None, None, None]
                 fracture_timestep = None
             else:
