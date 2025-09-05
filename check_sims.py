@@ -9,6 +9,7 @@ import local_config
 
 def main():
     df = pd.read_csv(f"{local_config.DATA_DIR}/rotation_tests/all_simulations.csv")
+
     run_check(df, "{\"SV\": 0.5}", (0, 100, 1), (0, 90, 10))
     run_check(df, "{\"SV\": 0.25, \"DV\": 0.25}", (0, 100, 1), (0, 90, 10))
     run_check(df, "{\"DV\": 0.5}", (0, 100, 1), (0, 90, 10))
@@ -16,9 +17,21 @@ def main():
 
 def run_check(df, defects, seeds, thetas):
     """
+    - This goes through the df provided to see if the number of sims in each 'batch' match up with what we would expect
     - The user puts inclusive ranges (because thats how it works for the filter already), however iterating
     in range of the tuple is exclusive, so the first thing we do here is generate a new tuple that has +1
-    of the old tuple, making it inclusive for what the user put even when iterating
+    of the old tuple, making it inclusive for what the user put even when iterating (thats what the seeds_incl are)
+    - Essentially, an input of (df, "{\"SV\": 0.5}", (0, 100, 1), (0, 90, 10)) will check to ensure that there are
+    10 simulations for that defect config, thetas [0, 10, 20... 90] for each seed, 1-100 (inclusive). It will also check
+    if there is biaxial data for that defect + seed configuration.
+    - If the number of simulations does not match expected, it prints out the details. You can then use this information
+    to investigate further in filter_csv.py or plot_StrengthSurface.py to see exactly what simulations are missing.
+
+    Parameters:
+        - df (pandas.DataFrame): Dataframe we are interested in checking (usually all_simulations.csv)
+        - defects (str): JSON formatted string that is in the form of defects '{"SV": 0.5}', etc.
+        - seeds (tuple(int)): This is the start seed, end seed, and step length for what you expect for 'Defect Random Seed'
+        - thetas (tuple(int)): This is the start theta, end theta, and step length for what you expect for 'Theta Requested'
     """
     problems = 0
     seeds_incl = (seeds[0], seeds[1] + 1, seeds[2])
