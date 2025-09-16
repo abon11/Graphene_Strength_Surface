@@ -161,7 +161,7 @@ class Simulation:
 
         self.erate_timestep = self.calculate_erateTimestep()  # used to calculate strain rate at any given timestep (just multiply this by whatever timestep you're on)
 
-        if detailed_data:
+        if self.detailed_data:
             self.create_storage_directory()  # create data storage directory (storage_path/sim{datetime})
 
         lmp = lammps(comm=comm)  # initialize lammps
@@ -195,7 +195,9 @@ class Simulation:
         try:
             strength, crit_strain, fracture_time = self.find_fracture(principal_stresses, give_crit_strain=True)
         # if there was no fracture (like we just reached max sim length), just store these values as None. 
-        except ValueError:
+        except ValueError as e:
+            print("Warning: Encountered ValueError on final find_fracture sweep. Defaulting to None.")
+            print(e)
             strength = [None, None, None]
             crit_strain = [None, None, None]
             fracture_time = None
@@ -456,13 +458,13 @@ class Simulation:
         if not os.path.exists(self.main_csv) or os.path.getsize(self.main_csv) == 0:
             if self.angle_testing:
                 df = pd.DataFrame(columns=['Simulation ID', 'Strain Rate x', 'Strain Rate y', 'Strain Rate xy', 
-                                        'Sigma_x', 'Sigma_y', 'Sigma_xy', 'Sigma_1', 'Sigma_2', 'Theta', 'Sigma_Ratio'])
+                                        'Sigma_x', 'Sigma_y', 'Sigma_xy', 'Sigma_1', 'Sigma_2', 'Theta', 'Rotation Angle', 'Sigma_Ratio'])
             else:
                 df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Strength x', 'Strength y', 'Strength z', 
                                        'Strength xy', 'Strength xz', 'Strength yz', 'Fracture Time', 'Max Sim Length', 'Output Timesteps', 
-                                       'Fracture Window', 'Theta Requested', 'Theta', 'Defects', 'Defect Random Seed', 
+                                       'Fracture Window', 'Theta Requested', 'Theta', 'Rotation Angle', 'Defects', 'Defect Random Seed', 
                                        'Simulation Time', 'Threads'])
             
             df.to_csv(self.main_csv, index=False)  # save it to the csv
@@ -496,7 +498,7 @@ class Simulation:
             new_row = pd.DataFrame({'Simulation ID':[self.simulation_id], 'Strain Rate x': [self.x_erate], 'Strain Rate y': [self.y_erate], 'Strain Rate xy': [self.xy_erate],
                                     'Sigma_x': [self.stress_tensor[-1, 0]], 'Sigma_y': [self.stress_tensor[-1, 1]], 'Sigma_xy': [self.stress_tensor[-1, 3]],
                                     'Sigma_1': [self.principal_stresses[-1, 0]], 'Sigma_2': [self.principal_stresses[-1, 1]], 'Theta': [self.principal_angles[-1]],
-                                    'Sigma_Ratio': [self.principal_stresses[-1, 1] / self.principal_stresses[-1, 0]]})
+                                    'Rotation Angle': [self.rotation_vector[-1]], 'Sigma_Ratio': [self.principal_stresses[-1, 1] / self.principal_stresses[-1, 0]]})
         else:
             try:
                 fracture_index = int(self.fracture_time / self.thermo)
@@ -707,7 +709,7 @@ class Simulation:
         # if we never detected fracture, return the tensors anyway
         return stress_tensor, pressure_tensor, step_vector, strain_tensor, rotation_vector
     
-    def check_buckle(self, tol=3):
+    def check_buckle(self, tol=5):
         """
         - This checks if the sheet is buckling/bending by finding the highest absolute value of the z-coordinate of an atom
         - This is basically a check to ensure that compression isn't being applied to the sheet by mistake - this is more
@@ -715,7 +717,7 @@ class Simulation:
         to ficticious stress readings, potentially confusing our ML model.
 
         Parameters:
-            - tol (float): Default: 3 angstroms. This is just how far away an atom has to be from the z-axis to flag this check. 
+            - tol (float): Default: 5 angstroms. This is just how far away an atom has to be from the z-axis to flag this check. 
         """
         # extract the highest and lowest z atom
         zmax = self.lmp.extract_variable("zmax", None, 0)
@@ -840,18 +842,28 @@ class Simulation:
             - fracture_timestep (int): This is the exact timestep that corresponds with the maximum principal stress value
             - fracture_index (int): This is the index in the stress tensor that corresponds with fracture
         """
+
         peaks, _ = find_peaks(principal_stresses[:, stress_index])
+
         if len(peaks) == 0:
-            # No peaks found (idt this could ever happen but who knows lol)
+            # No peaks found
             strength = [None, None, None]
             fracture_timestep = None
+            return strength, fracture_timestep, None
         
         else:
             fracture_index = peaks[np.argmax(principal_stresses[:, stress_index][peaks])]  # find the index of the highest peak
 
+            # If the fracture index is calculated as one of the last values
+            if fracture_index + 10 >= len(principal_stresses):
+                # then the low testpoint is just the last data in the simulation
+                low_testpoint = np.min(principal_stresses[:, stress_index][-10:])
+            else:
+                low_testpoint = np.min(principal_stresses[:, stress_index][fracture_index:fracture_index+10])
+
             # see if this "fracture" is high enough to be considered (or is it just noise?)
-            # for fracture, the (peak - window) must be greater than the minimum point
-            if (np.max(principal_stresses[fracture_index]) - self.fracture_window < np.min(principal_stresses[:, stress_index][-10:])):
+            # for fracture, the (peak - window) must be greater than the minimum point for that stress index
+            if (principal_stresses[fracture_index, stress_index] - self.fracture_window < low_testpoint):
                 strength = [None, None, None]
                 fracture_timestep = None
             else:
@@ -885,6 +897,8 @@ class Simulation:
             This is the critical strain for this simulation. This output is optional (we don't care about it when testing for fracture every
             timestep in 'self.run_simulation()').
         """
+        strength = [None, None, None]
+        fracture_timestep = None
         # Not enough thermos to actually check
         if len(principal_stresses[:, 0]) < 25:
             strength = [None, None, None]  # must be a list of None's for later
@@ -911,7 +925,7 @@ class Simulation:
                 if not sig0_intact:
                     strength, fracture_timestep, fracture_index = self.get_strength_info(0, principal_stresses)
                 
-                elif not sig1_intact:
+                if not sig1_intact and fracture_timestep is None:
                     strength, fracture_timestep, fracture_index = self.get_strength_info(1, principal_stresses)
 
                 if give_crit_strain:
