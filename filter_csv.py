@@ -17,10 +17,10 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        # "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
-        "Defects": "{\"DV\": 0.5}",
-        "Defect Random Seed": 77,
-        "Theta Requested": 80,
+        "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
+        # "Defects": "None",
+        # "Defect Random Seed": 77,
+        "Theta Requested": 90,
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.001,
         # "Strain Rate xy": 0.0
@@ -38,7 +38,7 @@ def main():
         # "Theta Requested": [0, 90]
     }
 
-    uniaxial = False
+    uniaxial = True
 
     # ====================================
     
@@ -57,7 +57,7 @@ def main():
 # duplic_freq is a tuple meaning (start_theta, end_theta, how many to jump by) to duplicate biaxial tension across all thetas
 def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, 
                 flip_strengths=False, duplic_freq=None, only_uniaxial=False,
-                remove_biaxial=False, remove_dupes=False):
+                remove_biaxial=False, remove_dupes=False, remove_nones=False):
     """
     Filter df on exact, range, OR filters and optionally flip strength directions.
     """
@@ -118,9 +118,18 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None,
 
     if remove_dupes:
         filtered = drop_duplicates(filtered)
+
+    if remove_nones:
+        filtered = drop_nones(filtered)
     
     return filtered
 
+
+# Delete all rows that have None (such as one that never broke or terminated early for some reason). Good for check_sims.py
+def drop_nones(df):
+    cols = ["Strength_1", "Strength_2", "Strength_3"]
+    mask = df[cols].isna().any(axis=1)
+    return df.loc[~mask].copy()    
 
 # Delete all biaxial rows from the df (important for the check_sims.py file)
 def drop_biaxial_rows(df):
