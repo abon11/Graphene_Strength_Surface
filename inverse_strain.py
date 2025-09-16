@@ -1,6 +1,10 @@
 """
 Given the stress-strain model and a desired stress ratio and theta, this employs the model to give
 a strain rate tensor that will keep us at the desired strain rates, while also giving that ratio and theta.
+
+Run this in terminal by doing 'python3 inverse_strain.py --ratio {input} --theta {input}'.
+If you are runninng this manually, be sure to use pred.print_results() for the best output. If you are using
+a script to run this to generate a strain table (such as create_straintable.sh), use output_results instead.
 """
 
 import numpy as np
@@ -25,8 +29,8 @@ def main():
     # Optimization loop such that max strain rate is approx 0.001:
     pred = find_optimal_strain(model_info, target)
 
-    # pred.print_results()
-    pred.output_results(csv=True)  # prints for computer to read easier (showinputs for csv storage)
+    pred.print_results()
+    # pred.output_results(csv=True)  # prints for computer to read easier (showinputs for csv storage)
 
 
 def load_model(mod, targ):
