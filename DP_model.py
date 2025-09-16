@@ -21,9 +21,9 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defects": "None",
-        # "Defect Percentage": 0.5,
-        # "Theta Requested": 0,
+        "Defects": '{"DV": 0.5}',
+        # "Defects": None,
+        "Theta Requested": 90,
         # "Defect Random Seed": 54
     }
 
@@ -34,17 +34,16 @@ def main():
     }
 
     or_filters = {
-        # "Defect Type": ["SV", "DV"],
-        "Theta Requested": [0, 90]
+        # "Theta Requested": [0, 90]
     }
 
     DP_3D = False
-    save_fits_to = "drucker_prager_params_TEST.csv"
+    save_fits_to = "DPparams_zz_DV.csv"
     # ====================================
     df = pd.read_csv(csv_file)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, flip_strengths=True, duplic_freq=(0, 91, 90))
-    # interest_value = 'Defect Random Seed'
-    interest_value = "Theta Requested"
+    interest_value = 'Defect Random Seed'
+    # interest_value = "Theta Requested"
 
     # Group by defect seed
     grouped = filtered_df.groupby(interest_value)
@@ -112,11 +111,11 @@ def main():
     df_params.to_csv(save_fits_to, index=False)
 
 
-    folder = f"{local_config.DATA_DIR}/rotation_tests"
-    fullpath = f"{folder}/plots/aniso_pristine.png"
-    fig.tight_layout()
-    fig.savefig(fullpath)
-    print(f"Figure saved to {fullpath}")
+    # folder = f"{local_config.DATA_DIR}/rotation_tests"
+    # fullpath = f"{folder}/plots/dp_pristine.png"
+    # fig.tight_layout()
+    # fig.savefig(fullpath)
+    # print(f"Figure saved to {fullpath}")
     # html_path = f"{folder}/plots/3D_SS_FULL_test.html"
     # fig.write_html(html_path, include_plotlyjs="cdn")
     # print(f"Interactive 3D plot saved to {html_path}")
@@ -218,8 +217,20 @@ class Surface():
         """
         residuals = []
         for point in self.points:
-            residual = self.dp(point, params)
-            residuals.append(residual)
+            s1 = point.df["Strength_1"]
+            s2 = point.df["Strength_2"]
+            s3 = point.df["Strength_3"]
+
+            # do F / gradnorm F
+            F = self.dp(point, params)
+            J2 = (s1*s1 + s2*s2 + s3*s3 - s1*s2 - s2*s3 - s3*s1) / 3.0
+            q = max(np.sqrt(J2), 1e-12)  # protect against J2 = 0
+            dF_dsig1 = (2.0*s1 - s2 - s3) / (6.0*q) + params[0]
+            dF_dsig2 = (2.0*s2 - s3 - s1) / (6.0*q) + params[0]
+            dF_dsig3 = (2.0*s3 - s1 - s2) / (6.0*q) + params[0]
+            grad_norm = np.sqrt(dF_dsig1*dF_dsig1 + dF_dsig2*dF_dsig2 + dF_dsig3*dF_dsig3)
+            
+            residuals.append(F / max(grad_norm, 1e-9))
 
         if return_resid:
             return residuals
@@ -236,7 +247,7 @@ class Surface():
                 # result = minimize(self.loss, x0=[0, 0, 0, 1, 0, 0], method="BFGS")
                 result = minimize(self.loss, x0=[0, 0, 0, 1, 0, 0, 0, 1, 0, 0], method="BFGS")
             else:
-                result = minimize(self.loss, x0=[0.0, 1.0])
+                result = minimize(self.loss, x0=[0.2, 60.0], bounds=([-np.sqrt(3) / 3, np.sqrt(3) / 3], [0, np.inf]))
             self.fit_result = result 
             if result.success or "precision loss" in result.message:
                 if self.fit_full3D:
@@ -317,11 +328,11 @@ class Surface():
     def plot_onto_ax(self, ax, color, lab, resolution=1000):
         sig1_vals, sig2_vals, sig1, sig2, F = self.get_vals_to_plot(resolution)
         # Plot contour where f = 0 (the strength boundary)
-        ax.contour(sig1, sig2, F, levels=[0], colors=color, linewidths=2)
+        ax.contour(sig1, sig2, F, levels=[0], colors=color, linewidths=2, alpha=0.8)
         ax.plot([], [], color=color, label=f"DP surface - {lab}")  # for legend
 
         # Plot data points
-        ax.scatter(sig1_vals, sig2_vals, c=color, label=f"MD failure points - {lab}", alpha=0.7)
+        ax.scatter(sig1_vals, sig2_vals, c=color, label=f"MD failure points - {lab}", alpha=0.8)
         # ax.scatter(sig2_vals, sig1_vals, c=color, alpha=0.7)
 
         ax.plot([-50, 130], [0, 0], color='black')
@@ -336,7 +347,7 @@ class Surface():
         ax.tick_params(axis='x', labelsize=15)
         ax.tick_params(axis='y', labelsize=15)
 
-        ax.set_title(f"Fit Drucker-Prager Surface, Pristine", fontsize=20)
+        ax.set_title(f"Fit Strength Surfaces, Pristine", fontsize=20)
 
         ax.legend(fontsize=15)
     
@@ -389,7 +400,7 @@ class Surface():
         plt.yticks(fontsize=15)
 
         # plt.title(f"Fit Drucker-Prager Surface, theta={self.instance}", fontsize=20)
-        plt.title(f"Fit Drucker-Prager Surface, Armchair (Pristine)", fontsize=20)
+        plt.title(f"Fit Strength Surface, DV 0.5% Zigzag (Seed 54)", fontsize=20)
         plt.legend(fontsize=15)
         plt.tight_layout()
 
