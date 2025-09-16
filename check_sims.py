@@ -10,12 +10,14 @@ import local_config
 def main():
     df = pd.read_csv(f"{local_config.DATA_DIR}/rotation_tests/all_simulations.csv")
 
-    run_check(df, "{\"SV\": 0.5}", (0, 100, 1), (0, 90, 10))
-    run_check(df, "{\"SV\": 0.25, \"DV\": 0.25}", (0, 100, 1), (0, 90, 10))
-    run_check(df, "{\"DV\": 0.5}", (0, 100, 1), (0, 90, 10))
+    run_check(df, "{\"SV\": 0.5}", (0, 100, 1), (90, 90, 10), expected_num=12)
+    run_check(df, "{\"DV\": 0.5}", (0, 100, 1), (90, 90, 10), expected_num=12)
+    run_check(df, "{\"SV\": 0.25, \"DV\": 0.25}", (0, 100, 1), (90, 90, 10), expected_num=12)
+    # run_check(df, "{\"SV\": 0.25, \"DV\": 0.25}", (0, 100, 1), (0, 90, 10))
+    # run_check(df, "{\"DV\": 0.5}", (0, 100, 1), (0, 90, 10))
 
 
-def run_check(df, defects, seeds, thetas):
+def run_check(df, defects, seeds, thetas, expected_num=10):
     """
     - This goes through the df provided to see if the number of sims in each 'batch' match up with what we would expect
     - The user puts inclusive ranges (because thats how it works for the filter already), however iterating
@@ -43,15 +45,15 @@ def run_check(df, defects, seeds, thetas):
         range_filters = {"Theta Requested": (thetas[0], thetas[1])}
 
         # multiply by 10 because we expect there to be 10 "ratios" for each theta and seed (without biaxial)
-        expected_length = max(0, (thetas[1] - thetas[0]) // thetas[2] + 1) * 10
+        expected_length = max(0, (thetas[1] - thetas[0]) // thetas[2] + 1) * expected_num
         
         filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, remove_biaxial=True, remove_dupes=True)
 
         if len(filtered_df) != expected_length:
             for theta in range(*thetas_incl):
                 exact_filters = {"Defects": defects, "Defect Random Seed": seed, "Theta Requested": theta}
-                filtered_df = filter_data(df, exact_filters=exact_filters, remove_biaxial=True, remove_dupes=True)
-                if len(filtered_df) != 10:
+                filtered_df = filter_data(df, exact_filters=exact_filters, remove_biaxial=True, remove_dupes=True, remove_nones=True)
+                if len(filtered_df) != expected_num:
                     problems += 1
                     print(f"{defects}, seed {seed}, theta {theta} has length of {len(filtered_df)}")
 
