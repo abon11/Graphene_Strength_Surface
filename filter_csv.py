@@ -19,8 +19,8 @@ def main():
         "Num Atoms y": 60,
         # "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
         "Defects": "{\"DV\": 0.5}",
-        "Defect Random Seed": 77,
-        "Theta Requested": 80,
+        "Defect Random Seed": 54,
+        # "Theta Requested": 80,
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.001,
         # "Strain Rate xy": 0.0
@@ -57,7 +57,7 @@ def main():
 # duplic_freq is a tuple meaning (start_theta, end_theta, how many to jump by) to duplicate biaxial tension across all thetas
 def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, 
                 flip_strengths=False, duplic_freq=None, only_uniaxial=False,
-                remove_biaxial=False, remove_dupes=False):
+                remove_biaxial=False, remove_dupes=False, shift_theta=True):
     """
     Filter df on exact, range, OR filters and optionally flip strength directions.
     """
@@ -118,6 +118,10 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None,
 
     if remove_dupes:
         filtered = drop_duplicates(filtered)
+
+    if shift_theta is True:
+        filtered["Theta"] = filtered["Theta"] - filtered["Rotation Angle"]
+        print("Shifted Theta such that Theta[new] = Theta[old] - Rotation Angle.")
     
     return filtered
 
