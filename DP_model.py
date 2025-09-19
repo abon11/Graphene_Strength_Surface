@@ -4,7 +4,7 @@ It also is now expanded to fit alpha and k as functions of theta
 """
 
 import pandas as pd
-from filter_csv import filter_data
+from filter_csv import filter_data, parse_defects_json
 import local_config
 import numpy as np
 from scipy.optimize import minimize
@@ -38,7 +38,7 @@ def main():
     }
 
     DP_3D = False
-    save_fits_to = "DPparams_zz_DV.csv"
+    save_fits_to, plot_title = make_filename(exact_filters, return_title=True)
     # ====================================
     df = pd.read_csv(csv_file)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, flip_strengths=True, duplic_freq=(0, 91, 90))
@@ -66,6 +66,7 @@ def main():
     # fig = go.Figure()
 
     fig, ax = plt.subplots(figsize=(8, 8))
+    ax.set_title(f"Fit Strength Surfaces, {plot_title}", fontsize=20)
 
     for instance, group_df in grouped:
         # Create a list of DataPoints for this seed
@@ -119,6 +120,37 @@ def main():
     # html_path = f"{folder}/plots/3D_SS_FULL_test.html"
     # fig.write_html(html_path, include_plotlyjs="cdn")
     # print(f"Interactive 3D plot saved to {html_path}")
+
+
+def make_filename(exact_filters, return_title=False):
+    defects = parse_defects_json(exact_filters["Defects"]).keys()
+    if len(defects) == 1:
+        defect = list(defects)[0]
+    else:
+        defect = 'MX'
+
+    theta = exact_filters["Theta Requested"]
+    if theta == 0:
+        orientation = 'AC'
+    elif theta == 90:
+        orientation = 'ZZ'
+    else:
+        orientation = ''
+    
+    if return_title:
+        title = ''
+        for defect, size in parse_defects_json(exact_filters["Defects"]).items():
+            title += f'{defect} {size}%, '
+        if orientation == 'AC':
+            title += 'Armchair'
+        elif orientation == 'ZZ':
+            title += 'Zigzag'
+        else:
+            title = title[:-2]
+
+        return f'DPparams_{orientation}_{defect}.csv', title
+
+    return f'DPparams_{orientation}_{defect}.csv'
 
 
 class MadeSurface():
@@ -347,7 +379,7 @@ class Surface():
         ax.tick_params(axis='x', labelsize=15)
         ax.tick_params(axis='y', labelsize=15)
 
-        ax.set_title(f"Fit Strength Surfaces, Pristine", fontsize=20)
+        # ax.set_title(f"Fit Strength Surfaces, Pristine", fontsize=20)
 
         ax.legend(fontsize=15)
     
