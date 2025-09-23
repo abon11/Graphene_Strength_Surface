@@ -7,7 +7,7 @@ EMAIL="avb25@duke.edu"
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=14
 
-x_erate=-0.00005
+x_erate=-0.0001
 y_erate=0.001
 xy_erate=0.0
 
@@ -18,12 +18,12 @@ Y_ATOMS="${Y_ATOMS:-60}"
 DEFECTS="${DEFECTS:-"{\"SV\": 0.5}"}"
 # DEFECTS="${DEFECTS:-"{\"DV\": 0.25, \"SV\": 0.25}"}"
 
-DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-9}"
+DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-68}"
 SIM_LENGTH="${SIM_LENGTH:-10000000}"
 ACCEPT_DUPES="${ACCEPT_DUPES:-false}"
 TIMESTEP="${TIMESTEP:-0.0005}"
 THERMO="${THERMO:-1000}"
-DETAILED_DATA="${DETAILED_DATA:-true}"
+DETAILED_DATA="${DETAILED_DATA:-false}"
 ANGLE_TESTING="${ANGLE_TESTING:-false}"
 THETA="${THETA:-90}"
 FRACTURE_WINDOW="${FRACTURE_WINDOW:-10}"
@@ -53,66 +53,6 @@ send_email_notification() {
 # submit_simulation 2935 # put sim_id number here if you want it to repeat a sim
 
 # submit_simulation
-
-export DEFECTS="{\"SV\": 0.5}"
-
-for seed in $(seq 0 1 100); do
-    export DEFECT_RANDOM_SEED="$seed"
-    while true; do
-        if (( $seed < 25 )); then
-            submit_simulation
-            break
-        fi
-
-        if (( $(count_jobs) < 25 )); then
-            sleep 20
-            if (( $(count_jobs) < 25 )); then
-                submit_simulation
-                sleep 20
-                break
-            fi
-        fi
-        sleep 20
-    done
-done
-
-export DEFECTS="{\"DV\": 0.5}"
-
-for seed in $(seq 0 1 100); do
-    export DEFECT_RANDOM_SEED="$seed"
-    while true; do
-        if (( $(count_jobs) < 25 )); then
-            sleep 20
-            if (( $(count_jobs) < 25 )); then
-                submit_simulation
-                sleep 20
-                break
-            fi
-        fi
-        sleep 20
-    done
-done
-
-export DEFECTS="{\"SV\": 0.25, \"DV\": 0.25}"
-
-for seed in $(seq 0 1 100); do
-    export DEFECT_RANDOM_SEED="$seed"
-    while true; do
-        if (( $(count_jobs) < 25 )); then
-            sleep 20
-            if (( $(count_jobs) < 25 )); then
-                submit_simulation
-                sleep 20
-                break
-            fi
-        fi
-        sleep 20
-    done
-done
-
-send_email_notification
-
-x_erate=-0.00006
 
 export DEFECTS="{\"SV\": 0.5}"
 

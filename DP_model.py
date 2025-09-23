@@ -112,11 +112,11 @@ def main():
     df_params.to_csv(save_fits_to, index=False)
 
 
-    # folder = f"{local_config.DATA_DIR}/rotation_tests"
-    # fullpath = f"{folder}/plots/dp_pristine.png"
-    # fig.tight_layout()
-    # fig.savefig(fullpath)
-    # print(f"Figure saved to {fullpath}")
+    folder = f"{local_config.DATA_DIR}/rotation_tests"
+    fullpath = f"{folder}/plots/{save_fits_to}.png"
+    fig.tight_layout()
+    fig.savefig(fullpath)
+    print(f"Figure saved to {fullpath}")
     # html_path = f"{folder}/plots/3D_SS_FULL_test.html"
     # fig.write_html(html_path, include_plotlyjs="cdn")
     # print(f"Interactive 3D plot saved to {html_path}")
@@ -295,7 +295,7 @@ class Surface():
                 raise RuntimeError(f"Minimization failed: {result.message}")
 
         except RuntimeError as e:
-            print(f"Warning: Seed {int(self.seed)} fit failed. {e}")
+            print(f"Warning: {self.interest_value} {self.instance} fit failed. {e}")
             self.alpha, self.k = np.nan, np.nan
 
     def compute_loss_statistics(self, print_outputs=False):
@@ -360,12 +360,12 @@ class Surface():
     def plot_onto_ax(self, ax, color, lab, resolution=1000):
         sig1_vals, sig2_vals, sig1, sig2, F = self.get_vals_to_plot(resolution)
         # Plot contour where f = 0 (the strength boundary)
-        ax.contour(sig1, sig2, F, levels=[0], colors=color, linewidths=2, alpha=0.8)
+        ax.contour(sig1, sig2, F, levels=[0], colors='k', linewidths=2, alpha=0.2)
         ax.plot([], [], color=color, label=f"DP surface - {lab}")  # for legend
 
         # Plot data points
-        ax.scatter(sig1_vals, sig2_vals, c=color, label=f"MD failure points - {lab}", alpha=0.8)
-        # ax.scatter(sig2_vals, sig1_vals, c=color, alpha=0.7)
+        # ax.scatter(sig1_vals, sig2_vals, c=color, label=f"MD failure points - {lab}", alpha=0.8)
+        ax.scatter(sig2_vals, sig1_vals, c='blue', alpha=0.2)
 
         ax.plot([-50, 130], [0, 0], color='black')
         ax.plot([0, 0], [-50, 130], color='black')
@@ -381,7 +381,7 @@ class Surface():
 
         # ax.set_title(f"Fit Strength Surfaces, Pristine", fontsize=20)
 
-        ax.legend(fontsize=15)
+        # ax.legend(fontsize=15)
     
 
     def plot_surface_fit(self, resolution=1000):

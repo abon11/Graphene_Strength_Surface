@@ -7,6 +7,7 @@ import pandas as pd
 import local_config
 import json
 import numpy as np
+import ast
 
 
 def main():
@@ -17,7 +18,7 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
+        # "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
         # "Defects": "None",
         # "Defect Random Seed": 77,
         "Theta Requested": 90,
@@ -34,16 +35,17 @@ def main():
     }
 
     or_filters = {
-        # "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
+        "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
+        "Strain Rate x": [-0.00005, -0.00006]
         # "Theta Requested": [0, 90]
     }
 
-    uniaxial = True
+    uniaxial = False
 
     # ====================================
     
     df = pd.read_csv(csv_file)
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters,
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, remove_nones=True,
                               only_uniaxial=uniaxial, remove_biaxial=False, remove_dupes=True, duplic_freq=(0, 91, 10))
     
     print(f"Filtered {len(filtered_df)} rows from {len(df)} total.")
@@ -126,8 +128,50 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None,
 
     if remove_nones:
         filtered = drop_nones(filtered)
+
+    filtered = alphabetize_dict(filtered, "Defects")
     
     return filtered
+
+
+def alphabetize_dict(df: pd.DataFrame, column: str, inplace: bool = False) -> pd.DataFrame:
+    """
+    Alphabetize keys in a JSON-formatted string column for every row.
+    Leaves NaN as is, accepts JSON strings or dicts, and returns a DataFrame.
+    """
+    def to_canonical(obj):
+        # Leave NaN or None unchanged
+        if obj is None or (isinstance(obj, float) and np.isnan(obj)):
+            return obj
+
+        d = None
+        if isinstance(obj, dict):
+            d = obj
+        elif isinstance(obj, str):
+            s = obj.strip()
+            # Try JSON
+            try:
+                d = json.loads(s)
+            except json.JSONDecodeError:
+                # Try Python dict literal
+                try:
+                    d = ast.literal_eval(s)
+                except Exception:
+                    # Could not parse, return original
+                    return obj
+        else:
+            # Unknown type, return original
+            return obj
+
+        if not isinstance(d, dict):
+            return obj
+
+        # Dump with alphabetical keys and consistent spacing like {"DV": 0.25, "SV": 0.25}
+        return json.dumps(d, sort_keys=True, ensure_ascii=False, separators=(',', ': '))
+
+    target = df if inplace else df.copy()
+    target[column] = target[column].apply(to_canonical)
+    return target
 
 
 # Delete all rows that have None (such as one that never broke or terminated early for some reason). Good for check_sims.py
