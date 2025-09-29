@@ -7,7 +7,7 @@ import pandas as pd
 from filter_csv import filter_data, parse_defects_json
 import local_config
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, least_squares
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
@@ -24,7 +24,7 @@ def main():
         "Defects": '{"DV": 0.5}',
         # "Defects": None,
         "Theta Requested": 90,
-        # "Defect Random Seed": 54
+        "Defect Random Seed": 54
     }
 
     range_filters = {
@@ -109,11 +109,11 @@ def main():
         print(f"Final average total loss over {len(loss)} samples: {np.sum(loss) / len(loss)}")
 
     df_params = pd.DataFrame(rows)
-    df_params.to_csv(save_fits_to, index=False)
+    df_params.to_csv(f"{save_fits_to}___", index=False)
 
 
     folder = f"{local_config.DATA_DIR}/rotation_tests"
-    fullpath = f"{folder}/plots/{save_fits_to}.png"
+    fullpath = f"{folder}/plots/{save_fits_to[:-4]}___.png"
     fig.tight_layout()
     fig.savefig(fullpath)
     print(f"Figure saved to {fullpath}")
@@ -139,8 +139,8 @@ def make_filename(exact_filters, return_title=False):
     
     if return_title:
         title = ''
-        for defect, size in parse_defects_json(exact_filters["Defects"]).items():
-            title += f'{defect} {size}%, '
+        for defct, size in parse_defects_json(exact_filters["Defects"]).items():
+            title += f'{defct} {size}%, '
         if orientation == 'AC':
             title += 'Armchair'
         elif orientation == 'ZZ':
@@ -240,6 +240,20 @@ class Surface():
         i1, j2 = point.calculate_invariants()
         residual = np.sqrt(j2) + alpha * i1 - k
         return residual
+    
+    def find_uniaxial_index(self):
+        """
+        This is meant to find the index of the lowest sig_2/sig_1 ratio for a list of DataPoints (so we can weight it in the loss fn)
+        """
+        ratio = 1
+        idx = 0
+        for i, point in enumerate(self.points):
+            new_r = point.df["Strength_2"] / point.df["Strength_1"]
+            if new_r < ratio:
+                idx = i
+                ratio = new_r
+        
+        return idx
 
     def loss(self, params, return_resid=False):
         """
@@ -247,8 +261,9 @@ class Surface():
 
         params: [alpha, k]
         """
+        uni_idx = self.find_uniaxial_index()
         residuals = []
-        for point in self.points:
+        for i, point in enumerate(self.points):
             s1 = point.df["Strength_1"]
             s2 = point.df["Strength_2"]
             s3 = point.df["Strength_3"]
@@ -256,13 +271,17 @@ class Surface():
             # do F / gradnorm F
             F = self.dp(point, params)
             J2 = (s1*s1 + s2*s2 + s3*s3 - s1*s2 - s2*s3 - s3*s1) / 3.0
-            q = max(np.sqrt(J2), 1e-12)  # protect against J2 = 0
+            q = np.sqrt(J2) + 1e-24  # protect against J2 = 0
             dF_dsig1 = (2.0*s1 - s2 - s3) / (6.0*q) + params[0]
             dF_dsig2 = (2.0*s2 - s3 - s1) / (6.0*q) + params[0]
             dF_dsig3 = (2.0*s3 - s1 - s2) / (6.0*q) + params[0]
             grad_norm = np.sqrt(dF_dsig1*dF_dsig1 + dF_dsig2*dF_dsig2 + dF_dsig3*dF_dsig3)
             
-            residuals.append(F / max(grad_norm, 1e-9))
+            if i == uni_idx:
+                # weight the uniaxial tension (this is an important part of the strength surface)
+                residuals.append(F / (grad_norm + 1e-18) * 10)
+            else:
+                residuals.append(F / (grad_norm + 1e-18))
 
         if return_resid:
             return residuals
@@ -275,11 +294,25 @@ class Surface():
         Stores the optimized values in self.alpha and self.k.
         """
         try:
+            def residual_vec(p):
+                return np.asarray(self.loss(p, return_resid=True))
+
             if self.fit_full3D:
                 # result = minimize(self.loss, x0=[0, 0, 0, 1, 0, 0], method="BFGS")
-                result = minimize(self.loss, x0=[0, 0, 0, 1, 0, 0, 0, 1, 0, 0], method="BFGS")
+                result = minimize(self.loss, x0=[0, 0, 0, 1, 0, 0, 0, 1, 0, 0], method="Powell")
             else:
-                result = minimize(self.loss, x0=[0.2, 60.0], bounds=([-np.sqrt(3) / 3, np.sqrt(3) / 3], [0, np.inf]))
+                # result = minimize(self.loss, x0=[0.2, 60.0], bounds=[(-np.sqrt(3)/6, np.inf), (0.0, np.inf)], method="L-BFGS-B")
+                x0 = np.array([0.2, 60.0])
+                lb = np.array([-np.sqrt(3)/6, 0.0])
+                ub = np.array([ np.inf, np.inf])
+                result = least_squares(
+                    residual_vec, x0,
+                    bounds=(lb, ub),
+                    method="trf",
+                    loss="soft_l1",  # robust to outliers or noisy points
+                    f_scale=1.0,
+                    xtol=1e-12, ftol=1e-12, gtol=1e-12
+                )
             self.fit_result = result 
             if result.success or "precision loss" in result.message:
                 if self.fit_full3D:

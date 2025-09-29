@@ -21,8 +21,8 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        # "Defects": '{"DV": 0.5}',
-        # "Defect Random Seed": 50,
+        "Defects": '{"SV": 0.25, "DV": 0.25}',
+        "Defect Random Seed": 67,
         "Theta Requested": 90,
         # "Strain Rate x": -0.00005,
     }
@@ -35,7 +35,7 @@ def main():
     }
 
     or_filters = {
-        "Defects": ['{"SV": 0.5}', '{"DV": 0.5}', '{"SV": 0.25, "DV": 0.25}'],
+        # "Defects": ['{"SV": 0.5}', '{"DV": 0.5}', '{"SV": 0.25, "DV": 0.25}'],
         # "Defect Random Seed": [0, 90]
         # "Theta Requested": [0, 90]
         # "Strain Rate x": [-0.00005, -0.00006]
@@ -58,7 +58,7 @@ def main():
     else:
         pristine_df = None
 
-    plot_strengths(filtered_df, folder, f"{base_title}TESTTTTT", color_by_field, pristine_data=pristine_df, legend=True, only_show=False)
+    plot_strengths(filtered_df, folder, f"{base_title}TESTTTTT", color_by_field, pristine_data=pristine_df, legend=True, only_show=True)
     # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 
