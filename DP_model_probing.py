@@ -12,21 +12,21 @@ import plotly.graph_objects as go
 
 
 def main():
-    plot_together = True
-    DP_3D = False
+    plot_together = False
+    DP_3D = True
 
     # read the DP models from the csv
-    df_params = pd.read_csv("drucker_prager_params_thetas.csv")
-    # df_params = pd.read_csv("dp_params_3D_SV.csv")
+    # df_params = pd.read_csv("drucker_prager_params_thetas.csv")
+    df_params = pd.read_csv("DP_params_3D_SV.csv")
 
     if DP_3D:
-        alphas = df_params[["a0", "a1", "a2", "a3", "a4"]].to_numpy()
-        ks = df_params[["k0", "k1", "k2", "k3", "k4"]].to_numpy()
+        alphas = df_params[["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"]].to_numpy()
+        ks = df_params[["k0", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8"]].to_numpy()
     else: 
         alphas = df_params["alpha"].values
         ks = df_params["k"].values
     
-    instances = df_params["Theta Requested"].values
+    instances = df_params["Defect Random Seed"].values
 
     # turn them into Surface objects for convenience (and plot if we want)
     surfaces = []
