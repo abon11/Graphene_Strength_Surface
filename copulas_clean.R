@@ -5,6 +5,8 @@ library(copula)
 library(ggplot2)
 library(rlang)
 
+# This script does everything we need from R in clean functions and outputs the necessary parameters
+
 #######
 # This function actually takes in the data and fits the copula function
 # It returns if it trims the data, as well as the gamma marginals and full copula object

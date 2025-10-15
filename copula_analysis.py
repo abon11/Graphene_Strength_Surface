@@ -1,5 +1,9 @@
+"""
+This takes in the params saved from fitting the copulas in R, verifies that the distributions look good, then does JS Divergence to compare the distributions
+"""
+
 import matplotlib.pyplot as plt
-from scipy.stats import gaussian_kde, norm, entropy, Mixture
+from scipy.stats import norm
 import numpy as np
 from scipy.stats import gamma
 import pandas as pd

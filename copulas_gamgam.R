@@ -6,13 +6,27 @@ library(fitdistrplus)
 library(copula)
 library(ggplot2)
 
-dataset <- "ZZ_DV"
+dataset <- "ZZ_MX"
 csvname <- paste0("DPparams_", dataset)
 
 # Load data
 data <- read_csv(paste0(csvname, ".csv"))
 alpha <- data$alpha
 k <- data$k
+
+
+alpha_thresh <- 1
+k_thresh <- 100
+
+# Filter data
+data_trimmed <- subset(data, alpha <= alpha_thresh & k <= k_thresh)
+alpha <- data_trimmed$alpha
+k <- data_trimmed$k
+
+removed_count <- nrow(data) - nrow(data_trimmed)
+cat("Number of rows removed:", removed_count, "\n")
+
+
 
 # Define lower bound for alpha
 a0 <- -sqrt(3) / 6  # shift point
@@ -89,11 +103,16 @@ ggplot(plot_df, aes(x = alpha, y = k, color = source)) +
   ) +
   theme_minimal()
 
+amin <- -0.15
+amax <- 0.5
+kmin <- 25
+kmax <- 90
+
 
 # ====== Full PDF in alpha/k space ====== #
 # Generate density grid over domain
-alpha_vals <- seq(a0 - 0.1, max(alpha) + 0.1, length.out = 1000)
-k_vals <- seq(-5, max(k) + 10, length.out = 1000)
+alpha_vals <- seq(amin - 0.1, amax + 0.1, length.out = 1000)
+k_vals <- seq(kmin - 10, kmax + 10, length.out = 1000)
 grid <- expand.grid(alpha = alpha_vals, k = k_vals)
 
 # Marginal CDFs on the grid
@@ -128,7 +147,7 @@ ggplot(grid, aes(x = alpha, y = k, fill = density)) +
              color = "red", size = 2, alpha = 0.5, inherit.aes = FALSE) +
   scale_fill_viridis_c(option = "mako") +
   labs(title = paste("Empirical Joint PDF with Original Data:", dataset), x = "α", y = "k") +
-  coord_cartesian(xlim = c(min(alpha) - 0.05, 0.5), ylim = c(min(k) - 2, 85)) +
+  coord_cartesian(xlim = c(amin, amax), ylim = c(kmin, kmax)) +
   theme_bw(base_size = 22) +
   theme(
     plot.title = element_text(hjust = 0.5),
