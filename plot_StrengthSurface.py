@@ -22,8 +22,9 @@ def main():
         "Num Atoms x": 60,
         "Num Atoms y": 60,
         "Defects": '{"SV": 0.25, "DV": 0.25}',
-        "Defect Random Seed": 67,
-        "Theta Requested": 90,
+        # "Defects": "None",
+        # "Defect Random Seed": 67,
+        "Theta Requested": 0,
         # "Strain Rate x": -0.00005,
     }
 
@@ -209,7 +210,7 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
     plt.xlim(-15, 130)
     plt.ylim(-15, 130)
     plt.title(title, fontsize=20)
-    plt.title("MD Strength Surfaces - DV 0.5% Seed 54", fontsize=20)
+    plt.title("MD Strength Surface - Armchair Mixed Defects", fontsize=20)
 
     # plt.legend(fontsize=15)
 
