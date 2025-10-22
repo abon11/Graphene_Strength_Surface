@@ -26,15 +26,16 @@ def main():
         "Num Atoms x": 60,
         "Num Atoms y": 60,
         # "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
-        "Defect Random Seed": 0,
+        # "Defect Random Seed": 0,
         "Theta Requested": 0,
         # "Strain Rate x": 0.001,
-        "Strain Rate y": 0.0
+        # "Strain Rate y": 0.0
     }
 
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
-        "Simulation ID": (2670, 2913)
+        # "Simulation ID": (2670, 2913)
+        "Defect Random Seed": (0, 19)
     }
 
     or_filters = {
@@ -42,13 +43,19 @@ def main():
     }
     # ====================================
     df = pd.read_csv(csv_file)
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, only_uniaxial=True)
    
     # plot_detailed_data([f'{folder}/sim00400/dump.csv'], x_column, y_column, all_sims, label_col, output_file=f"{folder}combined_StressStrain.png")
 
     # plot_allsims_data(all_sims, list(range(2663, 2681)), 'Strain Rate x', 'Strength_1', output_file=f"{folder}strength_vs_StrainRate.png")
+    if exact_filters["Theta Requested"] == 0:
+        orient = 'Armchair'
+    elif exact_filters["Theta Requested"] == 90:
+        orient = 'Zigzag'
+    else:
+        orient = None
 
-    plot_many_detailed(filtered_df, x_column, y_column, folder, title="Armchair", labelby="Defects")
+    plot_many_detailed(filtered_df, x_column, y_column, folder, title=orient, labelby="Defects")
 
 
 def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim", title=None, labelby=None):
@@ -65,6 +72,17 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
         label_prefix (str): Prefix for line labels in the legend.
     """
 
+    avg_strain_sv = filter_data(df, exact_filters={"Defects": "{\"SV\": 0.5}"}, shift_theta=False)["CritStrain_1"].mean()
+    avg_strain_mx = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.25, \"SV\": 0.25}"}, shift_theta=False)["CritStrain_1"].mean()
+    avg_strain_dv = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.5}"}, shift_theta=False)["CritStrain_1"].mean()
+
+    avg_strength_sv = filter_data(df, exact_filters={"Defects": "{\"SV\": 0.5}"}, shift_theta=False)["Strength_1"].mean()
+    avg_strength_mx = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.25, \"SV\": 0.25}"}, shift_theta=False)["Strength_1"].mean()
+    avg_strength_dv = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.5}"}, shift_theta=False)["Strength_1"].mean()
+
+    potential_colors=['red', 'blue', 'green', 'purple', 'pink', 'orange', 'grey', 'gold', 'brown']
+    color_dict = {}
+
     fig, ax = plt.subplots(figsize=(8, 6))
 
     for idx, row in df.iterrows():
@@ -78,21 +96,38 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
         try:
             sim_df = pd.read_csv(sim_path)
 
-            # Determine label
+            # Determine label/color
             if labelby is not None and labelby in df.columns:
-                label_val = row[labelby]
-                lab = f"{labelby}: {str(label_val)}"
+                label_val = str(row[labelby])
+                lab = f"{labelby}: {label_val}"
+                if label_val not in color_dict:
+                    # color_dict[str(label_val)] = potential_colors[len(color_dict) % len(potential_colors)]
+                    # hardcoding this in so the colors are consistent across plots
+                    if label_val == '{"SV": 0.5}':
+                        color_dict[label_val] = 'red'
+                    elif label_val == '{"DV": 0.5}':
+                        color_dict[label_val] = 'blue'
+                    elif label_val == '{"DV": 0.25,"SV": 0.25}':
+                        color_dict[label_val] = 'green'
+                    else:
+                        color_dict[label_val] = potential_colors[len(color_dict) % len(potential_colors)]
             else:
                 lab = f"{label_prefix}{sim_id}"
 
+            _, current_labels = ax.get_legend_handles_labels()
             ax.plot(
                 sim_df[x_col],
                 sim_df[y_col],
-                label=lab,
-                color=None if color is None else color[idx % len(color)]
+                label=lab if lab not in current_labels else None,
+                color=color_dict[label_val] if label_val is not None else color[idx % len(color)] if color is not None else None,
+                alpha=0.15
             )
         except Exception as e:
             print(f"[Error] Failed to plot sim{sim_id}: {e}")
+
+    ax.plot([avg_strain_sv, avg_strain_sv], [0, avg_strength_sv], color='red', linewidth=3, linestyle='-', alpha=0.8)
+    ax.plot([avg_strain_mx, avg_strain_mx], [0, avg_strength_mx], color='green', linewidth=3, linestyle='-', alpha=0.8)
+    ax.plot([avg_strain_dv, avg_strain_dv], [0, avg_strength_dv], color='blue', linewidth=3, linestyle='--', alpha=0.8)
     
     ax.set_xlabel("Strain", fontsize=18)
     ax.set_ylabel("Stress (GPa)", fontsize=18)

@@ -54,60 +54,49 @@ send_email_notification() {
 
 # submit_simulation
 
-export DEFECTS="{\"SV\": 0.5}"
+file="repeat_ids.txt"
 
-for seed in $(seq 0 1 100); do
-    export DEFECT_RANDOM_SEED="$seed"
+n=0
+while IFS= read -r line; do
+  n=$((n + 1))
     while true; do
-        if (( $seed < 25 )); then
-            submit_simulation
+        if (( $n < 25 )); then
+            submit_simulation $line
             break
         fi
 
         if (( $(count_jobs) < 25 )); then
             sleep 20
             if (( $(count_jobs) < 25 )); then
-                submit_simulation
+                submit_simulation $line
                 sleep 20
                 break
             fi
         fi
         sleep 20
     done
-done
+done < "$file"
 
-export DEFECTS="{\"DV\": 0.5}"
 
-for seed in $(seq 0 1 100); do
-    export DEFECT_RANDOM_SEED="$seed"
-    while true; do
-        if (( $(count_jobs) < 25 )); then
-            sleep 20
-            if (( $(count_jobs) < 25 )); then
-                submit_simulation
-                sleep 20
-                break
-            fi
-        fi
-        sleep 20
-    done
-done
+# for seed in $(seq 0 1 100); do
+#     export DEFECT_RANDOM_SEED="$seed"
+#     while true; do
+#         if (( $seed < 25 )); then
+#             submit_simulation
+#             break
+#         fi
 
-export DEFECTS="{\"SV\": 0.25, \"DV\": 0.25}"
+#         if (( $(count_jobs) < 25 )); then
+#             sleep 20
+#             if (( $(count_jobs) < 25 )); then
+#                 submit_simulation
+#                 sleep 20
+#                 break
+#             fi
+#         fi
+#         sleep 20
+#     done
+# done
 
-for seed in $(seq 0 1 100); do
-    export DEFECT_RANDOM_SEED="$seed"
-    while true; do
-        if (( $(count_jobs) < 25 )); then
-            sleep 20
-            if (( $(count_jobs) < 25 )); then
-                submit_simulation
-                sleep 20
-                break
-            fi
-        fi
-        sleep 20
-    done
-done
 
 send_email_notification

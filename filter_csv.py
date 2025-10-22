@@ -18,7 +18,7 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        # "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
+        # "Defects": '{"DV": 0.5}',  # will match NaN or "None"
         # "Defects": "None",
         # "Defect Random Seed": 77,
         "Theta Requested": 90,
@@ -28,7 +28,7 @@ def main():
     }
 
     range_filters = {
-        # "Defect Random Seed": (0, 2)
+        "Defect Random Seed": (0, 19)
         # "Theta Requested": (90, 90),
         # "Sigma_1": (4, 20)
         # "Theta": (24, 32)
@@ -36,11 +36,11 @@ def main():
 
     or_filters = {
         "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
-        "Strain Rate x": [-0.00005, -0.00006]
+        # "Strain Rate x": [-0.00005, -0.00006]
         # "Theta Requested": [0, 90]
     }
 
-    uniaxial = False
+    uniaxial = True
 
     # ====================================
     
@@ -71,6 +71,8 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None,
 
     if duplic_freq is not None:
         filtered = duplicate_biaxial_rows(filtered, duplic_freq)
+
+    filtered = alphabetize_dict(filtered, "Defects")
 
     # Apply exact filters
     for col, val in (exact_filters or {}).items():
@@ -128,8 +130,6 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None,
 
     if remove_nones:
         filtered = drop_nones(filtered)
-
-    filtered = alphabetize_dict(filtered, "Defects")
     
     return filtered
 
@@ -187,7 +187,7 @@ def drop_biaxial_rows(df):
 
 def get_uniaxial_tension(df, threshold=0.2):
     """
-    For each (seed, theta), pick the row with the smallest Strength_2 / Strength_1
+    For each (seed, theta, defects), pick the row with the smallest Strength_2 / Strength_1
     subject to the ratio being below `threshold`. Returns a new DataFrame.
     """
     # Compute ratio safely and filter
@@ -197,10 +197,10 @@ def get_uniaxial_tension(df, threshold=0.2):
     in_thresh["ratio"] = ratio.loc[in_thresh.index]
 
     # Get index of minimal ratio per (seed, theta)
-    idx_min = (in_thresh.groupby(["Defect Random Seed", "Theta Requested"], as_index=False)["ratio"].idxmin())
+    idx_min = (in_thresh.groupby(["Defect Random Seed", "Theta Requested", "Defects"], as_index=False)["ratio"].idxmin())
 
     # Collect rows and sort
-    result = (in_thresh.loc[idx_min["ratio"]].sort_values(["Defect Random Seed", "Theta Requested"]).reset_index(drop=True))
+    result = (in_thresh.loc[idx_min["ratio"]].sort_values(["Defect Random Seed", "Theta Requested", "Defects"]).reset_index(drop=True))
 
     # Do not want the ratio column in the output
     result = result.drop(columns=["ratio"])
