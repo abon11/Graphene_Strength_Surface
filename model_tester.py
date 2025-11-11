@@ -22,8 +22,8 @@ mod = 'nn'  # can be 'nn' or 'sr'
 
 os.environ["NUM_THREADS"] = "8"
 
-# df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
-df = pd.read_csv("filtered.csv")
+df = pd.read_csv(f'{local_config.DATA_DIR}/angle_testing/all_simulations.csv')
+# df = pd.read_csv("filtered.csv")
 
 # could do try/except here for more robustness in the future
 model = joblib.load(f"outputs/{mod}_{target}.pkl")
