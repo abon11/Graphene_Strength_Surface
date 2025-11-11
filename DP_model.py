@@ -21,8 +21,8 @@ def main():
     exact_filters = {
         "Num Atoms x": 60,
         "Num Atoms y": 60,
-        "Defects": '{"DV": 0.25, "SV": 0.25}',
-        # "Defects": None,
+        # "Defects": '{"DV": 0.25, "SV": 0.25}',
+        "Defects": None,
         # "Theta Requested": 0,
         # "Defect Random Seed": 54
     }
@@ -34,18 +34,18 @@ def main():
     }
 
     or_filters = {
-        # "Theta Requested": [0, 90]
+        "Theta Requested": [0, 90]
     }
-    print("Doing MX:")
-    DP_3D = True
+    # print("Doing MX:")
+    DP_3D = False
     # save_fits_to, plot_title = make_filename(exact_filters, return_title=True)
-    save_fits_to = 'DPparams_3D_MX.csv'
-    plot_title = None
+    save_fits_to = 'DP_pristine.csv'
+    plot_title = 'Fit Strength Surfaces - Pristine Graphene'
     # ====================================
     df = pd.read_csv(csv_file)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, flip_strengths=True, duplic_freq=(0, 91, 90))
-    interest_value = 'Defect Random Seed'
-    # interest_value = "Theta Requested"
+    # interest_value = 'Defect Random Seed'
+    interest_value = "Theta Requested"
 
     # Group by defect seed
     grouped = filtered_df.groupby(interest_value)
@@ -68,7 +68,7 @@ def main():
     # fig = go.Figure()
 
     fig, ax = plt.subplots(figsize=(8, 8))
-    ax.set_title(f"Fit Strength Surfaces, {plot_title}", fontsize=20)
+    ax.set_title(f"{plot_title}", fontsize=20)
 
     for instance, group_df in grouped:
         # Create a list of DataPoints for this seed
@@ -90,10 +90,10 @@ def main():
         alphas.append(surface.alpha)
         ks.append(surface.k)
 
-        # if instance == 0:
-        #     surface.plot_onto_ax(ax, 'red', 'Armchair')
-        # else:
-        #     surface.plot_onto_ax(ax, 'blue', 'Zigzag')
+        if instance == 0:
+            surface.plot_onto_ax(ax, 'red', 'Armchair')
+        else:
+            surface.plot_onto_ax(ax, 'blue', 'Zigzag')
 
         if DP_3D:
             try:
@@ -120,11 +120,11 @@ def main():
     df_params.to_csv(f"{save_fits_to}", index=False)
 
 
-    # folder = f"{local_config.DATA_DIR}/rotation_tests"
-    # fullpath = f"{folder}/plots/{save_fits_to[:-4]}.png"
-    # fig.tight_layout()
-    # fig.savefig(fullpath)
-    # print(f"Figure saved to {fullpath}")
+    folder = f"{local_config.DATA_DIR}/rotation_tests"
+    fullpath = f"{folder}/plots/{save_fits_to[:-4]}.png"
+    fig.tight_layout()
+    fig.savefig(fullpath)
+    print(f"Figure saved to {fullpath}")
     # html_path = f"{folder}/plots/3D_SS_FULL_test.html"
     # fig.write_html(html_path, include_plotlyjs="cdn")
     # print(f"Interactive 3D plot saved to {html_path}")
@@ -435,28 +435,28 @@ class Surface():
     def plot_onto_ax(self, ax, color, lab, resolution=1000):
         sig1_vals, sig2_vals, sig1, sig2, F = self.get_vals_to_plot(resolution)
         # Plot contour where f = 0 (the strength boundary)
-        ax.contour(sig1, sig2, F, levels=[0], colors='k', linewidths=2, alpha=0.2)
+        ax.contour(sig1, sig2, F, levels=[0], colors=color, linewidths=2, alpha=0.6)
         ax.plot([], [], color=color, label=f"DP surface - {lab}")  # for legend
 
         # Plot data points
-        # ax.scatter(sig1_vals, sig2_vals, c=color, label=f"MD failure points - {lab}", alpha=0.8)
-        ax.scatter(sig2_vals, sig1_vals, c='blue', alpha=0.2)
+        ax.scatter(sig1_vals, sig2_vals, c=color, label=f"MD failure points - {lab}", alpha=0.6)
+        # ax.scatter(sig2_vals, sig1_vals, c='blue', alpha=0.2)
 
-        ax.plot([-50, 130], [0, 0], color='black')
-        ax.plot([0, 0], [-50, 130], color='black')
+        ax.plot([-50, 135], [0, 0], color='black')
+        ax.plot([0, 0], [-50, 135], color='black')
 
         ax.set_xlabel(r"$\sigma_1$ (GPa)", fontsize=18)
         ax.set_ylabel(r"$\sigma_2$ (GPa)", fontsize=18)
 
-        ax.set_xlim(-15, 130)
-        ax.set_ylim(-15, 130)
+        ax.set_xlim(-15, 135)
+        ax.set_ylim(-15, 135)
 
         ax.tick_params(axis='x', labelsize=15)
         ax.tick_params(axis='y', labelsize=15)
 
-        # ax.set_title(f"Fit Strength Surfaces, Pristine", fontsize=20)
+        # ax.set_title(f"Fit Strength Surfaces - Pristine", fontsize=20)
 
-        # ax.legend(fontsize=15)
+        ax.legend(fontsize=15, loc=(0.11, 0.11))
     
 
     def plot_surface_fit(self, resolution=1000):

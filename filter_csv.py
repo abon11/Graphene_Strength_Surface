@@ -19,28 +19,28 @@ def main():
         "Num Atoms x": 60,
         "Num Atoms y": 60,
         # "Defects": '{"DV": 0.5}',  # will match NaN or "None"
-        # "Defects": "None",
+        "Defects": "None",
         # "Defect Random Seed": 77,
-        "Theta Requested": 90,
+        # "Theta Requested": 90,
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.001,
         # "Strain Rate xy": 0.0
     }
 
     range_filters = {
-        "Defect Random Seed": (0, 19)
+        # "Defect Random Seed": (0, 19)
         # "Theta Requested": (90, 90),
         # "Sigma_1": (4, 20)
         # "Theta": (24, 32)
     }
 
     or_filters = {
-        "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
+        # "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
         # "Strain Rate x": [-0.00005, -0.00006]
-        # "Theta Requested": [0, 90]
+        "Theta Requested": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
     }
 
-    uniaxial = True
+    uniaxial = False
 
     # ====================================
     
