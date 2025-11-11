@@ -8,6 +8,7 @@ import numpy as np
 from scipy.stats import gamma
 import pandas as pd
 import seaborn as sns
+import matplotlib.gridspec as gridspec
 
 def main():
     # load your fitted parameters CSV
@@ -21,19 +22,36 @@ def main():
 
 
 def divergence_visualization(dfs, df_labels, filename):
-    fig, axs = plt.subplots(nrows=1, ncols=len(dfs), figsize=(len(dfs) * 5, 5))
+    fig = plt.figure(figsize=(len(dfs) * 5 + 1, 5), constrained_layout=True)
+    fig.set_constrained_layout_pads(w_pad=0.01, h_pad=0.01)
+    gs = gridspec.GridSpec(1, len(dfs) + 1, figure=fig, width_ratios=[1]*len(dfs) + [0.05])
+
+    axs = [fig.add_subplot(gs[0, i]) for i in range(len(dfs))]
+    cax = fig.add_subplot(gs[0, -1])  # narrow "fictitious" axis for colorbar
+
     for i in range(len(dfs)):
-        print(f"\n{df_labels[i]}:")
-        print(dfs[i])
-        sns.heatmap(dfs[i], annot=True, fmt=".3f", cmap="cividis", square=True,
-                    cbar_kws={"label": "JS Divergence"}, ax=axs[i])
-        plt.title(f"{df_labels[i]}", fontsize=14)
-        axs[i].set_xlabel("Dataset")
-        axs[i].set_ylabel("Dataset")
-        axs[i].set_title(f"{df_labels[i]}")
-    plt.tight_layout()
-    fig.suptitle("Pairwise Jensen-Shannon Divergences")
+        # print(f"\n{df_labels[i]}:")
+        # print(dfs[i])
+        # sns.heatmap(dfs[i], annot=True, fmt=".3f", cmap="cividis", square=True,
+        #             cbar_kws={"label": "JS Divergence"}, ax=axs[i])
+        sns_plot = sns.heatmap(dfs[i], annot=True, fmt=".3f", cmap="cividis", square=True,
+                    cbar=False, ax=axs[i])
+        # plt.title(f"{df_labels[i]}", fontsize=14)
+        if i == 1:
+            axs[i].set_xlabel("Dataset")
+        if i == 0:
+            axs[i].set_ylabel("Dataset")
+        axs[i].set_title(f"{df_labels[i]}", fontsize=16)
+    # Add one shared colorbar in the skinny axis
+    cbar = fig.colorbar(
+        sns_plot.collections[0],
+        cax=cax,
+        orientation="vertical"
+    )
+    cbar.set_label("JS Divergence", fontsize=14)
+    fig.suptitle("Pairwise Jensen-Shannon Divergences", fontsize=16)
     print(f"JS-Divergence plot saved to {filename}")
+    # plt.tight_layout()
     plt.savefig(filename)
     
 def compare_distributions(params):
@@ -172,6 +190,20 @@ def construct_marginals(row):
     k_dist = gamma(a=row["k_shape"], scale=(1 / row["k_rate"]))
     return alpha_dist, k_dist
 
+def get_title(abbr):
+    if abbr == "AC_SV":
+        return "0.5% SV - Armchair"
+    if abbr == "AC_MX":
+        return "0.25% SV, 0.25% DV - Armchair"
+    if abbr == "AC_DV":
+        return "0.5% DV - Armchair"
+    if abbr == "ZZ_SV":
+        return "0.5% SV - Zigzag"
+    if abbr == "ZZ_MX":
+        return "0.25% SV, 0.25% DV - Zigzag"
+    if abbr == "ZZ_DV":
+        return "0.5% DV - Zigzag"
+    
 def visualize_all_joints(params, filename):
     fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(16, 10), constrained_layout=True)
     meshes = []   # store the mappables for colorbar scaling
@@ -180,10 +212,10 @@ def visualize_all_joints(params, filename):
         joint_pdf = reconstruct_copula(alpha_dist, k_dist, row["rho"])
 
         i, j = divmod(idx, 3)  # this does [int(np.trunc(idx/3)), idx % 3]
-        mesh = plot_joint_dist(ax[i, j], joint_pdf, title=row["dataset"])
+        mesh = plot_joint_dist(ax[i, j], joint_pdf, title=get_title(row["dataset"]))
         meshes.append(mesh)
-        ax[i, j].set_xlabel(r"$\alpha$")
-        ax[i, j].set_ylabel("k")
+        ax[i, j].set_xlabel(r"$\alpha$", fontsize=16)
+        ax[i, j].set_ylabel(r"$k$", fontsize=16)
 
     # compute global min and max across all subplots (for them to share the same cmap)
     vmin = min(m.get_array().min() for m in meshes)
@@ -192,22 +224,25 @@ def visualize_all_joints(params, filename):
     # apply same color scale to all meshes
     for m in meshes:
         m.set_clim(vmin, vmax)
-    cbar = fig.colorbar(meshes[0], ax=ax, label=r"$f_{\alpha,k}(\alpha,k)$",
+    cbar = fig.colorbar(meshes[0], ax=ax, label=r"Density",
                         fraction=0.046, pad=0.04)
-    cbar.ax.tick_params(labelsize=10)
+    cbar.ax.tick_params(labelsize=14)
+    cbar.set_label("Density", fontsize=14)
     print(f"Joint plots saved to {filename}")
     plt.savefig(filename)
 
 
 def plot_joint_dist(ax, f_joint, title="Copula"):
-    alpha_vals = np.linspace(-0.3, 0.5, 200)
-    k_vals = np.linspace(20, 100, 200)
+    # alpha_vals = np.linspace(-0.3, 0.5, 400)
+    # k_vals = np.linspace(20, 100, 400)
+    alpha_vals = np.linspace(-0.15, 0.3, 400)
+    k_vals = np.linspace(20, 70, 400)
     A, K = np.meshgrid(alpha_vals, k_vals)
 
     Z = f_joint(A, K)
     mesh = ax.pcolormesh(A, K, Z, shading="auto", cmap="inferno")
-    cs = ax.contour(A, K, Z, levels=[1e-12], colors="red", linewidths=1.5)
-    ax.set_title(title)
+    # cs = ax.contour(A, K, Z, levels=[1e-12], colors="red", linewidths=1.5)
+    ax.set_title(title, fontsize=16)
     return mesh
 
 def reconstruct_copula(alpha_marginal, k_marginal, rho):
@@ -275,8 +310,8 @@ def visualize_all_marginals(params, filename):
         # reconstruct the marginals
         alpha_dist, k_dist = construct_marginals(row)
 
-        plot_gamma(ax[0], alpha_dist, label=row["dataset"], color=colors[idx % len(colors)])
-        plot_gamma(ax[1], k_dist, label=row["dataset"], color=colors[idx % len(colors)])
+        plot_gamma(ax[0], alpha_dist, label=get_title(row["dataset"]), color=colors[idx % len(colors)])
+        plot_gamma(ax[1], k_dist, label=get_title(row["dataset"]), color=colors[idx % len(colors)])
 
     fig.suptitle("Reconstructed Gamma Marginals")
     print(f"Marginal plots saved to {filename}")
