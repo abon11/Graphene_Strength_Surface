@@ -78,12 +78,15 @@ launch_block() {
 # launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 98 100 0 1
 
 
-launch_block "{\"SV\": 0.5}" 4 4 50 90 1
-launch_block "{\"SV\": 0.5}" 5 5 0 90 1
-launch_block "{\"SV\": 0.5}" 6 30 0 0 10
-launch_block "{\"SV\": 0.5}" 33 33 10 40 1
-launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 43 43 90 90 1
-launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 44 44 0 0 1
-launch_block "{\"DV\": 0.5}" 54 54 20 20 1
-launch_block "{\"DV\": 0.5}" 77 77 80 90 1
-send_email_notification 100000
+# launch_block "{\"SV\": 0.5}" 4 4 50 90 1
+# launch_block "{\"SV\": 0.5}" 5 5 0 90 1
+# launch_block "{\"SV\": 0.5}" 6 30 0 0 10
+# launch_block "{\"SV\": 0.5}" 33 33 10 40 1
+# launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 43 43 90 90 1
+# launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 44 44 0 0 1
+# launch_block "{\"DV\": 0.5}" 54 54 20 20 1
+# launch_block "{\"DV\": 0.5}" 77 77 80 90 1
+launch_block "{\"SV\": 0.5}" 0 100 25 25 50
+launch_block "{\"DV\": 0.5}" 0 100 25 25 50
+launch_block "{\"SV\": 0.25, \"DV\": 0.25}" 0 100 25 25 50
+# send_email_notification 100000

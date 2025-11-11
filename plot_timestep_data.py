@@ -27,7 +27,7 @@ def main():
         "Num Atoms y": 60,
         # "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
         # "Defect Random Seed": 0,
-        "Theta Requested": 0,
+        # "Theta Requested": 0,
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.0
     }
@@ -35,11 +35,12 @@ def main():
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
         # "Simulation ID": (2670, 2913)
-        "Defect Random Seed": (0, 19)
+        # "Defect Random Seed": (0, 19)
     }
 
     or_filters = {
-        "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
+        # "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
+        "Simulation ID": [2926, 36907]
     }
     # ====================================
     df = pd.read_csv(csv_file)
@@ -48,14 +49,14 @@ def main():
     # plot_detailed_data([f'{folder}/sim00400/dump.csv'], x_column, y_column, all_sims, label_col, output_file=f"{folder}combined_StressStrain.png")
 
     # plot_allsims_data(all_sims, list(range(2663, 2681)), 'Strain Rate x', 'Strength_1', output_file=f"{folder}strength_vs_StrainRate.png")
-    if exact_filters["Theta Requested"] == 0:
-        orient = 'Armchair'
-    elif exact_filters["Theta Requested"] == 90:
-        orient = 'Zigzag'
-    else:
-        orient = None
+    # if exact_filters["Theta Requested"] == 0:
+    #     orient = 'Armchair'
+    # elif exact_filters["Theta Requested"] == 90:
+    #     orient = 'Zigzag'
+    # else:
+    #     orient = None
 
-    plot_many_detailed(filtered_df, x_column, y_column, folder, title=orient, labelby="Defects")
+    plot_many_detailed(filtered_df, x_column, y_column, folder, title="Pristine", labelby="Simulation ID")
 
 
 def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim", title=None, labelby=None):
@@ -72,13 +73,13 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
         label_prefix (str): Prefix for line labels in the legend.
     """
 
-    avg_strain_sv = filter_data(df, exact_filters={"Defects": "{\"SV\": 0.5}"}, shift_theta=False)["CritStrain_1"].mean()
-    avg_strain_mx = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.25, \"SV\": 0.25}"}, shift_theta=False)["CritStrain_1"].mean()
-    avg_strain_dv = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.5}"}, shift_theta=False)["CritStrain_1"].mean()
+    # avg_strain_sv = filter_data(df, exact_filters={"Defects": "{\"SV\": 0.5}"}, shift_theta=False)["CritStrain_1"].mean()
+    # avg_strain_mx = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.25, \"SV\": 0.25}"}, shift_theta=False)["CritStrain_1"].mean()
+    # avg_strain_dv = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.5}"}, shift_theta=False)["CritStrain_1"].mean()
 
-    avg_strength_sv = filter_data(df, exact_filters={"Defects": "{\"SV\": 0.5}"}, shift_theta=False)["Strength_1"].mean()
-    avg_strength_mx = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.25, \"SV\": 0.25}"}, shift_theta=False)["Strength_1"].mean()
-    avg_strength_dv = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.5}"}, shift_theta=False)["Strength_1"].mean()
+    # avg_strength_sv = filter_data(df, exact_filters={"Defects": "{\"SV\": 0.5}"}, shift_theta=False)["Strength_1"].mean()
+    # avg_strength_mx = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.25, \"SV\": 0.25}"}, shift_theta=False)["Strength_1"].mean()
+    # avg_strength_dv = filter_data(df, exact_filters={"Defects": "{\"DV\": 0.5}"}, shift_theta=False)["Strength_1"].mean()
 
     potential_colors=['red', 'blue', 'green', 'purple', 'pink', 'orange', 'grey', 'gold', 'brown']
     color_dict = {}
@@ -111,6 +112,10 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
                         color_dict[label_val] = 'green'
                     else:
                         color_dict[label_val] = potential_colors[len(color_dict) % len(potential_colors)]
+                if int(label_val) == 2926:
+                    lab = "Armchair"
+                else:
+                    lab = "Zigzag"
             else:
                 lab = f"{label_prefix}{sim_id}"
 
@@ -120,14 +125,14 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
                 sim_df[y_col],
                 label=lab if lab not in current_labels else None,
                 color=color_dict[label_val] if label_val is not None else color[idx % len(color)] if color is not None else None,
-                alpha=0.15
+                alpha=0.8
             )
         except Exception as e:
             print(f"[Error] Failed to plot sim{sim_id}: {e}")
 
-    ax.plot([avg_strain_sv, avg_strain_sv], [0, avg_strength_sv], color='red', linewidth=3, linestyle='-', alpha=0.8)
-    ax.plot([avg_strain_mx, avg_strain_mx], [0, avg_strength_mx], color='green', linewidth=3, linestyle='-', alpha=0.8)
-    ax.plot([avg_strain_dv, avg_strain_dv], [0, avg_strength_dv], color='blue', linewidth=3, linestyle='--', alpha=0.8)
+    # ax.plot([avg_strain_sv, avg_strain_sv], [0, avg_strength_sv], color='red', linewidth=3, linestyle='-', alpha=0.8)
+    # ax.plot([avg_strain_mx, avg_strain_mx], [0, avg_strength_mx], color='green', linewidth=3, linestyle='-', alpha=0.8)
+    # ax.plot([avg_strain_dv, avg_strain_dv], [0, avg_strength_dv], color='blue', linewidth=3, linestyle='--', alpha=0.8)
     
     ax.set_xlabel("Strain", fontsize=18)
     ax.set_ylabel("Stress (GPa)", fontsize=18)

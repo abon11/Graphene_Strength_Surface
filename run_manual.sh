@@ -14,8 +14,8 @@ xy_erate=0.0
 SHEET_PATH="${SHEET_PATH:-/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/data_files/data.60_60_rel1}"
 X_ATOMS="${X_ATOMS:-60}"
 Y_ATOMS="${Y_ATOMS:-60}"
-# DEFECTS="${DEFECTS:-"None"}"
-DEFECTS="${DEFECTS:-"{\"SV\": 0.5}"}"
+DEFECTS="${DEFECTS:-"None"}"
+# DEFECTS="${DEFECTS:-"{\"SV\": 0.5}"}"
 # DEFECTS="${DEFECTS:-"{\"DV\": 0.25, \"SV\": 0.25}"}"
 
 DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-68}"
@@ -52,30 +52,31 @@ send_email_notification() {
 
 # submit_simulation 2935 # put sim_id number here if you want it to repeat a sim
 
-# submit_simulation
+submit_simulation 2926
+submit_simulation 36907
 
-file="repeat_ids.txt"
+# file="repeat_ids.txt"
 
-n=0
-while IFS= read -r line; do
-  n=$((n + 1))
-    while true; do
-        if (( $n < 25 )); then
-            submit_simulation $line
-            break
-        fi
+# n=0
+# while IFS= read -r line; do
+#   n=$((n + 1))
+#     while true; do
+#         if (( $n < 25 )); then
+#             submit_simulation $line
+#             break
+#         fi
 
-        if (( $(count_jobs) < 25 )); then
-            sleep 20
-            if (( $(count_jobs) < 25 )); then
-                submit_simulation $line
-                sleep 20
-                break
-            fi
-        fi
-        sleep 20
-    done
-done < "$file"
+#         if (( $(count_jobs) < 25 )); then
+#             sleep 20
+#             if (( $(count_jobs) < 25 )); then
+#                 submit_simulation $line
+#                 sleep 20
+#                 break
+#             fi
+#         fi
+#         sleep 20
+#     done
+# done < "$file"
 
 
 # for seed in $(seq 0 1 100); do
@@ -99,4 +100,4 @@ done < "$file"
 # done
 
 
-send_email_notification
+# send_email_notification

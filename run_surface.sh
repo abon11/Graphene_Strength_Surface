@@ -34,11 +34,11 @@ rotate_rates() {
             xy=0.0
             echo "$x $y $xy"
 
-        elif [[ "$theta_int" == "90" ]]; then
-            y=0.001
-            x=$(awk -v r="$ratio" 'BEGIN { printf "%.4f\n", r * 0.001 }')
-            xy=0.0
-            echo "$x $y $xy"
+        # elif [[ "$theta_int" == "90" ]]; then
+        #     y=0.001
+        #     x=$(awk -v r="$ratio" 'BEGIN { printf "%.4f\n", r * 0.001 }')
+        #     xy=0.0
+        #     echo "$x $y $xy"
 
         else
             # Lookup in strain_table.csv
