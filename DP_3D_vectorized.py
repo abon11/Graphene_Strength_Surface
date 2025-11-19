@@ -3,14 +3,20 @@ This fits the 2-parameter Drucker-Prager model to a set of strength surface data
 functions of theta. It fits alpha and k as 4th order fourier series, and saves all of the coefficients in the csv
 """
 
+from mpi4py import MPI
 import pandas as pd
 from filter_csv import filter_data, parse_defects_json
 import local_config
 import numpy as np
 from scipy.optimize import minimize, NonlinearConstraint
+import time
+from datetime import timedelta
 
 
 def main():
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
     # ========== USER INTERFACE ==========
     folder = f'{local_config.DATA_DIR}/rotation_tests'
     csv_file = f"{folder}/all_simulations.csv"
@@ -20,7 +26,7 @@ def main():
         "Num Atoms y": 60,
         # "Defects": 'None',
         "Defects": '{"SV": 0.25, "DV": 0.25}',
-        # "Defects": '{"DV": 0.5}',
+        # "Defects": '{"SV": 0.5}',
         # "Theta Requested": 0,
         # "Defect Random Seed": 54
     }
@@ -37,57 +43,75 @@ def main():
         # "Theta Requested": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
     }
 
-    print("Doing MX:")
+    interest_value = 'Defect Random Seed'
+    fourier_order = 8
 
     # save_fits_to, plot_title = make_filename(exact_filters, return_title=True)
-    save_fits_to = 'zs_np_mx4.csv'
+    save_fits_to = f'z_np_mx{fourier_order}.csv'
+
+    if rank == 0:
+        print(f"Running MX on {size} MPI ranks...")
+
     # ====================================
+
     df = pd.read_csv(csv_file)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, flip_strengths=True, duplic_freq=(0, 91, 90))
-    interest_value = 'Defect Random Seed'
-    fourier_order = 4
+
+    starttime = time.perf_counter()
 
     # Group by defect seed
     grouped = filtered_df.groupby(interest_value)
+    if rank == 0:
+        grouped_list = list(grouped)
+    else:
+        grouped_list = None
+    
+    # Broadcast the grouped list length to all ranks
+    grouped_list = comm.bcast(grouped_list if rank == 0 else None, root=0)
+    n_groups = len(grouped_list)
 
-    surfaces = []
-    zs = []
+    # Split work among ranks as evenly as possible
+    local_indices = np.array_split(np.arange(n_groups), size)[rank]
 
-    rows = []
-    rmse = []
-    loss = []
+    local_results = []
 
-    for instance, group_df in grouped:
+    for idx in local_indices:
+        instance, group_df = grouped_list[idx]
 
-        # Create Surface and fit Drucker-Prager
-        surface = Surface(group_df, interest_value, fourier_order)  # changed from just surface
+        surface = Surface(group_df, interest_value, fourier_order)
         surface.fit_drucker_prager()
-
-        print(f"Fit surface for {interest_value} {int(instance)}.")
-
         stats = surface.compute_loss_statistics(print_outputs=True)
-        if stats["rmse"] is not np.nan:
-            rmse.append(stats["rmse"])
-            loss.append(stats["total_loss"])
-
-        surfaces.append(surface)
-        zs.append(surface.zs)
 
         try:
-            rows.append({
+            local_results.append({
                 f"{interest_value}": surface.instance,
                 **{f"z{i}": surface.zs[i] for i in range(len(surface.zs))},
-                "Total Loss": float(stats["total_loss"]), "RMSE": float(stats["rmse"])
+                "Total Loss": float(stats["total_loss"]),
+                "RMSE": float(stats["rmse"])
             })
         except TypeError:
             print("Not adding this seed to the list ##############")
 
-    if len(rmse) > 0:
-        print(f"Final average RMSE over {len(rmse)} samples: {np.sum(rmse) / len(rmse)}")
-        print(f"Final average total loss over {len(loss)} samples: {np.sum(loss) / len(loss)}")
+        print(f"[Rank {rank}] Finished seed {int(instance)}")
+    
+    # Gather all results at rank 0
+    gathered = comm.gather(local_results, root=0)
 
-    df_params = pd.DataFrame(rows)
-    df_params.to_csv(f"{save_fits_to}", index=False)
+    # if len(rmse) > 0:
+    #     print(f"Final average RMSE over {len(rmse)} samples: {np.sum(rmse) / len(rmse)}")
+    #     print(f"Final average total loss over {len(loss)} samples: {np.sum(loss) / len(loss)}")
+
+    if rank == 0:
+        # Flatten list of lists
+        all_rows = [row for sublist in gathered for row in sublist]
+        df_params = pd.DataFrame(all_rows)
+
+        print(f"Total surfaces processed: {len(all_rows)}")
+        print(f"Saving to {save_fits_to}")
+        df_params.to_csv(save_fits_to, index=False)
+        total_time = timedelta(seconds=time.perf_counter() - starttime)
+        print(f"Total time taken: {total_time}")
+        print("Done.")
 
 class Surface():
     def __init__(self, points, interest_value, fourier_order):
@@ -236,7 +260,7 @@ class Surface():
                     lambda p: self.loss(p, N=N),
                     x0=initial_guess,
                     method='L-BFGS-B',
-                    options={'maxiter': 20000, 'ftol': 1e-12, 'gtol': 1e-12, 'disp': True, 'maxfun': 500000}
+                    options={'maxiter': 80000, 'ftol': 1e-12, 'gtol': 1e-12, 'disp': True, 'maxfun': 1500000}
                 )
 
             self.fit_result = result 
