@@ -2,8 +2,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+import matplotlib.ticker as ticker
 from sklearn.mixture import GaussianMixture
 from scipy.stats import gaussian_kde
+import random
 
 
 def main():
@@ -20,7 +22,18 @@ def main():
 def full_workflow(df, pca_dims=2, gaussian_modes=1, show_pca=False, show_functions=False, 
                   periodic=False, show_ci=False, show_latent=False, show_loss=False,
                   n_samples=100000, save_ci_csv=None, ss_theta=None):
-    """Given the original dataset, this applies the full workflow"""
+    """
+    Given the original dataset, this applies the full workflow
+    OPTIONS:
+        - show_pca (bool): Shows the PCA reduction of the zs... this is good to determine how many components to keep
+        - n_components (int): Number of components to keep, set this after analyzing the PCA
+        - show_functions (bool): Shows the true alpha and k functions as well as the sampled ones
+        - show_ci (bool): Shows the nice confidence interval of the alpha-k functions with the true overlayed
+        - save_ci_csv (str): If not None, will save the values of the mean, lower and upper 95%'s to a csv
+        - show_latent (bool): Shows the distributions of the latent space and the samples overlaying
+        - show_loss (bool): This simply plots a scatter of the samples and the loss accrued fitting them
+        - ss_theta (int): If not None, this generates a strength surface at the specified angle from the sampled alpha-k functions
+    """
 
     # to get a gague of how good the minimization was for this dataset (and maybe remove some outliers?)
     if show_loss:
@@ -45,17 +58,19 @@ def full_workflow(df, pca_dims=2, gaussian_modes=1, show_pca=False, show_functio
         plt.show()
 
     if show_ci:
-        plot_ci(zs, samples_z, periodic, title="Single Vacancies", save_csv=save_ci_csv)
+        plot_ci(zs, samples_z, periodic, title="Double Vacancies", save_csv=save_ci_csv)
     
     if ss_theta is not None:
         samples = samples_z.to_numpy() if isinstance(samples_z, pd.DataFrame) else np.asarray(samples_z)
         fig, ax = plt.subplots(figsize=(8, 8))
         ax.axhline(0, color='black', linewidth=1)
         ax.axvline(0, color='black', linewidth=1)
-        for i in range(min(len(samples), 100)):
+        for i in range(min(len(samples), 1000)):
             a, k = get_alpha_k(samples[i], ss_theta, periodic=False)
             plot_strength_surface(ax, a, k)
-        
+        ax.set_title(f"MX Artificial Strength Surfaces: θ={ss_theta}")
+        ax.set_xlabel(r"$\sigma_1$")
+        ax.set_ylabel(r"$\sigma_2$")
         plt.show()
 
 def overlay_cis():
@@ -87,10 +102,11 @@ def plot_strength_surface(ax, a, k, min_strength=-20, max_strength=130):
     i1 = sig1 + sig2 + sig3
     j2 = (sig1**2 + sig2**2 + sig3**2 - sig1*sig2 - sig2*sig3 - sig3*sig1) / 3.0
     F = np.sqrt(j2) + a * i1 - k
-    ax.contour(sig1, sig2, F, levels=[0], linewidths=2, colors='blue', alpha=0.2)  # F=0 curve
+    ax.contour(sig1, sig2, F, levels=[0], linewidths=2, colors='black', alpha=0.07)  # F=0 curve
 
 
-def display_pca(z):
+
+def display_pca(z, threshold=0.999):
     """This applies pca to the scaled zs dataset and shows the eigenvalue decay (so you can choose how many components you want to keep)"""
     pca = PCA()
     z_pca = pca.fit_transform(z)
@@ -100,12 +116,26 @@ def display_pca(z):
     y = (1 - np.cumsum(pca.explained_variance_ratio_)) / np.cumsum(pca.explained_variance_ratio_)
     print('Fraction of total variance explained when using k components:\n', np.cumsum(pca.explained_variance_ratio_))
     print('Ratio of unexplained to explained variance after keeping k components:\n', y)
-    plt.figure(figsize=(6,4))
-    plt.plot(range(1, len(pca.explained_variance_)+1), y, marker='o')
-    plt.xlabel('Number of Principal Components')
-    plt.ylabel('Cumulative Explained Variance')
-    plt.title('PCA Explained Variance')
-    plt.grid(True)
+    print(f'Eigenvalues: {pca.explained_variance_}')
+    fig, ax = plt.subplots(figsize=(8, 6))
+    if isinstance(threshold, int):
+        threshold = [threshold]
+    color_cycle = plt.rcParams["axes.prop_cycle"]
+    colors = [item['color'] for item in list(color_cycle) if 'color' in item]
+    for i, thresh in enumerate(threshold):
+        suggested_idx = [idx for idx, value in enumerate(np.cumsum(pca.explained_variance_ratio_)) if value > thresh]
+        suggested_dims = suggested_idx[0] + 1
+        print(f"For a threshold of {thresh*100:.8g}%, you should choose {suggested_dims} dimensions.")
+        ax.axvline(x=suggested_dims, ymin=0, ymax=1, color=colors[i], lw=1.5, linestyle='dashed', label=f'threshold={thresh*100:.8g}%')
+
+    ax.plot(range(1, len(pca.explained_variance_)+1), y, lw=2, marker='o', c='k')
+    ax.set_xlabel('Number of Principal Components')
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    ax.set_yscale('log')
+    ax.set_ylabel('Cumulative Explained Variance (logscale)')
+    ax.set_title('PCA Explained Variance')
+    ax.grid(True)
+    ax.legend()
     plt.show()
 
 
@@ -129,7 +159,8 @@ def fit_latent_density(z, pca_dims, gaussian_modes, n_samples, print_eigs=False,
     samples = pca.inverse_transform(samples_pca)
 
     if show_latent_space:
-        plot_latent_space(z_pca, samples_pca)
+        max_samples = 1000
+        plot_latent_space(z_pca, samples_pca[:min(len(samples_pca), max_samples)])
 
     return samples
 
@@ -139,7 +170,7 @@ def plot_alpha_k(samples, axs, periodic, n_samples=None, label='', return_params
     # handle if samples is a pandas df
     samples = samples.to_numpy() if isinstance(samples, pd.DataFrame) else np.asarray(samples)
 
-    def get_color(value, normalization, black='true'):
+    def get_color(value, normalization, black=True):
         if black:
             return 'k'
         cmap = plt.get_cmap('rainbow')   # or 'jet', 'turbo', 'plasma', etc.
@@ -161,14 +192,14 @@ def plot_alpha_k(samples, axs, periodic, n_samples=None, label='', return_params
         if return_params:
             all_alphas[i] = alpha
             all_ks[i] = k
-    
+
     axs[0].set_xlabel("θ")
-    axs[0].set_ylabel("α value")
-    axs[0].set_title(f"{label.capitalize()} α(θ)")
+    axs[0].set_ylabel("α")
+    axs[0].set_title(f"{label} α(θ)")
     axs[0].set_ylim(-0.2, 0.3)
     axs[1].set_xlabel("θ")
-    axs[1].set_ylabel("k value")
-    axs[1].set_title(f"{label.capitalize()} k(θ)")
+    axs[1].set_ylabel("k")
+    axs[1].set_title(f"{label} k(θ)")
     axs[1].set_ylim(20, 70)
 
     if return_params:
@@ -276,9 +307,12 @@ def plot_ci(true_z, samples_z, periodic, title=None, save_csv=None):
     plt.show()
 
 
-def plot_latent_space(latent_real, latent_sampled, bandwidth='scott', resolution=150, scatter_alpha=0.15, scatter_size=5):
+def plot_latent_space(latent_real, latent_sampled, bandwidth='scott', resolution=200, scatter_alpha=0.1, scatter_size=2):
     n_latent = latent_real.shape[1]
     fig, axs = plt.subplots(n_latent, n_latent, figsize=(2.5 * n_latent, 2.5 * n_latent))
+
+    max_val = max(np.max(latent_sampled), np.max(latent_real))
+    max_val = 8
 
     for i in range(n_latent):
         for j in range(n_latent):
@@ -288,7 +322,7 @@ def plot_latent_space(latent_real, latent_sampled, bandwidth='scott', resolution
                 # --- 1D KDE on diagonal ---
                 x = latent_real[:, i]
                 kde = gaussian_kde(x, bw_method=bandwidth)
-                xs = np.linspace(-8, 8, resolution)
+                xs = np.linspace(np.min(x), np.max(x), resolution)
                 ys = kde(xs)
                 ax.plot(xs, ys, color='blue', lw=2)
                 ax.fill_between(xs, ys, color='blue', alpha=0.3)
@@ -302,15 +336,24 @@ def plot_latent_space(latent_real, latent_sampled, bandwidth='scott', resolution
                 # --- 2D KDE on off-diagonals ---
                 x = latent_real[:, j]
                 y = latent_real[:, i]
+
+                max_val = max(np.max(latent_real[:, j]), np.max(latent_real[:, i]))
+                min_val = min(np.min(latent_real[:, j]), np.min(latent_real[:, i]))
+                # print(round(np.mean(x), 4), round(np.mean(y), 4))
+                # print(round(np.std(x), 4), round(np.std(y), 4))
                 kde = gaussian_kde(np.vstack([x, y]), bw_method=bandwidth)
 
-                X, Y = np.meshgrid(np.linspace(-8, 8, resolution), np.linspace(-8, 8, resolution))
+                X, Y = np.meshgrid(np.linspace(min_val, max_val, resolution), np.linspace(min_val, max_val, resolution))
                 Z = kde(np.vstack([X.ravel(), Y.ravel()])).reshape(X.shape)
 
                 # plot KDE heatmap
-                ax.imshow(Z, extent=[-8, 8, -8, 8], cmap="plasma", aspect='auto', alpha=0.8)
+                ax.imshow(Z, extent=[min_val, max_val, min_val, max_val], origin='lower', cmap="plasma", aspect='auto', alpha=0.9)
                 # overlay sampled scatter points
-                ax.scatter( latent_sampled[:, j], latent_sampled[:, i], color='k', s=scatter_size, alpha=scatter_alpha)
+                # ax.scatter(latent_sampled[:, j], latent_sampled[:, i], color='k', s=scatter_size, alpha=scatter_alpha)
+                # ax.axvline(0, lw=0.8, color='white', alpha=0.6)
+                # ax.axhline(0, lw=0.8, color='white', alpha=0.6)
+                ax.scatter(x[7], y[7], color='g', s=2, alpha=0.5)
+                ax.scatter(latent_sampled[22, j], latent_sampled[22, i], color='r', s=2, alpha=0.5)
 
             # axis labels
             if i == n_latent - 1:
