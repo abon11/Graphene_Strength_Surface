@@ -1,23 +1,24 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from numpy.random import multivariate_normal
+from sklearn.mixture import GaussianMixture
 from scipy.stats import gaussian_kde
 
 
 def main():
-    df = pd.read_csv("z_np_sv.csv")
-    # full_workflow(df, show_pca=True)
+    defs = "sv"
+    fo = 4
+    df = pd.read_csv(f"z_{defs}{fo}_reg1e-1.csv")
+    full_workflow(df, show_pca=True)
     # full_workflow(df, n_components=6, show_ci=True, save_ci_csv='stats_dv.csv', periodic=False)
-    full_workflow(df, n_components=6, ss_theta=0, periodic=False)
+    # full_workflow(df, pca_dims=6, ss_theta=0, periodic=False)
     # overlay_cis()
 
 
 
-def full_workflow(df, n_components=2, show_pca=False, show_functions=False, 
-                  periodic=True, show_ci=False, show_latent=False, show_loss=False,
+def full_workflow(df, pca_dims=2, gaussian_modes=1, show_pca=False, show_functions=False, 
+                  periodic=False, show_ci=False, show_latent=False, show_loss=False,
                   n_samples=100000, save_ci_csv=None, ss_theta=None):
     """Given the original dataset, this applies the full workflow"""
 
@@ -26,25 +27,21 @@ def full_workflow(df, n_components=2, show_pca=False, show_functions=False,
         plot_loss_data(df, "Total Loss")
 
     if "Defect Type" in df.columns:
-        zs = df.drop(columns=["Defect Type", "Defect Random Seed", "Total Loss", "RMSE"])
+        zs = df.drop(columns=["Defect Type", "Defect Random Seed", "Total Loss", "RMSE", "norm_z"]).to_numpy()
     else:
-        zs = df.drop(columns=["Defect Random Seed", "Total Loss", "RMSE"])
-    scaler = StandardScaler()  # define scaler
-    z_scaled = scaler.fit_transform(zs)  # scale z data
+        zs = df.drop(columns=["Defect Random Seed", "Total Loss", "RMSE", "norm_z"]).to_numpy()
+    
     if show_pca:
-        display_pca(z_scaled)
+        display_pca(zs)
         return
     
     # apply pca, fit gaussian, sample, apply inverse pca
-    z_sampled_scaled = fit_latent_density(z_scaled, n_components, n_samples, show_latent_space=show_latent)
-
-    # inverse standardization (back to physical coefficient scale)
-    samples_z = scaler.inverse_transform(z_sampled_scaled)
+    samples_z = fit_latent_density(zs, pca_dims, gaussian_modes, n_samples, show_latent_space=show_latent)
 
     if show_functions:
         fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(10, 10))
-        plot_alpha_k(zs, axs[0], label='true', periodic=periodic)
-        plot_alpha_k(samples_z, axs[1], n_samples=1000, label='generated', periodic=periodic)
+        plot_alpha_k(zs, axs[:, 0], label='true', periodic=periodic)
+        plot_alpha_k(samples_z, axs[:, 1], n_samples=1000, label='generated', periodic=periodic)
         plt.show()
 
     if show_ci:
@@ -93,10 +90,10 @@ def plot_strength_surface(ax, a, k, min_strength=-20, max_strength=130):
     ax.contour(sig1, sig2, F, levels=[0], linewidths=2, colors='blue', alpha=0.2)  # F=0 curve
 
 
-def display_pca(z_scaled):
+def display_pca(z):
     """This applies pca to the scaled zs dataset and shows the eigenvalue decay (so you can choose how many components you want to keep)"""
     pca = PCA()
-    z_pca = pca.fit_transform(z_scaled)
+    z_pca = pca.fit_transform(z)
 
     np.set_printoptions(precision=5, suppress=True)
 
@@ -112,29 +109,29 @@ def display_pca(z_scaled):
     plt.show()
 
 
-def fit_latent_density(z_scaled, n_components, n_samples, print_eigs=False, show_latent_space=False):
+def fit_latent_density(z, pca_dims, gaussian_modes, n_samples, print_eigs=False, show_latent_space=False):
     """This applies pca on the dataset (should be scaled) and keeps specified number of components. Then it fits a 
     multivariate gaussian to the latent dataset, samples from it however many times you want, then applies inverse 
     pca and returns the samples (still scaled)"""
-    pca = PCA(n_components=n_components)
-    z_pca = pca.fit_transform(z_scaled)
+    pca = PCA(n_components=pca_dims)
+    z_pca = pca.fit_transform(z)
 
     # print eigenvalues and explained variance if we want
     if print_eigs:
         print("Eigenvalues:", pca.explained_variance_)
         print("Explained variance ratio:", pca.explained_variance_ratio_)
 
-    # now fit MV normal in latent space:
-    mu = z_pca.mean(axis=0)
-    Sigma = np.cov(z_pca, rowvar=False)
-    samples_pca = multivariate_normal(mu, Sigma, size=n_samples)
+    # now fit Gaussian Mixture in latent space:
+    gmm = GaussianMixture(n_components=gaussian_modes, covariance_type="full", reg_covar=1e-4, random_state=42)
+    gmm.fit(z_pca)
+    samples_pca, _ = gmm.sample(n_samples=n_samples)
     # inverse PCA transform (back to standardized space)
-    samples_scaled = pca.inverse_transform(samples_pca)
+    samples = pca.inverse_transform(samples_pca)
 
     if show_latent_space:
         plot_latent_space(z_pca, samples_pca)
 
-    return samples_scaled
+    return samples
 
 
 def plot_alpha_k(samples, axs, periodic, n_samples=None, label='', return_params=False):
@@ -178,7 +175,7 @@ def plot_alpha_k(samples, axs, periodic, n_samples=None, label='', return_params
         return all_alphas, all_ks
 
 
-def get_alpha_k(params, theta, return_k=True, periodic=True):
+def get_alpha_k(params, theta, periodic=False):
     if periodic:
         omega = 2 * np.pi * theta / 60
     else:
@@ -194,21 +191,17 @@ def get_alpha_k(params, theta, return_k=True, periodic=True):
         cos_coeff_a = params[2 * m - 1]
         sin_coeff_a = params[2 * m]
         z_alpha += cos_coeff_a * np.cos(m * omega) + sin_coeff_a * np.sin(m * omega)
-        if return_k:
-            cos_coeff_k = params[(2*N+1)+(2 * m - 1)]
-            sin_coeff_k = params[(2*N+1)+(2 * m)]
-            z_k += cos_coeff_k * np.cos(m * omega) + sin_coeff_k * np.sin(m * omega)
-    
+        cos_coeff_k = params[(2*N+1)+(2 * m - 1)]
+        sin_coeff_k = params[(2*N+1)+(2 * m)]
+        z_k += cos_coeff_k * np.cos(m * omega) + sin_coeff_k * np.sin(m * omega)
+
     # once we have the value of z_alpha and z_k, we must transform back to alpha and k:
     def softplus(z):
         return np.log1p(np.exp(-np.abs(z))) + np.maximum(z, 0)
 
     alpha = -np.sqrt(3) / 6 + softplus(z_alpha)
-    if return_k:
-        k = softplus(z_k)
-        return alpha, k
-    else:
-        return alpha
+    k = softplus(z_k)
+    return alpha, k
 
 
 def plot_ci(true_z, samples_z, periodic, title=None, save_csv=None):
