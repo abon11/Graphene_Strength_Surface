@@ -6,14 +6,22 @@ import matplotlib.ticker as ticker
 from sklearn.mixture import GaussianMixture
 from scipy.stats import gaussian_kde
 import random
+from matplotlib.patches import Polygon
+from filter_csv import filter_data
+import local_config
+
 
 
 def main():
     defs = "sv"
     fo = 4
     df = pd.read_csv(f"z_{defs}{fo}_reg1e-1.csv")
-    full_workflow(df, show_pca=True)
-    # full_workflow(df, n_components=6, show_ci=True, save_ci_csv='stats_dv.csv', periodic=False)
+    md_df = pd.read_csv(f'{local_config.DATA_DIR}/rotation_tests/all_simulations.csv')
+    exact_filters, or_filters = get_filters(defs)
+    raw_md_data = filter_data(md_df, exact_filters=exact_filters, or_filters=or_filters, remove_nones=True, remove_dupes=True, duplic_freq=(0, 91, 10))
+    # full_workflow(df, show_pca=True)
+    # full_workflow(df, defs=defs, pca_dims=14, gaussian_modes=1, show_ci=True, save_ci_csv=f"stats_{defs}.csv")
+    full_workflow(df, defs=defs, pca_dims=14, gaussian_modes=24, ci_theta=30, raw_md_data=raw_md_data)
     # full_workflow(df, pca_dims=6, ss_theta=0, periodic=False)
     # overlay_cis()
 
@@ -21,7 +29,8 @@ def main():
 
 def full_workflow(df, pca_dims=2, gaussian_modes=1, show_pca=False, show_functions=False, 
                   periodic=False, show_ci=False, show_latent=False, show_loss=False,
-                  n_samples=100000, save_ci_csv=None, ss_theta=None):
+                  n_samples=100000, save_ci_csv=None, ss_theta=None, defs="", ci_theta=None, 
+                  raw_md_data=None):
     """
     Given the original dataset, this applies the full workflow
     OPTIONS:
@@ -40,9 +49,9 @@ def full_workflow(df, pca_dims=2, gaussian_modes=1, show_pca=False, show_functio
         plot_loss_data(df, "Total Loss")
 
     if "Defect Type" in df.columns:
-        zs = df.drop(columns=["Defect Type", "Defect Random Seed", "Total Loss", "RMSE", "norm_z"]).to_numpy()
+        zs = df.drop(columns=["Defect Type", "Defect Random Seed", "Total Loss", "NRMSE", "norm_z"]).to_numpy()
     else:
-        zs = df.drop(columns=["Defect Random Seed", "Total Loss", "RMSE", "norm_z"]).to_numpy()
+        zs = df.drop(columns=["Defect Random Seed", "Total Loss", "NRMSE", "norm_z"]).to_numpy()
     
     if show_pca:
         display_pca(zs)
@@ -58,7 +67,9 @@ def full_workflow(df, pca_dims=2, gaussian_modes=1, show_pca=False, show_functio
         plt.show()
 
     if show_ci:
-        plot_ci(zs, samples_z, periodic, title="Double Vacancies", save_csv=save_ci_csv)
+        char = defs[0].lower()
+        plot_title = "Single" if char == 's' else "Double" if char == 'd' else "Mixed" if char == 'm' else "No"
+        plot_ci(zs, samples_z, periodic, title=f"{plot_title} Vacancies", save_csv=save_ci_csv)
     
     if ss_theta is not None:
         samples = samples_z.to_numpy() if isinstance(samples_z, pd.DataFrame) else np.asarray(samples_z)
@@ -68,10 +79,37 @@ def full_workflow(df, pca_dims=2, gaussian_modes=1, show_pca=False, show_functio
         for i in range(min(len(samples), 1000)):
             a, k = get_alpha_k(samples[i], ss_theta, periodic=False)
             plot_strength_surface(ax, a, k)
-        ax.set_title(f"MX Artificial Strength Surfaces: θ={ss_theta}")
+        ax.set_title(f"{defs.upper()} Artificial Strength Surfaces: θ={ss_theta}")
         ax.set_xlabel(r"$\sigma_1$")
         ax.set_ylabel(r"$\sigma_2$")
         plt.show()
+
+    if ci_theta is not None:
+        fig, ax = plt.subplots(figsize=(8, 8))
+        if raw_md_data is not None:
+            plot_raw_data(ax, raw_md_data, ci_theta, color='red')
+        for i in range(min(len(zs), 1000)):
+            a, k = get_alpha_k(zs[i], ci_theta, periodic=False)
+            plot_strength_surface(ax, a, k)
+        ax.set_title(f"{defs.upper()} Strength Surface CI: θ={ci_theta}")
+        ax.set_xlabel(r"$\sigma_1$")
+        ax.set_ylabel(r"$\sigma_2$")
+        ax.plot([], [], color='k', alpha=0.1, label='True Data')
+        plot_strength_ci(zs, ci_theta, ax=ax, show_ci=False, mean_color='k', mean_lw=3, label="True Mean")
+        plot_strength_ci(samples_z, ci_theta, ax=ax, mean_linestyle='--')
+        plt.show()
+
+def get_filters(defs):
+    if defs == "mx":
+        exact_filters = {"Defects": '{"DV": 0.25, "SV": 0.25}'}
+        or_filters = {}
+    elif defs == "none":
+        exact_filters = {"Defects": "None"}
+        or_filters = {"Theta Requested": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]}  # filter out all of the uniaxials
+    else:
+        exact_filters = {"Defects": f'{{"{defs.upper()}": 0.5}}'}
+        or_filters = {}
+    return exact_filters, or_filters
 
 def overlay_cis():
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
@@ -79,17 +117,23 @@ def overlay_cis():
     plot_given_ci(axs, pd.read_csv("stats_dv.csv"), 'blue', 'DV')
     plot_given_ci(axs, pd.read_csv("stats_mx.csv"), 'green', 'SV+DV')
 
+    ticks = np.arange(0, 91, 30)
+
     axs[0].set_title("α(θ) Statistical Analysis")
     axs[0].set_xlabel("θ (deg)")
     axs[0].set_ylabel("α")
     axs[0].legend()
     axs[0].grid(True)
+    axs[0].set_xticks(ticks)
+    axs[0].set_ylim(-0.2, 0.4)
 
     axs[1].set_title("k(θ) Statistical Analysis")
     axs[1].set_xlabel("θ (deg)")
     axs[1].set_ylabel("k")
     axs[1].legend()
     axs[1].grid(True)
+    axs[1].set_xticks(ticks)
+    axs[1].set_ylim(20, 80)
 
     fig.tight_layout()
     plt.show()
@@ -118,7 +162,7 @@ def display_pca(z, threshold=0.999):
     print('Ratio of unexplained to explained variance after keeping k components:\n', y)
     print(f'Eigenvalues: {pca.explained_variance_}')
     fig, ax = plt.subplots(figsize=(8, 6))
-    if isinstance(threshold, int):
+    if isinstance(threshold, float):
         threshold = [threshold]
     color_cycle = plt.rcParams["axes.prop_cycle"]
     colors = [item['color'] for item in list(color_cycle) if 'color' in item]
@@ -185,7 +229,7 @@ def plot_alpha_k(samples, axs, periodic, n_samples=None, label='', return_params
         all_ks = np.empty((n_samples, len(theta)))
 
     for i in range(n_samples):  # plot samples
-        alpha, k = get_alpha_k(samples[i, :], theta, 2, periodic=periodic)
+        alpha, k = get_alpha_k(samples[i, :], theta, periodic=periodic)
 
         axs[0].plot(theta, alpha, c=get_color(i, n_samples, black=True), alpha=0.1)
         axs[1].plot(theta, k, c=get_color(i, n_samples, black=True), alpha=0.1)
@@ -196,11 +240,11 @@ def plot_alpha_k(samples, axs, periodic, n_samples=None, label='', return_params
     axs[0].set_xlabel("θ")
     axs[0].set_ylabel("α")
     axs[0].set_title(f"{label} α(θ)")
-    axs[0].set_ylim(-0.2, 0.3)
+    axs[0].set_ylim(-0.2, 0.4)
     axs[1].set_xlabel("θ")
     axs[1].set_ylabel("k")
     axs[1].set_title(f"{label} k(θ)")
-    axs[1].set_ylim(20, 70)
+    axs[1].set_ylim(20, 80)
 
     if return_params:
         return all_alphas, all_ks
@@ -407,6 +451,119 @@ def plot_given_ci(axs, df, col, lab):
     axs[1].plot(df["theta"], df["k lower 95"], lw=2, color=col, linestyle='dashed', label=f'{lab} CI')
     axs[1].plot(df["theta"], df["k upper 95"], lw=2, color=col, linestyle='dashed')
 
+
+def strength_ci(z_samples, theta_deg, r_grid=None):
+    """
+    Given:
+      z_samples : array shape (n_samples, n_params)
+      theta_deg : scalar angle in degrees
+      r_grid    : 1D array of stress ratios r = sigma2 / sigma1
+
+    Returns:
+      dict with mean, lower, upper curves in strength space:
+        {
+          "r": r_grid,
+          "sigma1_mean": ...,
+          "sigma1_low" : ...,
+          "sigma1_high": ...,
+          "sigma2_mean": ...,
+          "sigma2_low" : ...,
+          "sigma2_high": ...
+        }
+    """
+    z_samples = np.asarray(z_samples)
+    n_samples, _ = z_samples.shape
+
+    if r_grid is None:
+        r_grid = np.linspace(0.0, 1.0, 51)
+    else:
+        r_grid = np.asarray(r_grid)
+    n_r = len(r_grid)
+
+    # storage: sigma1 for each sample and each ratio
+    sigma1_samples = np.zeros((n_samples, n_r))
+
+    # precompute the r-dependent piece that does not depend on z
+    base_term = np.sqrt(1.0 + r_grid**2 - r_grid) / np.sqrt(3.0)
+
+    for s in range(n_samples):
+        alpha_s, k_s = get_alpha_k(z_samples[s, :], theta_deg)
+
+        # denominator: base_term + alpha(θ) * (1 + r)
+        denom = base_term + alpha_s * (1.0 + r_grid)
+        # denom should never be zero because of constraints from softplus fn
+        sigma1_samples[s, :] = k_s / denom
+
+    # compute stats along the sample axis
+    sigma1_mean = np.mean(sigma1_samples, axis=0)
+    sigma1_low  = np.percentile(sigma1_samples,  2.5, axis=0)
+    sigma1_high = np.percentile(sigma1_samples, 97.5, axis=0)
+
+    sigma2_mean = r_grid * sigma1_mean
+    sigma2_low  = r_grid * sigma1_low
+    sigma2_high = r_grid * sigma1_high
+
+    return {
+        "r": r_grid,
+        "sigma1_mean": sigma1_mean,
+        "sigma1_low" : sigma1_low,
+        "sigma1_high": sigma1_high,
+        "sigma2_mean": sigma2_mean,
+        "sigma2_low" : sigma2_low,
+        "sigma2_high": sigma2_high,
+    }
+
+def plot_strength_ci(z_samples, theta_deg, r_grid=None, ax=None, label=None, show_ci=True, mean_color='gold', mean_linestyle='solid', mean_lw=2):
+    """
+    Convenience wrapper that calls strength_curve_CI_for_theta and plots the mean and CI band.
+    """
+    stats = strength_ci(z_samples, theta_deg, r_grid=r_grid)
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+
+    s1m = np.concatenate([stats["sigma1_mean"], stats["sigma2_mean"][::-1]])
+    s1L = np.concatenate([stats["sigma1_low"], stats["sigma2_low"][::-1]])
+    s1U = np.concatenate([stats["sigma1_high"], stats["sigma2_high"][::-1]])
+    s2m = np.concatenate([stats["sigma2_mean"], stats["sigma1_mean"][::-1]])
+    s2L = np.concatenate([stats["sigma2_low"], stats["sigma1_low"][::-1]])
+    s2U = np.concatenate([stats["sigma2_high"], stats["sigma1_high"][::-1]])
+
+    # mean curve
+    ax.plot(s1m, s2m, color=mean_color, lw=mean_lw, linestyle=mean_linestyle, label=f"Sample Mean" if label is None else label)
+
+    if show_ci:
+        fill_between_parametric(ax, s1L, s2L, s1U, s2U, facecolor='lightblue', alpha=0.6, edgecolor=None)
+        ax.plot([], [], marker='s', markersize=12, markerfacecolor='lightblue', markeredgecolor='lightblue', alpha=0.6, linestyle='None', label='95% CI')
+
+    ax.set_xlabel(r"$\sigma_1$ (GPa)")
+    ax.set_ylabel(r"$\sigma_2$ (GPa)")
+    ax.set_xlim(-5, 120)
+    ax.set_ylim(-5, 120)
+    ax.axvline(0, c='k')
+    ax.axhline(0, c='k')
+    # ax.set_aspect("equal", adjustable="box")
+    ax.legend()
+
+    return ax
+
+def fill_between_parametric(ax, x1, y1, x2, y2, **kwargs):
+    """
+    Fill region between two parametric curves:
+        (x1[i], y1[i]) = lower branch
+        (x2[i], y2[i]) = upper branch
+    """
+    # Build polygon: lower curve forward, upper curve backward
+    xs = np.concatenate([x1, x2[::-1]])
+    ys = np.concatenate([y1, y2[::-1]])
+
+    poly = Polygon(np.column_stack([xs, ys]), closed=True, **kwargs)
+    ax.add_patch(poly)
+
+def plot_raw_data(ax, md, theta, color='k', base_alpha=0.1, s=5, theta_buffer=4):
+    filtered_df = filter_data(md, range_filters={"Theta": (theta-theta_buffer, theta+theta_buffer)}, shift_theta=False, flip_strengths=True)
+    alpha = ((abs(filtered_df["Theta"]-theta) - theta_buffer) / -theta_buffer) * base_alpha
+    ax.scatter(filtered_df["Strength_1"], filtered_df["Strength_2"], color=color, alpha=alpha, s=s, label="Raw MD Data")
 
 if __name__ == "__main__":
     main()
