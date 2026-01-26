@@ -12,18 +12,18 @@ import ast
 
 def main():
     # ========== USER INTERFACE ==========
-    folder = f'{local_config.DATA_DIR}/rotation_tests'
+    folder = f'{local_config.DATA_DIR}/size_tests'
     csv_file = f"{folder}/all_simulations.csv"
 
     exact_filters = {
-        "Num Atoms x": 60,
-        "Num Atoms y": 60,
-        "Defects": '{"DV": 0.5}',  # will match NaN or "None"
+        "Num Atoms x": 100,
+        "Num Atoms y": 30,
+        # "Defects": '{"DV": 0.5}',  # will match NaN or "None"
         # "Defects": "None",
         # "Defect Random Seed": 77,
         # "Theta Requested": 90,
         # "Strain Rate x": 0.001,
-        # "Strain Rate y": 0.001,
+        "Strain Rate y": 0.001,
         # "Strain Rate xy": 0.0
     }
 
@@ -45,7 +45,7 @@ def main():
     # ====================================
     
     df = pd.read_csv(csv_file)
-    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, remove_nones=True,
+    filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, remove_nones=False,
                               only_uniaxial=uniaxial, remove_biaxial=False, remove_dupes=True, duplic_freq=(0, 91, 10))
     
     print(f"Filtered {len(filtered_df)} rows from {len(df)} total.")
@@ -59,7 +59,8 @@ def main():
 # duplic_freq is a tuple meaning (start_theta, end_theta, how many to jump by) to duplicate biaxial tension across all thetas
 def filter_data(df, exact_filters=None, range_filters=None, or_filters=None, 
                 flip_strengths=False, duplic_freq=None, only_uniaxial=False,
-                remove_biaxial=False, remove_dupes=False, shift_theta=True, remove_nones=False):
+                remove_biaxial=False, remove_dupes=False, shift_theta=True,
+                remove_nones=False, suppress_message=False):
 
     """
     Filter df on exact, range, OR filters and optionally flip strength directions.
@@ -126,7 +127,8 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None,
 
     if shift_theta is True:
         filtered["Theta"] = filtered["Theta"] - filtered["Rotation Angle"]
-        print("Shifted Theta such that Theta[new] = Theta[old] - Rotation Angle.")
+        if suppress_message is False:
+            print("Shifted Theta such that Theta[new] = Theta[old] - Rotation Angle.")
 
     if remove_nones:
         filtered = drop_nones(filtered)
