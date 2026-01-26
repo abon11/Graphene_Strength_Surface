@@ -1174,3 +1174,72 @@ class Simulation:
         return neighbors
 
         
+class Relaxation:
+    def __init__(self, comm, rank, sheet_path, x_atoms, y_atoms, 
+                 sim_length=120000, timestep=0.0005, thermo=1000, nvt_percentage=0.2, detailed_data=False):
+        self.comm = comm
+        self.rank = rank
+        self.sheet_path = sheet_path
+        self.x_atoms = x_atoms
+        self.y_atoms = y_atoms
+        self.sim_length = sim_length
+        self.timestep = timestep
+        self.thermo = thermo
+        self.nvt_percentage = nvt_percentage
+        self.detailed_data = detailed_data
+
+        self.sheet = GrapheneSheet(sheet_path, x_atoms, y_atoms)
+
+        lmp = lammps(comm=comm)  # initialize lammps
+        self.lmp = lmp  # store this instance of lammps so we can refer to it throughout the class
+
+        self.setup_lammps()  # puts all needed variables in lammps and initializes file
+        self.lmp.command('velocity all create 100.0 20 mom yes rot yes dist gaussian')
+        nvt_command = "fix 1 all nvt temp 100.0 273.0 10.0"
+        nvt_time = int(self.sim_length * self.nvt_percentage)
+        self.run_command(nvt_command, nvt_time, cleanup_command="unfix 1")
+
+        npt_command = "fix 2 all npt temp 273.0 273.0 0.1 x 0.0 0.0 0.1 y 0.0 0.0 0.1"
+        self.run_command(npt_command, int(self.sim_length - nvt_time))
+        self.lmp.command(f"write_data {sheet_path}")  # overwrite the stiff data with the relaxed data
+
+    def setup_lammps(self):
+        """
+        - This sets up the LAMMPS simulation and imports all of the important variables to LAMMPS
+        - This is called in 'self.__init__()' directly after this instance of LAMMPS is created
+        """
+        self.lmp.command(f"variable vol equal {self.sheet.volume}")
+        self.lmp.command(f"variable sheet_lx equal {self.sheet.Lx}")
+        self.lmp.command(f"variable sheet_ly equal {self.sheet.Ly}")
+        self.lmp.command(f"variable sheet_lz equal {self.sheet.Lz}")
+        self.lmp.command(f"variable timestep equal {self.timestep}")
+
+        self.lmp.command(f"variable datafile string {self.sheet.datafile_name}")
+
+        if self.detailed_data:
+            path, name = split_path(self.sheet_path)
+            self.lmp.command(f"dump 1 all custom {self.thermo} {path}dump.{name} id type x y z")
+
+        self.lmp.file("in.relax_py")
+
+    def run_command(self, fix_command, num_timesteps, cleanup_command=None):
+        self.lmp.command(fix_command)
+        thermos_to_run = int(num_timesteps / self.thermo)
+        for steps in range(thermos_to_run):
+            self.lmp.command(f"run {self.thermo} pre yes post no")
+
+        if cleanup_command is not None:
+            self.lmp.command(cleanup_command)
+
+# can get the raw filepath as well as the filename, where the file name is something like data.name
+def split_path(s):
+    if '/' in s:
+        before, after = s.rsplit('/', 1)
+        before += '/'
+    else:
+        before, after = '', s
+
+    if '.' in after:
+        after = after.split('.', 1)[1]
+
+    return before, after
