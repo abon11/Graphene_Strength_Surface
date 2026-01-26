@@ -10,9 +10,29 @@ import os
 import numpy as np
 import local_config
 from filter_csv import filter_data
-
+import matplotlib as mpl
+import json
 
 def main():
+    mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['font.family'] = 'serif'
+    mpl.rcParams['font.serif'] = ['Computer Modern Roman']
+
+    mpl.rcParams['text.latex.preamble'] = r"""
+    \usepackage{amsmath}
+    \usepackage{amssymb}
+    \usepackage{xcolor}
+    """
+
+    mpl.rcParams['axes.unicode_minus'] = False
+    plt.rcParams.update({
+        'font.size': 10,      # match normalsize
+        'axes.labelsize': 10,
+        'xtick.labelsize': 8,
+        'ytick.labelsize': 8,
+        'legend.fontsize': 8, # slightly smaller like LaTeX
+        'text.usetex': True,
+    })
     # ========== USER INTERFACE ==========
 
     x_column = "Strain_1"
@@ -27,7 +47,7 @@ def main():
         "Num Atoms y": 60,
         # "Defects": "{\"DV\": 0.25, \"SV\": 0.25}",  # will match NaN or "None"
         # "Defect Random Seed": 0,
-        # "Theta Requested": 0,
+        "Theta Requested": 0,
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.0
     }
@@ -35,12 +55,12 @@ def main():
     range_filters = {
         # "Defect Percentage": (0.4, 0.6),
         # "Simulation ID": (2670, 2913)
-        # "Defect Random Seed": (0, 19)
+        "Defect Random Seed": (0, 19)
     }
 
     or_filters = {
-        # "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
-        "Simulation ID": [2926, 36907]
+        "Defects": ["{\"DV\": 0.25, \"SV\": 0.25}", "{\"DV\": 0.5}", "{\"SV\": 0.5}"],
+        # "Simulation ID": [2926, 36907]
     }
     # ====================================
     df = pd.read_csv(csv_file)
@@ -56,7 +76,7 @@ def main():
     # else:
     #     orient = None
 
-    plot_many_detailed(filtered_df, x_column, y_column, folder, title="Pristine", labelby="Simulation ID")
+    plot_many_detailed(filtered_df, x_column, y_column, folder, title="", labelby="Defects")
 
 
 def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim", title=None, labelby=None):
@@ -84,7 +104,9 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
     potential_colors=['red', 'blue', 'green', 'purple', 'pink', 'orange', 'grey', 'gold', 'brown']
     color_dict = {}
 
-    fig, ax = plt.subplots(figsize=(8, 6))
+    # fig, ax = plt.subplots(figsize=(8, 6))
+    # fig, ax = plt.subplots(figsize=(3.56, 3.0))   # width = 0.55\linewidth
+    fig, ax = plt.subplots(figsize=(3.11, 2.62))   # width = 0.48\linewidth
 
     for idx, row in df.iterrows():
         sim_id = str(row["Simulation ID"]).zfill(5)
@@ -101,21 +123,29 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
             if labelby is not None and labelby in df.columns:
                 label_val = str(row[labelby])
                 lab = f"{labelby}: {label_val}"
+                li = list(json.loads(label_val).keys())
+                if len(li) != 1:
+                    lab = "MX"
+                else:
+                    lab = li[0]
                 if label_val not in color_dict:
                     # color_dict[str(label_val)] = potential_colors[len(color_dict) % len(potential_colors)]
                     # hardcoding this in so the colors are consistent across plots
                     if label_val == '{"SV": 0.5}':
                         color_dict[label_val] = 'red'
+                        lab == "SV"
                     elif label_val == '{"DV": 0.5}':
                         color_dict[label_val] = 'blue'
+                        lab == "DV"
                     elif label_val == '{"DV": 0.25,"SV": 0.25}':
                         color_dict[label_val] = 'green'
+                        lab == "MX"
                     else:
                         color_dict[label_val] = potential_colors[len(color_dict) % len(potential_colors)]
-                if int(label_val) == 2926:
-                    lab = "Armchair"
-                else:
-                    lab = "Zigzag"
+                # if int(label_val) == 2926:
+                #     lab = "Armchair"
+                # else:
+                #     lab = "Zigzag"
             else:
                 lab = f"{label_prefix}{sim_id}"
 
@@ -125,7 +155,7 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
                 sim_df[y_col],
                 label=lab if lab not in current_labels else None,
                 color=color_dict[label_val] if label_val is not None else color[idx % len(color)] if color is not None else None,
-                alpha=0.8
+                alpha=0.2
             )
         except Exception as e:
             print(f"[Error] Failed to plot sim{sim_id}: {e}")
@@ -134,23 +164,26 @@ def plot_many_detailed(df, x_col, y_col, folder, color=None, label_prefix="sim",
     # ax.plot([avg_strain_mx, avg_strain_mx], [0, avg_strength_mx], color='green', linewidth=3, linestyle='-', alpha=0.8)
     # ax.plot([avg_strain_dv, avg_strain_dv], [0, avg_strength_dv], color='blue', linewidth=3, linestyle='--', alpha=0.8)
     
-    ax.set_xlabel("Strain", fontsize=18)
-    ax.set_ylabel("Stress (GPa)", fontsize=18)
+    ax.set_xlabel("Strain")
+    ax.set_ylabel("Stress (GPa)")
 
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
+    plt.xticks()
+    plt.yticks()
+    plt.grid()
 
-    if title is not None:
-        ax.set_title(f"Stress vs strain: {title}", fontsize=20)
-    else: 
-        ax.set_title("Stress vs strain", fontsize=20)
+    # if title is not None:
+    #     ax.set_title(f"Stress vs strain: {title}", fontsize=20)
+    # else: 
+    #     ax.set_title("Stress vs strain", fontsize=20)
 
-    ax.legend(fontsize=12)
+    leg = ax.legend()
+    for lh in leg.legend_handles:
+        lh.set_alpha(0.8) 
     fig.tight_layout()
     if title is not None:
-        filename = f"{folder}/plots/sig_eps_{title}.png"
+        filename = f"{folder}/plots/sig_eps_ac{title}.pdf"
     else:
-        filename = f"{folder}/plots/stress_strain.png"
+        filename = f"{folder}/plots/stress_strain.pdf"
     fig.savefig(filename)
     print(f"Plot saved to {filename}")
     
