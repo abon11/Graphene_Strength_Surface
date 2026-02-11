@@ -14,7 +14,6 @@ from sklearn.decomposition import PCA
 import matplotlib.ticker as ticker
 from sklearn.mixture import GaussianMixture
 from scipy.stats import gaussian_kde
-import random
 from matplotlib.patches import Polygon
 from filter_csv import filter_data
 import local_config
