@@ -14,9 +14,11 @@ A conda environment makes this setup the simplest, and here I have the following
   - `joblib`
   - `pysr`
   - `pickle`
-  Only necessary for the notebooks:
+
+Only necessary for the notebooks:
   - `ipywidgits`
   - `jupyter`
+
 Only necessary for the copulas scripts:
   - `seaborn`
   - `copulas`
