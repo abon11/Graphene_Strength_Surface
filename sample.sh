@@ -1,3 +1,5 @@
+# Sample of how SLURM running works
+
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=76

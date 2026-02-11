@@ -1,3 +1,7 @@
+# This takes in some parameters and does the logic to run the entire surface for those parameters
+# (basically, it will run all principal stress ratios for some sheet, defect seed, theta, etc)
+# Called in run_all.sh
+
 #!/bin/bash
 
 # Configuration

@@ -1,4 +1,9 @@
-""" This is used if you want to make a strength surface not using SLURM """
+"""
+This is used if you want to make a strength surface not using SLURM.
+You simply run ./make_surface with all of the flags.
+NOTE: THIS SCRIPT IS OUT-DATED. It does not pull the stress-strain mapping, and 
+it also has out-dated flags. Will need to update in order to get it to work properly.
+"""
 
 import argparse
 import subprocess

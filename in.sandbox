@@ -1,4 +1,5 @@
 # LAMMPS Input Script for Uniaxial Tensile Test with AIREBO Potential
+# Random sandbox where I try stuff
 
 include local_config.lmp
 

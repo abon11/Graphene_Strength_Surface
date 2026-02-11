@@ -12,25 +12,25 @@ import ast
 
 def main():
     # ========== USER INTERFACE ==========
-    folder = f'{local_config.DATA_DIR}/size_tests'
+    folder = f'{local_config.DATA_DIR}/angle_testing'
     csv_file = f"{folder}/all_simulations.csv"
 
     exact_filters = {
-        "Num Atoms x": 100,
-        "Num Atoms y": 30,
+        # "Num Atoms x": 60,
+        # "Num Atoms y": 130,
         # "Defects": '{"DV": 0.5}',  # will match NaN or "None"
         # "Defects": "None",
         # "Defect Random Seed": 77,
         # "Theta Requested": 90,
         # "Strain Rate x": 0.001,
-        "Strain Rate y": 0.001,
+        # "Strain Rate y": 0.001,
         # "Strain Rate xy": 0.0
     }
 
     range_filters = {
         # "Defect Random Seed": (0, 19)
         # "Theta Requested": (90, 90),
-        # "Sigma_1": (4, 20)
+        "Sigma_1": (4, 20)
         # "Theta": (24, 32)
     }
 
@@ -46,7 +46,7 @@ def main():
     
     df = pd.read_csv(csv_file)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, remove_nones=False,
-                              only_uniaxial=uniaxial, remove_biaxial=False, remove_dupes=True, duplic_freq=(0, 91, 10))
+                              shift_theta=False, only_uniaxial=uniaxial, remove_biaxial=False, remove_dupes=False, duplic_freq=None) #(0, 91, 10)
     
     print(f"Filtered {len(filtered_df)} rows from {len(df)} total.")
     filtered_df.to_csv("filtered.csv", index=False)
@@ -73,7 +73,10 @@ def filter_data(df, exact_filters=None, range_filters=None, or_filters=None,
     if duplic_freq is not None:
         filtered = duplicate_biaxial_rows(filtered, duplic_freq)
 
-    filtered = alphabetize_dict(filtered, "Defects")
+    try:
+        filtered = alphabetize_dict(filtered, "Defects")
+    except KeyError:
+        print("No 'Defects' column detected. Continuing...")
 
     # Apply exact filters
     for col, val in (exact_filters or {}).items():

@@ -1,3 +1,9 @@
+"""
+This runs the full workflow of generating the probabilistic results -- it takes the 3D DP fits
+as inputs, and the user can specify how they go down to the latent space, sample, project, etc.
+"""
+
+
 import os
 os.environ["MPLCONFIGDIR"] = "/tmp/matplotlib"
 
@@ -16,6 +22,7 @@ import matplotlib as mpl
 
 
 def main():
+    # these are here for plotting for the paper
     mpl.rcParams['text.usetex'] = True
     mpl.rcParams['font.family'] = 'serif'
     mpl.rcParams['font.serif'] = ['Computer Modern Roman']
@@ -36,6 +43,8 @@ def main():
         'legend.fontsize': 8, # slightly smaller like LaTeX
         'text.usetex': True,
     })
+
+    # examples of how to use this
     defs = "sv"
     fo = 4
     # generate_full_pca_plot(fo)

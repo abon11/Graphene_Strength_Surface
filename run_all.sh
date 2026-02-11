@@ -1,4 +1,4 @@
-# This runs super large batch sims
+# This runs super large batch sims for deformation events (fracture)
 #!/bin/bash
 set -euo pipefail
 

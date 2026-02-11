@@ -1,3 +1,7 @@
+"""
+This runs one relaxation simulation... called in one_relaxation.sh to set the args.
+"""
+
 from mpi4py import MPI
 from deform_graphene import Relaxation
 from one_sim import initialize_rank, str2bool

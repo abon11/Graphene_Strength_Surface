@@ -1,6 +1,7 @@
 """
 Given a csv with drucker prager parameters (for 2D or 3D), this generates plots and calculates the errors
-without having to refit the least squares model.
+without having to refit the least squares model. This is a bit hard-coded from testing, but the logic
+is there if we care to improve it in the future.
 """
 
 import pandas as pd

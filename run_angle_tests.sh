@@ -1,4 +1,4 @@
-# This runs the short sims for the angle testing data generation
+# This runs the short sims for the angle testing data generation (for stress-strain mapping)
 #!/bin/bash
 
 # Configuration

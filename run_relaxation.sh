@@ -1,3 +1,5 @@
+# This is treated similar to run_manual, except it does it for the mass relaxation of graphene sheets
+
 #!/bin/bash
 
 EMAIL="avb25@duke.edu"

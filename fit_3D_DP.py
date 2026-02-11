@@ -1,6 +1,8 @@
 """
 This fits the 2-parameter Drucker-Prager model to a set of strength surface data, where alpha and k are 
-functions of theta. It fits alpha and k as 4th order fourier series, and saves all of the coefficients in the csv
+functions of theta. It fits alpha and k as nth order fourier series, and saves all of the coefficients in the csv.
+Allows the user to input lambda, fourier_order, and defects directly from the command line, working well with
+bash scripts for mass fitting.
 """
 
 from mpi4py import MPI
