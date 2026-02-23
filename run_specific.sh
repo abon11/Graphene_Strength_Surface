@@ -1,3 +1,5 @@
+# This was used to run specific instances of tests, most recently uniaxial only. Its a bit outdated now...
+
 # Configuration
 MAX_JOBS_IN_FLIGHT="${MAX_JOBS_IN_FLIGHT:-10}"
 SLURM_SCRIPT="./run_one.sh"  # must exist

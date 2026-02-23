@@ -1,3 +1,7 @@
+# This is called by run_manual.sh, run_surface.sh, run_specific.sh, etc.
+# It is the actual script that puts together the command and runs python3 one_sim.py
+# Works well with the SLURM system
+
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=14

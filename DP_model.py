@@ -1,6 +1,7 @@
 """
 This fits the 2-parameter Drucker-Prager model to a set of strength surface data and stores the alpha, k, and seed in the csv
-It also is now expanded to fit alpha and k as functions of theta
+It also is now expanded to fit alpha and k as functions of theta,  but that expansion is pretty old and likely outdated. Use
+fit_3D_DP.py to fit an angular surface. This is mostly just used to fit the 2D surfaces for the pristine data.
 """
 
 import pandas as pd

@@ -2,6 +2,7 @@
 This file creates a graphene sheet of whatever size specified in n_atoms_x and n_atoms_y.
 Note that your sheet should always be even x even, or else you will experience ficticious boundary effects.
 There is an option to also print the bonds (so you can see/use them in LAMMPS), but I don't really use them here.
+Note that you can do multiple at a time by using the pairs vector.
 '''
 
 import numpy as np

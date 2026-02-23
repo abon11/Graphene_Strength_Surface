@@ -1,4 +1,5 @@
-# Run one specific simulation manually
+# Run one specific simulation manually, specifically for fracture events
+# As you can see this has turned into a "i need to run this specific batch of sims" script
 #!/bin/bash
 # set -euo pipefail
 EMAIL="avb25@duke.edu"

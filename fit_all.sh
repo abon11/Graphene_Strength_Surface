@@ -1,4 +1,6 @@
 #!/bin/bash
+# This script calls fit_3D_DP.py fo fit all 3D Strength Surfaces with whatever fitting parameters requested
+
 defs="mx"
 
 # Fourier orders

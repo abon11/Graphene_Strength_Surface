@@ -1,5 +1,6 @@
 """
-This takes in the params saved from fitting the copulas in R, verifies that the distributions look good, then does JS Divergence to compare the distributions
+This takes in the params saved from fitting the copulas in R, verifies that the distributions look good, then does 
+JS Divergence to compare the distributions. This is outdated with the current workflow.
 """
 
 import matplotlib.pyplot as plt

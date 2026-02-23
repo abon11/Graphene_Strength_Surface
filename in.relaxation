@@ -1,4 +1,5 @@
 # Inputs a graphene sheet and runs relaxation to get it up to temperature and stable
+# INDEPENDENT FROM PYTHON SCRIPTS
 
 include local_config.lmp
 

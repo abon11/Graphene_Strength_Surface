@@ -1,3 +1,8 @@
+"""
+This was the original script to test deform_graphene.py. It is since extremely outdated, as we
+have moved to a more parallel system to run these fully. This is nice for testing though
+"""
+
 from mpi4py import MPI
 from deform_graphene import GrapheneSheet
 from deform_graphene import Simulation

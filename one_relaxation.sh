@@ -1,11 +1,14 @@
 #!/bin/bash
+
+# This calls one_relaxation.py to run a single relaxation simulation
+
 #SBATCH --nodes=1
 #SBATCH --ntasks=14
 #SBATCH --job-name=one_sim_%j
 #SBATCH --partition=scavenger
 #SBATCH --mem-per-cpu=2GB
 #SBATCH --output=/dev/null
-# SBATCH -o one_relax_%j.out
+# SBATCH -o one_relax_%j.out  # remove space between # and SBATCH to get the output
 
 # Parse inputs
 nprocs=$1

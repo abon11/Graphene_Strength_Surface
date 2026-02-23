@@ -1,3 +1,8 @@
+"""
+This was the sandbox for me to test out any ideas quickly. It turned into the 
+conglomerate of plotting scripts necessary for the paper.
+"""
+
 # import os
 # os.environ["MPLCONFIGDIR"] = "/tmp/matplotlib"
 # from filter_csv import filter_data
