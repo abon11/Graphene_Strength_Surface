@@ -7,8 +7,8 @@ EMAIL="avb25@duke.edu"
 SLURM_SCRIPT="./run_one.sh"  # must exist
 CORES_PER_JOB=14
 
-x_erate=0.001
-y_erate=0.0
+x_erate=-0.0001
+y_erate=0.001
 xy_erate=0.0
 
 # SHEET_PATH="${SHEET_PATH:-/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/data_files/data.60_60_rel1}"
@@ -18,8 +18,8 @@ xy_erate=0.0
 # DEFECTS="${DEFECTS:-"{\"SV\": 0.5}"}"
 DEFECTS="${DEFECTS:-"{\"DV\": 0.25, \"SV\": 0.25}"}"
 
-DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-15}"
-SIM_LENGTH="${SIM_LENGTH:-2000000}"
+DEFECT_RANDOM_SEED="${DEFECT_RANDOM_SEED:-2}"
+SIM_LENGTH="${SIM_LENGTH:-3000000}"
 ACCEPT_DUPES="${ACCEPT_DUPES:-false}"
 TIMESTEP="${TIMESTEP:-0.0005}"
 THERMO="${THERMO:-1000}"
@@ -51,8 +51,8 @@ send_email_notification() {
     echo "Sent $nums x $nums" | mail -s "HPC Job Notification" "$EMAIL"
 }
 
-# X_ATOMS="${X_ATOMS:-20}"
-# Y_ATOMS="${Y_ATOMS:-40}"
+# X_ATOMS="${X_ATOMS:-60}"
+# Y_ATOMS="${Y_ATOMS:-20}"
 # SHEET_PATH="/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/data_files/data.${X_ATOMS}_${Y_ATOMS}"
 # submit_simulation
 
@@ -61,68 +61,7 @@ send_email_notification() {
 # submit_simulation 2926
 # submit_simulation 36907
 
-x_erate=0.001
-y_erate=0
 
-for (( X_ATOMS=20; X_ATOMS<=150; X_ATOMS+=10 )); do
-  for (( Y_ATOMS=20; Y_ATOMS<=150; Y_ATOMS+=10 )); do
-
-    if (( X_ATOMS <= 100 && Y_ATOMS <= 100 )); then
-      continue
-    fi
-
-    count=$(python3 - <<PY
-import pandas as pd
-from filter_csv import filter_data
-
-df = pd.read_csv("${STORAGE_PATH}/all_simulations.csv")
-filtered_df = filter_data(
-    df,
-    exact_filters={
-        "Num Atoms x": ${X_ATOMS},
-        "Num Atoms y": ${Y_ATOMS},
-        "Strain Rate x": ${x_erate},
-        "Strain Rate y": ${y_erate},
-    },
-    suppress_message=True,
-    remove_nones=False,
-    remove_dupes=False,
-)
-
-print(len(filtered_df))
-PY
-)
-
-    # now use numeric comparison (ensure count is an integer)
-    if (( count >= 20 )); then
-      echo "Skipping X=$X_ATOMS Y=$Y_ATOMS (already have $count runs)"
-      continue
-    fi
-
-    if (( count >= 20 )); then
-      echo "Skipping X=$X_ATOMS Y=$Y_ATOMS (already have $count runs)"
-      continue
-    fi
-
-    SHEET_PATH="/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/data_files/data.${X_ATOMS}_${Y_ATOMS}"
-
-    for DEFECT_RANDOM_SEED in $(seq 1 1 20); do
-
-      echo "Queued params: X=$X_ATOMS Y=$Y_ATOMS seed=$DEFECT_RANDOM_SEED SHEET_PATH=$SHEET_PATH"
-
-      while true; do
-        if (( $(count_jobs) < 28 )); then
-          submit_simulation
-            if [[ "$X_ATOMS" -eq "$Y_ATOMS" && "$DEFECT_RANDOM_SEED" -eq 1 ]]; then
-              send_email_notification "$X_ATOMS"
-            fi
-          break
-        fi
-        sleep 20
-      done
-    done
-  done
-done
 
 
 
@@ -131,13 +70,13 @@ done
 x_erate=-0.0001
 y_erate=0.001
 
-for (( X_ATOMS=20; X_ATOMS<=150; X_ATOMS+=10 )); do
-  for (( Y_ATOMS=20; Y_ATOMS<=150; Y_ATOMS+=10 )); do
+for (( X_ATOMS=40; X_ATOMS<=40; X_ATOMS+=10 )); do
+  for (( Y_ATOMS=20; Y_ATOMS<=20; Y_ATOMS+=10 )); do
 
     # Skip when both X and Y are 100 or less
-    if (( X_ATOMS <= 100 && Y_ATOMS <= 100 )); then
-      continue
-    fi
+    # if (( X_ATOMS <= 100 && Y_ATOMS <= 100 )); then
+    #   continue
+    # fi
     # if (( X_ATOMS == 90 && Y_ATOMS <= 130 )); then
     #   continue
     # fi
@@ -154,7 +93,7 @@ for (( X_ATOMS=20; X_ATOMS<=150; X_ATOMS+=10 )); do
 import pandas as pd
 from filter_csv import filter_data
 
-df = pd.read_csv("${STORAGE_PATH}")
+df = pd.read_csv("${STORAGE_PATH}/all_simulations.csv")
 filtered_df = filter_data(
     df,
     exact_filters={
@@ -164,7 +103,7 @@ filtered_df = filter_data(
         "Strain Rate y": ${y_erate},
     },
     suppress_message=True,
-    remove_nones=False,
+    remove_nones=True,
     remove_dupes=False,
 )
 
