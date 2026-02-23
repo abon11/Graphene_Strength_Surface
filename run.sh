@@ -1,6 +1,6 @@
+#!/bin/bash
 # The most simple run script for setting up with slurm
 
-#!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=16
 #SBATCH --job-name=solo_test

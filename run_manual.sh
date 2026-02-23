@@ -1,6 +1,6 @@
+#!/bin/bash
 # Run one specific simulation manually, specifically for fracture events
 # As you can see this has turned into a "i need to run this specific batch of sims" script
-#!/bin/bash
 # set -euo pipefail
 EMAIL="avb25@duke.edu"
 
@@ -71,7 +71,7 @@ send_email_notification() {
 x_erate=-0.0001
 y_erate=0.001
 
-for (( X_ATOMS=40; X_ATOMS<=40; X_ATOMS+=10 )); do
+for (( X_ATOMS=40; X_ATOMS<=150; X_ATOMS+=10 )); do
   for (( Y_ATOMS=20; Y_ATOMS<=20; Y_ATOMS+=10 )); do
 
     # Skip when both X and Y are 100 or less

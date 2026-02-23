@@ -1,5 +1,6 @@
-# This runs super large batch sims for deformation events (fracture)
 #!/bin/bash
+# This runs super large batch sims for deformation events (fracture)
+
 set -euo pipefail
 
 # ======== Config (used unless overridden below) ========
