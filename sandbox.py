@@ -741,11 +741,43 @@ conglomerate of plotting scripts necessary for the paper.
 #########################################################################################################################
 
 
-from deform_graphene import Relaxation
-from mpi4py import MPI
+# from deform_graphene import Relaxation
+# from mpi4py import MPI
+# import local_config
+
+# comm = MPI.COMM_WORLD
+# rank = comm.Get_rank()
+
+# Relaxation(comm, rank, f"{local_config.DATA_DIR}/data_files/data.20_20", 20, 20, sim_length=100000)
+
+
 import local_config
+from filter_csv import filter_data
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
+# Grid values
+x_vals = np.array([20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150])
+y_vals = np.array([20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150])
 
-Relaxation(comm, rank, f"{local_config.DATA_DIR}/data_files/data.20_20", 20, 20, sim_length=100000)
+# Load once
+df = pd.read_csv(f"{local_config.DATA_DIR}/size_tests/all_simulations.csv")
+# df = pd.read_csv(f"all_simulations.csv")
+
+# for i, y in enumerate(y_vals):
+#     for j, x in enumerate(x_vals):
+#         filtered_df = filter_data(df, exact_filters={"Num Atoms x": x, "Num Atoms y": y}, suppress_message=True, remove_nones=True, remove_dupes=True)
+
+#         if len(filtered_df) > 0:
+#             Z[i, j] = np.mean(filtered_df["Strength_1"])
+#             # Z[i, j] = np.mean(len(filtered_df))
+
+for i, y in enumerate(y_vals):
+    for j, x in enumerate(x_vals):
+        filtered_df = filter_data(df, exact_filters={"Num Atoms x": x, "Num Atoms y": y, "Strain Rate x": -0.0001, "Strain Rate y": 0.001}, 
+                                    suppress_message=True, remove_nones=True, remove_dupes=False)
+
+        if np.mean(len(filtered_df)) < 20:
+            # Z[i, j] = np.mean(filtered_df["Strength_1"])
+            print(f"({x}, {y}):", np.mean(len(filtered_df)))

@@ -385,11 +385,12 @@ class Simulation:
                     compare("Strain Rate yz", self.yz_erate) and
                     compare("Num Atoms x", self.sheet.x_atoms, is_float=False) and
                     compare("Num Atoms y", self.sheet.y_atoms, is_float=False) and
-                    compare("Max Sim Length", self.sim_length, is_float=False) and
                     compare("Output Timesteps", self.thermo, is_float=False) and
                     compare("Fracture Window", self.fracture_window, is_float=False) and
                     compare_dict("Defects", self.defects) and
                     compare("Defect Random Seed", self.defect_random_seed, is_float=False)
+                    # compare("Max Sim Length", self.sim_length, is_float=False) and
+
                 )
                 # if everything was exact, skip it
                 if match:

@@ -1,5 +1,5 @@
-# This runs the short sims for the angle testing data generation (for stress-strain mapping)
 #!/bin/bash
+# This runs the short sims for the angle testing data generation (for stress-strain mapping)
 
 # Configuration
 MAX_JOBS_IN_FLIGHT=25
