@@ -33,10 +33,10 @@ def main():
     # pred.output_results(csv=True)  # prints for computer to read easier (showinputs for csv storage)
 
 
-def load_model(mod, targ):
-    model = joblib.load(f"outputs/{mod}_{targ}.pkl")
+def load_model():
+    model = joblib.load(f"outputs/stress-strain_nn.pkl")
     x_scaler = joblib.load("outputs/x_scaler.pkl")
-    y_scaler = joblib.load(f"outputs/y_scaler_{targ}.pkl")
+    y_scaler = joblib.load(f"outputs/y_scaler.pkl")
     return [model, x_scaler, y_scaler]
 
 
