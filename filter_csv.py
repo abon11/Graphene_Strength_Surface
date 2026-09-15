@@ -12,15 +12,15 @@ import ast
 
 def main():
     # ========== USER INTERFACE ==========
-    folder = f'{local_config.DATA_DIR}/angle_testing'
+    folder = f'{local_config.DATA_DIR}/airebo_light'
     csv_file = f"{folder}/all_simulations.csv"
 
     exact_filters = {
         # "Num Atoms x": 60,
         # "Num Atoms y": 130,
-        # "Defects": '{"DV": 0.5}',  # will match NaN or "None"
+        "Defects": '{"SV": 0.5}',  # will match NaN or "None"
         # "Defects": "None",
-        # "Defect Random Seed": 77,
+        "Defect Random Seed": 77,
         # "Theta Requested": 90,
         # "Strain Rate x": 0.001,
         # "Strain Rate y": 0.001,
@@ -30,7 +30,7 @@ def main():
     range_filters = {
         # "Defect Random Seed": (0, 19)
         # "Theta Requested": (90, 90),
-        "Sigma_1": (4, 20)
+        # "Sigma_1": (4, 20)
         # "Theta": (24, 32)
     }
 

@@ -19,8 +19,11 @@ read_data      ${data_dir}/data_files/data.60_60_stiff  # Load initial data file
 
 ## ---------------FORCE FIELD DEFINITION-----------------------
 
-pair_style     airebo 3.5
-pair_coeff     * * CH.airebo C  # AIREBO potential for carbon atoms
+# pair_style     airebo 3.5
+# pair_coeff     * * CH.airebo C  # AIREBO potential for carbon atoms
+##### CHANGING TO REBO POTENTIAL FOR TESTING #####
+pair_style rebo
+pair_coeff * * CH.rebo C
 
 ## ---------------SETTINGS-------------------------------------
 
@@ -47,4 +50,4 @@ fix            2 all npt temp 273.0 273.0 0.1 x 0.0 0.0 0.1 y 0.0 0.0 0.1
 run            80000
 
 # Step 5: Save the Relaxed Configuration
-write_data     ${data_dir}/data_files/data.60_60_rel7
+write_data     ${data_dir}/data_files/data.60_60_relREBO

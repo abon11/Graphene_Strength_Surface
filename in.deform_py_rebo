@@ -11,12 +11,9 @@ newton on  # what does this do
 # Read initial structure
 read_data ${datafile}
 
-# # Define interatomic potential (AIREBO)
-# pair_style airebo 3.5
-# pair_coeff * * CH.airebo C
-##### CHANGING TO REBO POTENTIAL FOR TESTING #####
+# Define interatomic potential (REBO)
 pair_style rebo
-pair_coeff * * CH.rebo C
+pair_coeff * * /hpc/home/avb25/software/lammps/potentials/CH.rebo C
 
 # Define groups
 group all type 1

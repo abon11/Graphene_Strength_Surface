@@ -99,7 +99,7 @@ class Simulation:
                  defects="None", defect_random_seed=42,
                  detailed_data=False, fracture_window=10, theta=0,
                  storage_path=f'{local_config.DATA_DIR}/defected_data', accept_dupes=False,
-                 angle_testing=False, repeat_sim=None):
+                 angle_testing=False, repeat_sim=None, potential='airebo'):
         """
         Class to execute one simulation and store information about it.
         This essentially loads the specimen to failure.
@@ -122,6 +122,7 @@ class Simulation:
         - accept_dupes (bool): Don't kill the simulation if we find a duplicate
         - angle_testing (bool): Execute simulation and data storage for the angle testing dataset - to generate erate_x, y, xy map to sigma_1, 2, theta. 
         - repeat_sim (int): If not None, it will find and run the exact simulation you give it (simid) and save the detailed data (but will not duplicate large data)
+        - potential (str): Dictates which lammps input file to use, where each input file has a different potential attached to it (airebo, rebo, etc)
         """
 
         # set up this instances variables
@@ -132,10 +133,19 @@ class Simulation:
         self.storage_path = storage_path
         self.timestep = timestep
         self.angle_testing = angle_testing
-        self.repeat_sim = repeat_sim
+        self.repeat_sim = repeat_sim 
 
         # if we are not repeating a sim, continue setting up with whatever was inputted
         if repeat_sim is None:
+            valid_potentials = {"airebo", "rebo", "airebo_light"}
+            potential_name = str(potential).strip().lower()
+            if potential_name not in valid_potentials:
+                valid = ", ".join(sorted(valid_potentials))
+                raise ValueError(
+                    f"Unknown potential '{potential_name!r}'. "
+                    f"Expected one of: {valid}."
+                )       
+
             self.x_erate = x_erate
             self.y_erate = y_erate
             self.z_erate = z_erate
@@ -149,7 +159,9 @@ class Simulation:
             self.fracture_window = fracture_window
             self.theta = theta
             self.defects = self.parse_defect_string(defects)
+            self.potential = potential_name
             self.accept_dupes = accept_dupes
+
         # if we are repeating a sim, ignore the inputs and find the fields from the sim we aim to repeat
         else:
             self.setup_identical_sim(repeat_sim)  # this sets x_erate, etc to the same as whatever it was in that particular simid.
@@ -278,6 +290,7 @@ class Simulation:
         self.theta = sim_row["Theta Requested"]
         self.defects = self.parse_defect_string(sim_row["Defects"])
         self.accept_dupes = True
+        self.potential = sim_row["Potential"]
 
     def parse_defect_string(self, defect_str):
         """
@@ -388,7 +401,8 @@ class Simulation:
                     compare("Output Timesteps", self.thermo, is_float=False) and
                     compare("Fracture Window", self.fracture_window, is_float=False) and
                     compare_dict("Defects", self.defects) and
-                    compare("Defect Random Seed", self.defect_random_seed, is_float=False)
+                    compare("Defect Random Seed", self.defect_random_seed, is_float=False) and
+                    compare("Potential", self.potential)
                     # compare("Max Sim Length", self.sim_length, is_float=False) and
 
                 )
@@ -464,7 +478,7 @@ class Simulation:
                 df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Strength x', 'Strength y', 'Strength z', 
-                                       'Strength xy', 'Strength xz', 'Strength yz', 'Fracture Time', 'Max Sim Length', 'Output Timesteps', 
+                                       'Strength xy', 'Strength xz', 'Strength yz', 'Potential', 'Fracture Time', 'Max Sim Length', 'Output Timesteps', 
                                        'Fracture Window', 'Theta Requested', 'Theta', 'Rotation Angle', 'Defects', 'Defect Random Seed', 
                                        'Simulation Time', 'Threads'])
             
@@ -531,7 +545,7 @@ class Simulation:
                                 'Strength xy': [pick(self.stress_tensor, fracture_index, 3)],
                                 'Strength xz': [pick(self.stress_tensor, fracture_index, 4)],
                                 'Strength yz': [pick(self.stress_tensor, fracture_index, 5)],
-                                'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
+                                'Potential': [self.potential], 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
                                 'Fracture Window': [self.fracture_window], 'Theta Requested': [self.theta], 'Theta': [pick(self.principal_angles, fracture_index)], 
                                 'Rotation Angle': [pick(self.rotation_vector, fracture_index)], 'Defects': [json.dumps(self.defects)], 'Defect Random Seed': [self.defect_random_seed], 
                                 'Simulation Time': [self.sim_duration], 'Threads': [self.num_procs]})
@@ -602,7 +616,7 @@ class Simulation:
                 # make it with the timestamp id becasue we don't have simid yet
                 self.lmp.command(f"dump 1 all custom {self.thermo} {self.simulation_directory}/dump.sim{self.timestamp_id} id type x y z")
 
-        self.lmp.file("in.deform_py")
+        self.lmp.file(f"in.deform_py_{self.potential}")
 
     def apply_fix_deform(self):
         """
