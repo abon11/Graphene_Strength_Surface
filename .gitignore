@@ -18,3 +18,4 @@ local_config.*
 *.pdf
 simulation_data
 .vscode
+debugging.ipynb
