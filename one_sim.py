@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--detailed_data", type=str, required=True)  # bool
     parser.add_argument("--fracture_window", type=int, required=True)
     parser.add_argument("--theta", type=float, required=True)
+    parser.add_argument("--potential", type=str, required=True)
 
     parser.add_argument("--x_erate", type=float, required=True)
     parser.add_argument("--y_erate", type=float, required=True)
@@ -42,8 +43,8 @@ def main():
 
     parser.add_argument("--repeat_sim", type=int, default=None)
 
-
     args = parser.parse_args()
+    print(f"POTENTIAL IS {args.potential}")
 
     sheet = GrapheneSheet(args.sheet_path, args.x_atoms, args.y_atoms)
 
@@ -54,7 +55,7 @@ def main():
                  defects=args.defects, defect_random_seed=args.defect_random_seed,
                  detailed_data=str2bool(args.detailed_data), fracture_window=args.fracture_window, 
                  theta=args.theta, storage_path=args.storage_path, accept_dupes=str2bool(args.accept_dupes), angle_testing=str2bool(args.angle_testing),
-                 repeat_sim=args.repeat_sim)
+                 repeat_sim=args.repeat_sim, potential=args.potential)
 
 
 def str2bool(s):

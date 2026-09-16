@@ -11,12 +11,9 @@ newton on  # what does this do
 # Read initial structure
 read_data ${datafile}
 
-# # Define interatomic potential (AIREBO)
-# pair_style airebo 3.5
-# pair_coeff * * CH.airebo C
-##### CHANGING TO REBO POTENTIAL FOR TESTING #####
-pair_style rebo
-pair_coeff * * CH.rebo C
+# Define interatomic potential (AIREBO), but this time turn off the LJ and torsion parts (for testing)
+pair_style airebo 3.5 0 0
+pair_coeff * * CH.airebo C
 
 # Define groups
 group all type 1

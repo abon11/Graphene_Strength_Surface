@@ -782,7 +782,6 @@ plt.rcParams.update({
 #             # Z[i, j] = np.mean(filtered_df["Strength_1"])
 #             print(f"({x}, {y}):", np.mean(len(filtered_df)))
 
-
 ######################## SIZE TESTS ##################################
 
 # import local_config
@@ -867,30 +866,44 @@ plt.rcParams.update({
 # plt.savefig("size_tests.pdf")
 
 
+# import pandas as pd
+
+# df = pd.read_csv(f"simulation_data/size_tests/all_simulations.csv")
+
+# sizes = [20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]
+
+# def build_diag(df, erate_x, erate_y):
+#     strengths = []
+#     for atoms in sizes:
+#         filtered_df = filter_data(df, exact_filters={"Num Atoms x": atoms, "Num Atoms y": atoms, "Strain Rate x": erate_x, "Strain Rate y": erate_y}, 
+#                                 suppress_message=True, remove_nones=True, remove_dupes=False)
+#         strengths.append(np.mean(filtered_df["Strength_1"]))
+#     return strengths
+
+# ac_str = build_diag(df, 0.001, 0)
+# zz_str = build_diag(df, -0.0001, 0.001)
+
+# fig, ax = plt.subplots(figsize=(3.75, 3))
+# ax.plot(sizes, ac_str, c='r', label='AC')
+# ax.plot(sizes, zz_str, c='b', label='ZZ')
+# ax.set_xlabel('Number of Edge Atoms')
+# ax.set_ylabel(r'$\bar \sigma_{ts}$')
+# # ax.set_title(r"Mean Tensile Strength vs Size of Sheet ($n_x = n_y$)")
+# fig.tight_layout()
+# ax.legend()
+# ax.grid()
+# plt.savefig('size_test_diag.pdf')
+
 import pandas as pd
+import local_config
 
-df = pd.read_csv(f"simulation_data/size_tests/all_simulations.csv")
+folder = f'{local_config.DATA_DIR}/rebo_rebo'
+# folder = f'{local_config.DATA_DIR}/defected_data'
 
-sizes = [20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]
+csv_file = f"{folder}/all_simulations.csv"
+df = pd.read_csv(csv_file)
 
-def build_diag(df, erate_x, erate_y):
-    strengths = []
-    for atoms in sizes:
-        filtered_df = filter_data(df, exact_filters={"Num Atoms x": atoms, "Num Atoms y": atoms, "Strain Rate x": erate_x, "Strain Rate y": erate_y}, 
-                                suppress_message=True, remove_nones=True, remove_dupes=False)
-        strengths.append(np.mean(filtered_df["Strength_1"]))
-    return strengths
+insert_at = df.columns.get_loc("Strength yz") + 1
+df.insert(insert_at, "Potential", "rebo")
 
-ac_str = build_diag(df, 0.001, 0)
-zz_str = build_diag(df, -0.0001, 0.001)
-
-fig, ax = plt.subplots(figsize=(3.75, 3))
-ax.plot(sizes, ac_str, c='r', label='AC')
-ax.plot(sizes, zz_str, c='b', label='ZZ')
-ax.set_xlabel('Number of Edge Atoms')
-ax.set_ylabel(r'$\bar \sigma_{ts}$')
-# ax.set_title(r"Mean Tensile Strength vs Size of Sheet ($n_x = n_y$)")
-fig.tight_layout()
-ax.legend()
-ax.grid()
-plt.savefig('size_test_diag.pdf')
+df.to_csv(csv_file, index=False)

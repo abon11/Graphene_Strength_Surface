@@ -30,8 +30,11 @@ angle_testing=${15}
 x_erate=${16}
 y_erate=${17}
 xy_erate=${18}
-repeat_sim=${19}
+potential=${19}
+repeat_sim=${20}
+# make sure repeat_sim is always last
 
+echo $potential
 
 echo "Running one_sim with: x="$x_erate" y="$y_erate" xy="$xy_erate" on $nprocs procs"
 
@@ -58,6 +61,7 @@ if [ -n "$repeat_sim" ]; then
         --xy_erate "$xy_erate" \
         --xz_erate 0 \
         --yz_erate 0 \
+        --potential "$potential" \
         --repeat_sim "$repeat_sim"
 else
     mpiexec -n "$nprocs" python3 one_sim.py \
@@ -81,5 +85,6 @@ else
         --z_erate 0 \
         --xy_erate "$xy_erate" \
         --xz_erate 0 \
-        --yz_erate 0
+        --yz_erate 0 \
+        --potential "$potential"
 fi

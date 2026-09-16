@@ -5,7 +5,7 @@ set -euo pipefail
 
 # ======== Config (used unless overridden below) ========
 export MAX_JOBS_IN_FLIGHT=25
-DEFAULT_STORAGE_PATH="/hpc/home/avb25/Graphene_Strength_Surface/simulation_data/rotation_tests"
+DEFAULT_STORAGE_PATH="/hpc/dctrl/avb25/Graphene_Strength_Surface/simulation_data/airebo_light"
 DEFAULT_DETAILED_DATA="False"
 DEFAULT_STRAIN_TABLE="strain_table.csv"
 RUN_SCRIPT="./run_surface.sh"
@@ -87,7 +87,7 @@ launch_block() {
 # launch_block "{\"DV\": 0.25, \"SV\": 0.25}" 44 44 0 0 1
 # launch_block "{\"DV\": 0.5}" 54 54 20 20 1
 # launch_block "{\"DV\": 0.5}" 77 77 80 90 1
-launch_block "{\"SV\": 0.5}" 0 100 25 25 50
-launch_block "{\"DV\": 0.5}" 0 100 25 25 50
-launch_block "{\"SV\": 0.25, \"DV\": 0.25}" 0 100 25 25 50
-# send_email_notification 100000
+launch_block "{\"SV\": 0.5}" 0 100 0 90 10
+launch_block "{\"DV\": 0.5}" 0 100 0 90 20
+launch_block "{\"SV\": 0.25, \"DV\": 0.25}" 0 100 0 90 20
+send_email_notification 100000

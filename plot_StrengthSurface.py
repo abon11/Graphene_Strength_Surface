@@ -12,7 +12,7 @@ from filter_csv import filter_data, parse_defects_json
 
 def main():
     # ========== USER INTERFACE ==========
-    folder = f'{local_config.DATA_DIR}/rotation_tests'
+    folder = f'{local_config.DATA_DIR}/airebo_install'
     # folder = f'{local_config.DATA_DIR}/defected_data'
 
     csv_file = f"{folder}/all_simulations.csv"
@@ -24,7 +24,7 @@ def main():
         # "Defects": '{"SV": 0.5}',
         # "Defects": "None",
         # "Defect Random Seed": 67,
-        "Theta Requested": 25,
+        # "Theta Requested": 25,
         # "Strain Rate x": -0.00005,
     }
 
@@ -36,20 +36,20 @@ def main():
     }
 
     or_filters = {
-        "Defects": ['{"SV": 0.5}', '{"DV": 0.5}', '{"SV": 0.25, "DV": 0.25}'],
+        # "Defects": ['{"SV": 0.5}', '{"DV": 0.5}', '{"SV": 0.25, "DV": 0.25}'],
         # "Defect Random Seed": [0, 90]
         # "Theta Requested": [0, 90]
         # "Strain Rate x": [-0.00005, -0.00006]
     }
     # ====================================
-    color_by_field = "Defects"
+    color_by_field = "Defect Random Seed"
     show_pristine = False
 
     # Load, filter, and plot
     df = pd.read_csv(csv_file)
-
+    # (0, 91, 10)
     filtered_df = filter_data(df, exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters, 
-                              flip_strengths=True, remove_biaxial=False, remove_dupes=True, duplic_freq=(0, 91, 10),
+                              flip_strengths=True, remove_biaxial=False, remove_dupes=False, duplic_freq=None,
                               only_uniaxial=False)
 
     base_title = create_title(exact_filters=exact_filters, range_filters=range_filters, or_filters=or_filters)
@@ -59,7 +59,7 @@ def main():
     else:
         pristine_df = None
 
-    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True, only_show=True)
+    plot_strengths(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df, legend=True, only_show=False)
     # plot_strengths_3d(filtered_df, folder, f"{base_title}", color_by_field, pristine_data=pristine_df)
 
 
@@ -201,16 +201,16 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
     plt.xlabel(r'$\sigma_1$ (GPa)', fontsize=18)
     plt.ylabel(r'$\sigma_2$ (GPa)', fontsize=18)
 
-    plt.plot([-50, 135], [0, 0], color='black')
-    plt.plot([0, 0], [-50, 135], color='black')
+    plt.plot([-50, 500], [0, 0], color='black')
+    plt.plot([0, 0], [-50, 500], color='black')
 
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
 
-    plt.xlim(-15, 135)
-    plt.ylim(-15, 135)
+    plt.xlim(-15, 500)
+    plt.ylim(-15, 500)
     plt.title(title, fontsize=20)
-    plt.title("MD Strength Surface - 30 deg Zigzag", fontsize=20)
+    plt.title("MD Strength Surface - AIREBO Light Potential", fontsize=20)
 
     # plt.legend(fontsize=15)
 
@@ -236,7 +236,8 @@ def plot_strengths(df, folder, title, color_by_field, pristine_data=None, legend
         if legend:
             plt.legend(handles, labels, title=legend_title, loc='best', frameon=True, fontsize=15, title_fontsize=17)
 
-    fname = f"{folder}/plots/SS_{clean_title(title)}"
+    # fname = f"{folder}/plots/SS_{clean_title(title)}"
+    fname = "airebo_install"
     plt.tight_layout()
     if only_show:
         plt.show()
