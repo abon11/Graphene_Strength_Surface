@@ -3,35 +3,35 @@ This was the sandbox for me to test out any ideas quickly. It turned into the
 conglomerate of plotting scripts necessary for the paper.
 """
 
-# import os
-# os.environ["MPLCONFIGDIR"] = "/tmp/matplotlib"
-# from filter_csv import filter_data
-# import local_config
-# import pandas as pd
-# import matplotlib.pyplot as plt
-# import matplotlib as mpl
-# import numpy as np
+import os
+os.environ["MPLCONFIGDIR"] = "/tmp/matplotlib"
+from filter_csv import filter_data
+import local_config
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import numpy as np
 
-# mpl.rcParams['text.usetex'] = True
-# mpl.rcParams['font.family'] = 'serif'
-# mpl.rcParams['font.serif'] = ['Computer Modern Roman']
+mpl.rcParams['text.usetex'] = True
+mpl.rcParams['font.family'] = 'serif'
+mpl.rcParams['font.serif'] = ['Computer Modern Roman']
 
-# mpl.rcParams['text.latex.preamble'] = r"""
-# \usepackage{amsmath}
-# \usepackage{amssymb}
-# \usepackage{xcolor}
-# """
+mpl.rcParams['text.latex.preamble'] = r"""
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+"""
 
-# mpl.rcParams['axes.unicode_minus'] = False
-# plt.rcParams.update({
-#     'font.size': 10,      # match normalsize
-#     'axes.labelsize': 10,
-#     'axes.titlesize': 10,
-#     'xtick.labelsize': 8,
-#     'ytick.labelsize': 8,
-#     'legend.fontsize': 8, # slightly smaller like LaTeX
-#     'text.usetex': True,
-# })
+mpl.rcParams['axes.unicode_minus'] = False
+plt.rcParams.update({
+    'font.size': 10,      # match normalsize
+    'axes.labelsize': 10,
+    'axes.titlesize': 10,
+    'xtick.labelsize': 8,
+    'ytick.labelsize': 8,
+    'legend.fontsize': 8, # slightly smaller like LaTeX
+    'text.usetex': True,
+})
 
 ##################################################################### Uniaxial tension as fn of theta
 
@@ -751,33 +751,146 @@ conglomerate of plotting scripts necessary for the paper.
 # Relaxation(comm, rank, f"{local_config.DATA_DIR}/data_files/data.20_20", 20, 20, sim_length=100000)
 
 
-import local_config
-from filter_csv import filter_data
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+# import local_config
+# from filter_csv import filter_data
+# import pandas as pd
+# import numpy as np
+# import matplotlib.pyplot as plt
 
-# Grid values
-x_vals = np.array([20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150])
-y_vals = np.array([20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150])
+# # Grid values
+# x_vals = np.array([20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150])
+# y_vals = np.array([20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150])
 
-# Load once
-df = pd.read_csv(f"{local_config.DATA_DIR}/size_tests/all_simulations.csv")
-# df = pd.read_csv(f"all_simulations.csv")
+# # Load once
+# df = pd.read_csv(f"{local_config.DATA_DIR}/size_tests/all_simulations.csv")
+# # df = pd.read_csv(f"all_simulations.csv")
+
+# # for i, y in enumerate(y_vals):
+# #     for j, x in enumerate(x_vals):
+# #         filtered_df = filter_data(df, exact_filters={"Num Atoms x": x, "Num Atoms y": y}, suppress_message=True, remove_nones=True, remove_dupes=True)
+
+# #         if len(filtered_df) > 0:
+# #             Z[i, j] = np.mean(filtered_df["Strength_1"])
+# #             # Z[i, j] = np.mean(len(filtered_df))
 
 # for i, y in enumerate(y_vals):
 #     for j, x in enumerate(x_vals):
-#         filtered_df = filter_data(df, exact_filters={"Num Atoms x": x, "Num Atoms y": y}, suppress_message=True, remove_nones=True, remove_dupes=True)
+#         filtered_df = filter_data(df, exact_filters={"Num Atoms x": x, "Num Atoms y": y, "Strain Rate x": -0.0001, "Strain Rate y": 0.001}, 
+#                                     suppress_message=True, remove_nones=True, remove_dupes=False)
 
-#         if len(filtered_df) > 0:
-#             Z[i, j] = np.mean(filtered_df["Strength_1"])
-#             # Z[i, j] = np.mean(len(filtered_df))
+#         if np.mean(len(filtered_df)) < 20:
+#             # Z[i, j] = np.mean(filtered_df["Strength_1"])
+#             print(f"({x}, {y}):", np.mean(len(filtered_df)))
 
-for i, y in enumerate(y_vals):
-    for j, x in enumerate(x_vals):
-        filtered_df = filter_data(df, exact_filters={"Num Atoms x": x, "Num Atoms y": y, "Strain Rate x": -0.0001, "Strain Rate y": 0.001}, 
-                                    suppress_message=True, remove_nones=True, remove_dupes=False)
 
-        if np.mean(len(filtered_df)) < 20:
-            # Z[i, j] = np.mean(filtered_df["Strength_1"])
-            print(f"({x}, {y}):", np.mean(len(filtered_df)))
+######################## SIZE TESTS ##################################
+
+# import local_config
+# from filter_csv import filter_data
+# import pandas as pd
+# import numpy as np
+# import matplotlib.pyplot as plt
+
+# # Grid values
+# x_vals = np.array([20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150])
+# y_vals = np.array([20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150])
+
+# # Load data
+# df = pd.read_csv(f"{local_config.DATA_DIR}/size_tests/all_simulations.csv")
+
+
+# def get_Z(df, erate_x, erate_y):
+#     """Build the Z array for a particular strain-rate combination."""
+#     Z = np.full((len(y_vals), len(x_vals)), np.nan)
+
+#     for i, y in enumerate(y_vals):
+#         for j, x in enumerate(x_vals):
+#             filtered_df = filter_data(
+#                 df,
+#                 exact_filters={
+#                     "Num Atoms x": x,
+#                     "Num Atoms y": y,
+#                     "Strain Rate x": erate_x,
+#                     "Strain Rate y": erate_y,
+#                 },
+#                 suppress_message=True,
+#                 remove_nones=True,
+#                 remove_dupes=False,
+#             )
+
+#             if len(filtered_df) > 0:
+#                 Z[i, j] = filtered_df["Strength_1"].mean()
+
+#     return Z
+
+
+# def show_plot(ax, Z, lab, vmin, vmax):
+#     im = ax.imshow(
+#         Z,
+#         origin="lower",
+#         aspect="auto",
+#         extent=[x_vals.min(), x_vals.max(), y_vals.min(), y_vals.max()],
+#         vmin=vmin,
+#         vmax=vmax,
+#     )
+
+#     ax.set_xlabel("Number of x Atoms")
+#     ax.set_ylabel("Number of y Atoms")
+#     # ax.set_title(f"Mean Uniaxial Tensile Strength ({lab})")
+
+#     return im
+
+
+# # ----------------------------
+# # Compute both datasets first
+# # ----------------------------
+# Z_arm = get_Z(df, 0.001, 0)
+# Z_zig = get_Z(df, -0.0001, 0.001)
+
+# # Global color limits
+# vmin = np.nanmin([Z_arm, Z_zig])
+# vmax = np.nanmax([Z_arm, Z_zig])
+
+# print(f"Color scale: {vmin:.3f} to {vmax:.3f}")
+
+# # ----------------------------
+# # Plot
+# # ----------------------------
+# fig, axs = plt.subplots(1, 2, figsize=(6.75, 3), constrained_layout=True)
+
+# im = show_plot(axs[0], Z_arm, "Armchair", vmin, vmax)
+# show_plot(axs[1], Z_zig, "Zigzag", vmin, vmax)
+
+# cbar = fig.colorbar(im, ax=axs, pad=0.02)
+# cbar.set_label("Mean Strength")
+
+# plt.savefig("size_tests.pdf")
+
+
+import pandas as pd
+
+df = pd.read_csv(f"simulation_data/size_tests/all_simulations.csv")
+
+sizes = [20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]
+
+def build_diag(df, erate_x, erate_y):
+    strengths = []
+    for atoms in sizes:
+        filtered_df = filter_data(df, exact_filters={"Num Atoms x": atoms, "Num Atoms y": atoms, "Strain Rate x": erate_x, "Strain Rate y": erate_y}, 
+                                suppress_message=True, remove_nones=True, remove_dupes=False)
+        strengths.append(np.mean(filtered_df["Strength_1"]))
+    return strengths
+
+ac_str = build_diag(df, 0.001, 0)
+zz_str = build_diag(df, -0.0001, 0.001)
+
+fig, ax = plt.subplots(figsize=(3.75, 3))
+ax.plot(sizes, ac_str, c='r', label='AC')
+ax.plot(sizes, zz_str, c='b', label='ZZ')
+ax.set_xlabel('Number of Edge Atoms')
+ax.set_ylabel(r'$\bar \sigma_{ts}$')
+# ax.set_title(r"Mean Tensile Strength vs Size of Sheet ($n_x = n_y$)")
+fig.tight_layout()
+ax.legend()
+ax.grid()
+plt.savefig('size_test_diag.pdf')

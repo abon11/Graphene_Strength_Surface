@@ -59,7 +59,7 @@ def main():
     # full_workflow(df, pca_dims=6, ss_theta=0, periodic=False)
     # overlay_cis()
     # generate_full_param_cis()
-    generate_full_strength_cis()
+    generate_full_strength_cis(thetas=[0, 90], filename="poster_strength_cis.pdf")
 
 
 
@@ -167,10 +167,11 @@ def generate_full_pca_plot(fo):
     fig.savefig("PCA_all.pdf")
 
 
-def generate_full_strength_cis():
-    defs = ["sv", "dv", "mx"]
-    fo = 4
-    fig, axs = plt.subplots(3, 3, figsize=(5.83, 5.83)) 
+def generate_full_strength_cis(fo = 4, defs=["sv", "dv", "mx"], thetas=[0, 30, 90], 
+                               filename="strength_ci_all.pdf"):
+    nrows = len(thetas)
+    ncols = len(defs)
+    fig, axs = plt.subplots(nrows, ncols, figsize=(1.94*ncols, 1.94*nrows)) 
     for i, defect in enumerate(defs):
         df = pd.read_csv(f"z_{defect}{fo}_reg1e-1.csv")
         md_df = pd.read_csv(f'{local_config.DATA_DIR}/rotation_tests/all_simulations.csv')
@@ -181,37 +182,51 @@ def generate_full_strength_cis():
         dims, modes = decipher_model_params(defect)
         samples_z = fit_latent_density(zs, dims, modes, 100000)
 
-        thetas = [0, 30, 90]
         for j, theta in enumerate(thetas):
-            plot_raw_data(axs[i, j], raw_md_data, theta, color='k', s=3, lab=None)
+            plot_raw_data(axs[j, i], raw_md_data, theta, color='k', s=3, lab=None)
 
             # for sample in range(min(len(zs), 1000)):
             #     a, k = get_alpha_k(zs[sample], theta, periodic=False)
             #     plot_strength_surface(axs[i, j], a, k)
 
-            if j == 0:
-                show_y = True
-            else:
-                show_y = False
-            if i == 2:
+            if j == 1:
                 show_x = True
             else:
                 show_x = False
-
-            plot_strength_ci(zs, theta, ax=axs[i, j], label='True Surface Mean', mean_color='red', mean_linestyle='solid', mean_lw=2.5, show_x_axis=show_x, show_y_axis=show_y)
-            plot_strength_ci(samples_z, theta, ax=axs[i, j], label='Sample Mean', show_ci=True, mean_color='b', mean_linestyle='dashed', mean_lw=1.5, show_x_axis=show_x, show_y_axis=show_y)
-            # axs[i, j].plot([], [], color='k', alpha=0.8, label='True Data')
-            axs[i, j].grid()
-            axs[i, j].scatter([], [], s=3, c='k', label="Raw MD Data")
             if i == 0:
-                axs[i, j].set_title(fr"$\theta = {theta}$\textdegree")
+                show_y = True
+            else:
+                show_y = False
+
+            plot_strength_ci(zs, theta, ax=axs[j, i], label='True Surface Mean', mean_color='red', mean_linestyle='solid', mean_lw=2.5, show_x_axis=show_x, show_y_axis=show_y)
+            plot_strength_ci(samples_z, theta, ax=axs[j, i], label='Sample Mean', show_ci=True, mean_color='b', mean_linestyle='dashed', mean_lw=1.5, show_x_axis=show_x, show_y_axis=show_y)
+            # axs[i, j].plot([], [], color='k', alpha=0.8, label='True Data')
+            axs[j, i].grid()
+            axs[j, i].scatter([], [], s=3, c='k', label="Raw MD Data")
+            axs[j, i].set_xlim([-5, 100])
+            axs[j, i].set_ylim([-5, 100])
+            axs[j, i].set_aspect('equal', adjustable='box')
+            if i == 2:
+                axs[j, i].yaxis.set_label_position("right")
+                axs[j, i].set_ylabel(rf"$\theta = {theta}$\textdegree")
+            if j == 0:
+                # axs[i, j].set_title(fr"$\theta = {theta}$\textdegree")
+                if defect == "sv":
+                    tit = "Single Vacancies"
+                elif defect == "dv":
+                    tit = "Double Vacancies"
+                else:
+                    tit = "Mixed Vacancies"
+
+                axs[j, i].set_title(f"{tit}")
+
 
             print(f"Plotted {defect} {theta}")
 
-        leg = set_lower_legend(fig, axs)
+        leg = set_lower_legend(fig, axs, y_loc=-0.05)
         leg.get_frame().set_alpha(1.0)
     fig.tight_layout()
-    fig.savefig(f"strength_ci_all.pdf", bbox_inches='tight')
+    fig.savefig(filename, bbox_inches='tight')
 
 
 def generate_full_param_cis():
