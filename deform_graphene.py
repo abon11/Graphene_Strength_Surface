@@ -13,7 +13,8 @@ from filelock import FileLock
 import csv
 import sys
 import json
-import local_config 
+import uuid
+import local_config
 from scipy.linalg import polar
 
 
@@ -99,7 +100,7 @@ class Simulation:
                  defects="None", defect_random_seed=42,
                  detailed_data=False, fracture_window=10, theta=0,
                  storage_path=f'{local_config.DATA_DIR}/defected_data', accept_dupes=False,
-                 angle_testing=False, repeat_sim=None, potential='airebo'):
+                 angle_testing=False, repeat_sim=None, potential='airebo', rob_ranks=None, phi=None):
         """
         Class to execute one simulation and store information about it.
         This essentially loads the specimen to failure.
@@ -134,17 +135,22 @@ class Simulation:
         self.timestep = timestep
         self.angle_testing = angle_testing
         self.repeat_sim = repeat_sim 
+        self.rob_ranks = rob_ranks
+        self.phi = phi
 
         # if we are not repeating a sim, continue setting up with whatever was inputted
         if repeat_sim is None:
-            valid_potentials = {"airebo", "rebo", "airebo_light"}
+            valid_potentials = {"airebo", "rebo", "airebo_light", "airebo-m", "rom"}
             potential_name = str(potential).strip().lower()
             if potential_name not in valid_potentials:
                 valid = ", ".join(sorted(valid_potentials))
                 raise ValueError(
                     f"Unknown potential '{potential_name!r}'. "
                     f"Expected one of: {valid}."
-                )       
+                )
+            if potential_name == "rom" and (rob_ranks is None or phi is None):
+                raise ValueError("Must have a value for ranks and phi when using a ROM")
+
 
             self.x_erate = x_erate
             self.y_erate = y_erate
@@ -449,7 +455,9 @@ class Simulation:
         """
         if self.repeat_sim is None:
             if self.rank == 0:
-                timestamp_id = datetime.now().strftime("%Y%m%d%H%M%S%f")
+                # the random suffix keeps simultaneously launched sims from sharing a directory (and a dump file)
+                timestamp_id = f'{datetime.now().strftime("%Y%m%d%H%M%S%f")}_{uuid.uuid4().hex[:8]}'
+                os.makedirs(f'{self.storage_path}/sim{timestamp_id}', exist_ok=False)
             else:
                 timestamp_id = None
 
@@ -459,8 +467,7 @@ class Simulation:
         # if we are repeating a sim, just make the directory the simid from the start
         else:
             self.simulation_directory = f'{self.storage_path}/sim{str(self.repeat_sim).zfill(5)}'
-        
-        os.makedirs(self.simulation_directory, exist_ok=True)
+            os.makedirs(self.simulation_directory, exist_ok=True)
 
     def initialize_maincsv(self):
         """
@@ -478,7 +485,7 @@ class Simulation:
                 df = pd.DataFrame(columns=['Simulation ID', 'Num Atoms x', 'Num Atoms y', 'Strength_1', 'Strength_2', 'Strength_3', 
                                        'CritStrain_1', 'CritStrain_2', 'CritStrain_3', 'Strain Rate x', 'Strain Rate y', 'Strain Rate z',
                                        'Strain Rate xy', 'Strain Rate xz', 'Strain Rate yz', 'Strength x', 'Strength y', 'Strength z', 
-                                       'Strength xy', 'Strength xz', 'Strength yz', 'Potential', 'Fracture Time', 'Max Sim Length', 'Output Timesteps', 
+                                       'Strength xy', 'Strength xz', 'Strength yz', 'Potential', 'ROB Ranks', 'phi_filename', 'Fracture Time', 'Max Sim Length', 'Output Timesteps', 
                                        'Fracture Window', 'Theta Requested', 'Theta', 'Rotation Angle', 'Defects', 'Defect Random Seed', 
                                        'Simulation Time', 'Threads'])
             
@@ -545,7 +552,8 @@ class Simulation:
                                 'Strength xy': [pick(self.stress_tensor, fracture_index, 3)],
                                 'Strength xz': [pick(self.stress_tensor, fracture_index, 4)],
                                 'Strength yz': [pick(self.stress_tensor, fracture_index, 5)],
-                                'Potential': [self.potential], 'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
+                                'Potential': [self.potential], 'ROB Ranks': [self.rob_ranks], 'phi_filename': [self.phi], 
+                                'Fracture Time': [self.fracture_time], 'Max Sim Length': [self.sim_length], 'Output Timesteps': [self.thermo], 
                                 'Fracture Window': [self.fracture_window], 'Theta Requested': [self.theta], 'Theta': [pick(self.principal_angles, fracture_index)], 
                                 'Rotation Angle': [pick(self.rotation_vector, fracture_index)], 'Defects': [json.dumps(self.defects)], 'Defect Random Seed': [self.defect_random_seed], 
                                 'Simulation Time': [self.sim_duration], 'Threads': [self.num_procs]})
@@ -606,6 +614,10 @@ class Simulation:
 
         self.lmp.command(f"variable conv_fact equal 0.0001")
         self.lmp.command(f"variable datafile string {self.sheet.datafile_name}")
+
+        if self.potential == "rom":
+            self.lmp.command(f"variable rob_ranks equal {self.rob_ranks}")
+            self.lmp.command(f"variable phi string {self.phi}")
 
         # if we are storing the detailed data, tell LAMMPS where to put the dumpfile
         if self.detailed_data:
@@ -1010,8 +1022,8 @@ class Simulation:
 
         # Deformation gradient (engineering form)
         F = np.array([[1 + strain_tensor[0], strain_tensor[3], strain_tensor[4]], 
-                      [0.0, 1 + strain_tensor[2], strain_tensor[5]], 
-                      [0.0, 0.0, 1 + strain_tensor[3]]], dtype=float)
+                      [0.0, 1 + strain_tensor[1], strain_tensor[5]], 
+                      [0.0, 0.0, 1 + strain_tensor[2]]], dtype=float)
         
         # Right polar: F = R @ U
         R, U = polar(F, side='right')
