@@ -31,6 +31,7 @@ class GrapheneSheet:
         self.datafile_name = datafile_name
         self.x_atoms = x_atoms
         self.y_atoms = y_atoms
+        self.dist = 1.42  # atomic spacing between atoms
         self.volume = self.calcVolume()  # volume of sheet in angstroms cubed (note that this is unrelaxed)
 
     def __repr__(self):
@@ -41,21 +42,20 @@ class GrapheneSheet:
         - This calculates the volume of the graphene sheet in angstroms cubed, using the length and width of the sheet in number of atoms
         - It assumes the x-axis is the armchair edge and the y-axis is the zigzag edge
         """
-        dist = 1.42
         Lz = 3.4
         if self.x_atoms % 2 == 0:
-            Lx = ((self.x_atoms / 2) * dist) + (dist * 2 * (self.x_atoms / 2 - 1)) + dist
+            Lx = ((self.x_atoms / 2) * self.dist) + (self.dist * 2 * (self.x_atoms / 2 - 1)) + self.dist
         else:
-            Lx = (((self.x_atoms - 1) / 2) * dist) + (dist * 2 * ((self.x_atoms + 1) / 2 - 1)) + (dist / 2)
+            Lx = (((self.x_atoms - 1) / 2) * self.dist) + (self.dist * 2 * ((self.x_atoms + 1) / 2 - 1)) + (self.dist / 2)
 
-        Ly = self.y_atoms * dist * np.sin(np.deg2rad(60))
+        Ly = self.y_atoms * self.dist * np.sin(np.deg2rad(60))
         vol = Lx * Ly * Lz
 
         self.Lx = Lx
         self.Ly = Ly
         self.Lz = Lz
 
-        return vol
+        return vol        
     
     def extract_atom_positions(self):
         """
@@ -71,6 +71,18 @@ class GrapheneSheet:
         # Find start of "Atoms" section
         atom_start = None
         for i, line in enumerate(lines):
+            parts = line.split()
+            if len(parts) >= 4:
+                if parts[-2:] == ["xlo", "xhi"]:
+                    self.xlo = float(parts[0])
+                    self.xhi = float(parts[1])
+                elif parts[-2:] == ["ylo", "yhi"]:
+                    self.ylo = float(parts[0])
+                    self.yhi = float(parts[1])
+                elif parts[-2:] == ["zlo", "zhi"]:
+                    self.zlo = float(parts[0])
+                    self.zhi = float(parts[1])
+
             if line.strip().startswith("Atoms"):
                 atom_start = i + 2  # Skip "Atoms" line and its header
                 break
@@ -290,7 +302,10 @@ class Simulation:
         self.yz_erate = sim_row["Strain Rate yz"]
         self.sim_length = sim_row["Max Sim Length"]
         self.thermo = sim_row["Output Timesteps"]
-        self.defect_random_seed = int(sim_row["Defect Random Seed"])
+        try:
+            self.defect_random_seed = int(sim_row["Defect Random Seed"])
+        except ValueError:
+            self.defect_random_seed = None
         self.detailed_data = True
         self.fracture_window = sim_row["Fracture Window"]
         self.theta = sim_row["Theta Requested"]
@@ -300,47 +315,65 @@ class Simulation:
 
     def parse_defect_string(self, defect_str):
         """
-        - Parses a JSON string representing defects and validates key/value types.
-        - This is the backbone of how our defect string input works. 
+        Parse and validate the defect specification.
 
-        Parameters:
-            defect_str (str): JSON-formatted string, e.g. '{"SV": 0.5, "DV": 0.2}'
+        Expected format:
+            {"SV": 0.5, "DV": 0.5, "HOLE": 10.0}
 
-        Returns:
-            dict[str, float]: Parsed and validated defect dictionary.
+        SV/DV:
+            Percentage of atoms removed as single/double vacancies.
 
-        Raises:
-            ValueError: If JSON is invalid or structure does not match {str: float}
+        HOLE:
+            Radius of a central circular hole, in Angstroms.
         """
 
-        # print the defects just for debugging purposes
-        print(defect_str)
-
-        # format it if None is specified
         defect_str = defect_str.strip().upper()
+
         if defect_str in ("NONE", "", "NULL"):
             return {}
 
-        # turn it into a json
         try:
             defects = json.loads(defect_str)
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON format: {e}")
 
-        # ensure its a dict
         if not isinstance(defects, dict):
             raise ValueError("Defect input must be a JSON object (dictionary).")
 
-        # ensure formatting is correct
         for key, value in defects.items():
             if not isinstance(key, str):
                 raise ValueError(f"Invalid key type: {key} (must be string)")
-            if not isinstance(value, (int, float)):
-                raise ValueError(f"Invalid value for '{key}': {value} (must be a number)")
-            if key != "SV" and key != "DV":
-                raise ValueError(f"Defect type must be either 'SV' or 'DV'. Received {key}")
-            if value > 100 or value < 0:
-                raise ValueError(f"Defect percentage must be between 0 and 100%. Received {value}")
+            key = key.upper()
+
+            if key not in {"SV", "DV", "HOLE"}:
+                raise ValueError(
+                    f"Defect type must be one of 'SV', 'DV', or 'HOLE'. Received {key}"
+                )
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
+                raise ValueError(
+                    f"Invalid value for '{key}': {value} (must be a number)"
+                )
+            if value < 0:
+                raise ValueError(
+                    f"Invalid value for '{key}': {value} (must be non-negative)"
+                )
+            if key in {"SV", "DV"}:
+                if value > 100:
+                    raise ValueError(
+                        f"Defect percentage must be between 0 and 100%. Received {value}"
+                    )
+
+            elif key == "HOLE":
+                if value == 0:
+                    raise ValueError("Hole radius must be greater than zero.")
+
+                # Optional: enforce that the hole fits inside the sheet.
+                max_radius = min(self.sheet.Lx, self.sheet.Ly) / 2
+                if value > max_radius:
+                    raise ValueError(
+                        f"Hole radius {value} exceeds the maximum allowed radius "
+                        f"of {max_radius}."
+                    )
 
         return defects
 
@@ -881,12 +914,14 @@ class Simulation:
         else:
             fracture_index = peaks[np.argmax(principal_stresses[:, stress_index][peaks])]  # find the index of the highest peak
 
+            check_before = int(10000 / self.thermo)
+
             # If the fracture index is calculated as one of the last values
-            if fracture_index + 10 >= len(principal_stresses):
+            if fracture_index + check_before >= len(principal_stresses):
                 # then the low testpoint is just the last data in the simulation
-                low_testpoint = np.min(principal_stresses[:, stress_index][-10:])
+                low_testpoint = np.min(principal_stresses[:, stress_index][-check_before:])
             else:
-                low_testpoint = np.min(principal_stresses[:, stress_index][fracture_index:fracture_index+10])
+                low_testpoint = np.min(principal_stresses[:, stress_index][fracture_index:fracture_index+check_before])
 
             # see if this "fracture" is high enough to be considered (or is it just noise?)
             # for fracture, the (peak - window) must be greater than the minimum point for that stress index
@@ -926,21 +961,26 @@ class Simulation:
         """
         strength = [None, None, None]
         fracture_timestep = None
+
+        check_before = int(10000 / self.thermo)  # see how many timesteps to check based on our thermo
+        check_after = int(25000 / self.thermo)
+        diff = int(check_after - check_before)
+
         # Not enough thermos to actually check
-        if len(principal_stresses[:, 0]) < 25:
+        if len(principal_stresses[:, 0]) < check_after:
             strength = [None, None, None]  # must be a list of None's for later
             fracture_timestep = None
         # Now there's enough timesteps to check
         else:
-            mean_last_10 = sum(principal_stresses[:, 0][-10:]) / 10
-            mean_15_before = sum(principal_stresses[:, 0][-25:-10]) / 15
+            mean_last_10 = sum(principal_stresses[:, 0][-check_before:]) / check_before
+            mean_15_before = sum(principal_stresses[:, 0][-check_after:-check_before]) / diff
 
             # get the same for principal stress 2 (in case weird behavior)
-            mean_last_10_2 = sum(principal_stresses[:, 1][-10:]) / 10
-            mean_15_before_2 = sum(principal_stresses[:, 1][-25:-10]) / 15
+            mean_last_10_2 = sum(principal_stresses[:, 1][-check_before:]) / check_before
+            mean_15_before_2 = sum(principal_stresses[:, 1][-check_after:-check_before]) / diff
 
-            sig0_intact = mean_last_10 >= (mean_15_before * 0.9)  # slightly degrade to reduce false positives
-            sig1_intact = mean_last_10_2 >= (mean_15_before_2 * 0.9)
+            sig0_intact = mean_last_10 >= (mean_15_before * 0.95)  # slightly degrade to reduce false positives
+            sig1_intact = mean_last_10_2 >= (mean_15_before_2 * 0.95)
 
             # if we are still increasing on average in both directions, no fracture yet
             if sig0_intact and sig1_intact:
@@ -1039,29 +1079,71 @@ class Simulation:
 
     def introduce_defects(self):
         """
-        - This puts the defects into the sheet randomly
-        - Currently only supports single vacancy and double vacancy defects
-        - This basically does all of the logic to randomly remove SV and DV atoms and gives the commands directly to LAMMPS
-        - Throughout these functions, we constantly update the deleted atom id's list to ensure that we do not accidentily
-        choose an atom to remove that has already been removed. 
+        Introduce the specified defects into the graphene sheet.
+
+        SV and DV defects are generated using the existing random vacancy
+        algorithm. HOLE creates a circular hole centered in the sheet.
+
+        All atoms are deleted in a single LAMMPS operation so that atom IDs
+        remain unchanged while the defect configuration is being constructed.
         """
-        # initialize an array that will store the atom id's that have already been deleted.
         self.deleted_ids = np.array([], dtype=int)
 
-        for defect_type, defect_percentage in self.defects.items():
-            delete_ids = self.delete_atoms(defect_type, defect_percentage)
-            self.deleted_ids = np.concatenate([self.deleted_ids, delete_ids])  # store which atoms we deleted
+        for defect_type, defect_value in self.defects.items():
+
+            if defect_type in ("SV", "DV"):
+                delete_ids = self.delete_atoms(defect_type, defect_value)
+                self.deleted_ids = np.concatenate(
+                    [self.deleted_ids, delete_ids]
+                )
+
+            elif defect_type == "HOLE":
+                delete_ids = self.delete_hole(defect_value)
+                self.deleted_ids = np.concatenate(
+                    [self.deleted_ids, delete_ids]
+                )
+
+            else:
+                raise ValueError(f"Unsupported defect type: '{defect_type}'")
 
         if self.deleted_ids.size > 0:
-            # Convert all IDs into a LAMMPS-compatible string
             id_str = ' '.join(str(int(id)) for id in self.deleted_ids)
 
-            # Define the group once with all IDs and delete them at once
-            # we must delete at once or else lammps will reconfigure the atom id's, screwing up our neighbor-finding algorithm
             self.lmp.command(f"group to_delete id {id_str}")
             self.lmp.command("delete_atoms group to_delete")
 
         print("Removed all of these atoms:", self.deleted_ids)
+
+    def delete_hole(self, radius):
+        """
+        Identify atoms inside a circular hole centered in the graphene sheet.
+
+        Parameters:
+            radius (float): Hole radius in Angstroms.
+
+        Returns:
+            np.ndarray: Atom IDs inside the hole.
+        """
+        atom_positions = self.sheet.extract_atom_positions()
+
+        # atom_positions: [id, x, y, z]
+        ids = atom_positions[:, 0].astype(int)
+        x = atom_positions[:, 1]
+        y = atom_positions[:, 2]
+
+        # Center of the simulation cell
+        x_center = 0.5 * (self.sheet.xlo + self.sheet.xhi)
+        y_center = 0.5 * (self.sheet.ylo + self.sheet.yhi)
+
+        # Find atoms inside the circular hole
+        distances = np.sqrt(
+            (x - x_center)**2 +
+            (y - y_center)**2
+        )
+
+        delete_ids = ids[distances <= radius]
+
+        return delete_ids
 
     # Pick atoms to delete for single/double vacancies
     def delete_atoms(self, defect_type, delete_percentage):
