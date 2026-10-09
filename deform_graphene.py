@@ -202,6 +202,11 @@ class Simulation:
 
         self.introduce_defects()  # put whatever defects into the graphene sheet that were specified --> does nothing if defects is None
 
+        # the ROM fix must be created after defects: it records the atoms (and their ids) present when it is created,
+        # and delete_atoms renumbers the remaining atoms 1..N
+        if self.potential == "rom":
+            self.lmp.file("in.rom_fix")
+
         self.apply_fix_deform()  # basically prepares the fix deform command
 
         # run the simulation for the specified time period (or until fracture). Stores useful information in these tensors.
@@ -222,15 +227,8 @@ class Simulation:
         self.rotation_vector = rotation_vector  # vector of the rotation of the lattice from deformation at each saved timestep
 
         # finally, once the sim is complete, we can get the exact point of fracture, the max strength, and the critical strain
-        try:
-            strength, crit_strain, fracture_time = self.find_fracture(principal_stresses, give_crit_strain=True)
-        # if there was no fracture (like we just reached max sim length), just store these values as None. 
-        except ValueError as e:
-            print("Warning: Encountered ValueError on final find_fracture sweep. Defaulting to None.")
-            print(e)
-            strength = [None, None, None]
-            crit_strain = [None, None, None]
-            fracture_time = None
+        # (all None if the sheet never fractured, like when we just reached max sim length)
+        strength, crit_strain, fracture_time = self.locate_strength(principal_stresses)
 
         # store all of this useful information for later
         self.strength = strength  # vector of the three critical principal stresses at fracture (largest to smallest)
@@ -735,6 +733,7 @@ class Simulation:
         rotation_vector[0] = self.compute_rotation(strain_tensor[0])
 
         iters = 0
+        self.drop_index = None  # output index where fracture is detected on the fly (None if it never is)
         # run and store for desired timesteps
         for step in range(0, self.sim_length, self.thermo):
             iters, stress_tensor, step_vector, pressure_tensor, strain_tensor, rotation_vector = self.run_step(
@@ -750,6 +749,7 @@ class Simulation:
 
             # if we get a strength value, that means fracture was detected and we can leave the loop
             if strength[0] is not None:
+                self.drop_index = iters  # the strength itself is located after the run, in locate_strength()
                 # run the simulation for a few more thermos to visualize fracture
                 for i in range(5):
                     step += self.thermo  # update thermo (cuz we are no longer in the big loop)
@@ -936,6 +936,35 @@ class Simulation:
 
         return strength, fracture_timestep, fracture_index
 
+    def locate_strength(self, principal_stresses):
+        """
+        - This finds the strength once the simulation is over: the full principal stress state at the highest sigma_1
+        reached before the drop that ended the run, along with the principal strains and the timestep at that point.
+        - Whether the sheet fractured is decided as before, by 'self.find_fracture()' over the whole history. This also
+        rejects runs the on-the-fly check stopped on a large oscillation rather than a real fracture (seen in low-rank ROMs).
+        - Where the strength is taken is NOT the peak 'self.find_fracture()' reports: its averaging windows scale with
+        1/thermo while the run only continues 5 outputs past detection, so at small thermo (e.g. 100) the drop gets
+        diluted, the sigma_1 test can pass, and it falls back to the sigma_2 branch, reporting the stress state at the
+        sigma_2 peak instead. Instead we take the highest sigma_1 at or before the output where the on-the-fly check
+        detected the drop (self.drop_index), or over the whole history if that check never fired.
+
+        Parameters:
+            - principal_stresses (np.array[float]): n_thermos x 3 array of principal stresses (largest to smallest).
+
+        Returns:
+            - strength (np.array[float] or list of None): the three principal stresses at the sigma_1 peak.
+            - crit_strain (np.array[float] or list of None): the three principal strains at the sigma_1 peak.
+            - fracture_time (int or None): timestep of the sigma_1 peak.
+        """
+        fractured, _ = self.find_fracture(principal_stresses)
+        if fractured[0] is None:
+            return [None, None, None], [None, None, None], None
+
+        drop_index = self.drop_index if self.drop_index is not None else len(principal_stresses) - 1
+
+        peak = peak_before_drop(principal_stresses[:, 0], drop_index)
+        return principal_stresses[peak], self.principalAxes_strain[peak], peak * self.thermo
+
     def find_fracture(self, principal_stresses, give_crit_strain=False):
         """
         - This detects the point of fracture as a sudden sustained drop in stress. A lot is in here to filter out potential noise. 
@@ -1110,7 +1139,14 @@ class Simulation:
             id_str = ' '.join(str(int(id)) for id in self.deleted_ids)
 
             self.lmp.command(f"group to_delete id {id_str}")
-            self.lmp.command("delete_atoms group to_delete")
+            if self.potential == "rom":
+                # condense yes: renumber the remaining atoms 1..N in order of their original ids, so the numbering
+                # does not depend on LAMMPS' internal atom order (which differs between machines/builds). The ROM
+                # basis is built in this order (utils.build_snapshot_matrix with datafile=...), so atoms line up.
+                # Requires 'atom_modify map array' before read_data (set in in.deform_py_rom).
+                self.lmp.command("delete_atoms group to_delete condense yes")
+            else:
+                self.lmp.command("delete_atoms group to_delete")
 
         print("Removed all of these atoms:", self.deleted_ids)
 
@@ -1352,3 +1388,11 @@ def split_path(s):
         after = after.split('.', 1)[1]
 
     return before, after
+
+
+def peak_before_drop(sigma_1, drop_index):
+    """
+    Index of the highest sigma_1 at or before drop_index (the output where fracture was detected).
+    Shared by Simulation.locate_strength() and recompute_strength.py, so stored and recomputed strengths agree.
+    """
+    return int(np.argmax(np.asarray(sigma_1, dtype=float)[:drop_index + 1]))
